@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas-bg: #F8F5EE;
+  --color-canvas-card: #FFFFFF;
+  --color-canvas-border: #E8E0D2;
+  
+  --color-plum-base: #28142E;
+  --color-plum-panel: #32193A;
+  --color-plum-card: #3D1E47;
+  --color-plum-hover: #4A2556;
+  
+  --color-accent-pink: #F3B6CA;
+  --color-accent-rose: #E8A8BF;
+  --color-accent-lilac: #F0C4DC;
+  
+  --color-text-dark: #221526;
+  --color-text-muted: #786C7C;
+  --color-text-light: #FBF8F3;
+  --color-text-lavender: #D8C8DC;
+}
+
+body {
+  background-color: #F8F5EE;
+  color: #221526;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F5EE;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D8CEBE;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #32193A;
+}
+
+/* Leaflet Light/Ivory Map Override matching GIS Context mockup */
+.leaflet-container {
+  background-color: #F8F5EE !important;
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #28142E !important;
+  color: #FBF8F3 !important;
+  border: 1px solid #E8A8BF !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(40, 20, 46, 0.4) !important;
+}
+
+.leaflet-popup-tip {
+  background: #28142E !important;
+}
