@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.core.database import engine, Base, SessionLocal
+from app.core.database import SessionLocal
 from app.models import (
     User, Camera, CameraTelemetry, Detection,
     OCRCorrection, Watchlist, Alert, AlertAction,
@@ -19,8 +19,7 @@ from app.api.v1 import (
 from app.services.telemetry_service import manager
 from app.services.ai_pipeline import ensure_evidence_dirs
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Schema creation is handled by Alembic migrations (alembic upgrade head)
 ensure_evidence_dirs()
 
 # Background task for live simulated feed events

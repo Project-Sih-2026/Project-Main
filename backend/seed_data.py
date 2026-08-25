@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from app.core.database import SessionLocal, engine, Base
+from app.core.database import SessionLocal
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.camera import Camera
@@ -12,7 +12,6 @@ from app.services.ai_pipeline import generate_synthetic_evidence_image
 from app.services.normalization import normalize_plate
 
 def seed_database():
-    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
     # 1. Seed Users
