@@ -1,131 +1,71 @@
-import React from 'react';
-import { 
-  LayoutDashboard, 
-  Map, 
-  Video, 
-  FileText, 
-  ShieldCheck, 
-  HelpCircle, 
-  LogOut,
-  UserCheck
-} from 'lucide-react';
-import { User } from '../../types';
+import { Icon, type IconName } from '../Icons';
+import { cx } from '../ui';
+import { useApp, type PageId } from '../../state/appContext';
 
-interface SidebarProps {
-  currentTab: string;
-  onTabChange: (tab: string) => void;
-  currentUser: User | null;
-  onRoleSwitch: (role: string) => void;
-}
+const NAV: { id: PageId; icon: IconName; label: string }[] = [
+  { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { id: 'vehicles', icon: 'car', label: 'Vehicle Search' },
+  { id: 'cameras', icon: 'camera', label: 'Cameras' },
+  { id: 'map', icon: 'map', label: 'City Map' },
+  { id: 'alerts', icon: 'bell', label: 'Alerts' },
+  { id: 'analytics', icon: 'chart', label: 'Analytics' },
+];
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
-  currentTab, 
-  onTabChange, 
-  currentUser, 
-  onRoleSwitch 
-}) => {
-  const navItems = [
-    { id: 'operations', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'history', label: 'Map', icon: Map },
-    { id: 'cameras', label: 'Cameras', icon: Video },
-    { id: 'analytics', label: 'Reports', icon: FileText },
-    { id: 'audit', label: 'System Health', icon: ShieldCheck },
-  ];
+export function Sidebar() {
+  const app = useApp();
+  const openAlerts = app.alerts.filter((a) => a.status === 'open').length;
+
+  const Item = ({ item }: { item: { id: PageId; icon: IconName; label: string } }) => {
+    const active = app.page === item.id;
+    return (
+      <button
+        onClick={() => app.nav({ page: item.id })}
+        aria-label={item.label}
+        className={cx(
+          'group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 active:scale-90',
+          active ? 'bg-sand/75 text-ink' : 'text-mauve/70 hover:bg-sand/45 hover:text-ink'
+        )}
+      >
+        <Icon name={item.icon} />
+        {item.id === 'alerts' && openAlerts > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sand px-1 text-[14px] font-bold text-ink">
+            {openAlerts}
+          </span>
+        )}
+        {active && <span className="absolute -left-[9px] h-5 w-[3px] rounded-full bg-mauve" />}
+        <span className="pointer-events-none absolute left-[52px] z-50 hidden whitespace-nowrap rounded-lg border border-clay/35 bg-cream px-3 py-2 text-[14px] font-bold text-ink shadow-xl group-hover:block">
+          {item.label}
+        </span>
+      </button>
+    );
+  };
 
   return (
-    <aside className="w-60 bg-[#F8F5EE] border-r border-[#E8E0D2] flex flex-col justify-between select-none h-screen fixed left-0 top-0 z-30">
-      {/* Brand Header matching reference image */}
-      <div>
-        <div className="pt-8 px-7 pb-6">
-          <h1 className="text-2xl font-black tracking-tight text-[#221526] font-sans">
-            City Traffic
-          </h1>
-          <p className="text-xs text-[#786C7C] font-medium tracking-normal mt-0.5">
-            In Motion
-          </p>
-        </div>
-
-        {/* Navigation Items */}
-        <nav className="px-4 space-y-1.5 mt-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                  isActive
-                    ? 'bg-[#EFE4D6] text-[#221526] shadow-sm'
-                    : 'text-[#56495A] hover:text-[#221526] hover:bg-[#EFE7DC]/50'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#221526]' : 'text-[#786C7C]'}`} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Role Switcher & Bottom Utility matching reference */}
-      <div className="p-4 space-y-3 pb-12">
-        {/* Persona Switcher for Evaluation */}
-        <div className="bg-[#EFE7DC]/60 p-2.5 rounded-xl border border-[#E2D6C6]">
-          <div className="flex items-center justify-between text-[11px] text-[#786C7C] mb-1.5">
-            <span className="flex items-center gap-1 font-medium">
-              <UserCheck className="w-3 h-3 text-[#32193A]" />
-              Persona:
-            </span>
-            <span className="text-[#32193A] font-bold">
-              {currentUser?.role === 'ROLE_ADMIN' ? 'Admin' : currentUser?.role === 'ROLE_OPERATOR' ? 'Operator' : 'Analyst'}
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-1 text-[10px]">
-            <button
-              onClick={() => onRoleSwitch('ROLE_OPERATOR')}
-              className={`py-1 rounded font-bold transition ${
-                currentUser?.role === 'ROLE_OPERATOR'
-                  ? 'bg-[#32193A] text-white shadow'
-                  : 'bg-white/70 text-[#56495A] hover:bg-white'
-              }`}
-            >
-              Operator
-            </button>
-            <button
-              onClick={() => onRoleSwitch('ROLE_ADMIN')}
-              className={`py-1 rounded font-bold transition ${
-                currentUser?.role === 'ROLE_ADMIN'
-                  ? 'bg-[#32193A] text-white shadow'
-                  : 'bg-white/70 text-[#56495A] hover:bg-white'
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              onClick={() => onRoleSwitch('ROLE_ANALYST')}
-              className={`py-1 rounded font-bold transition ${
-                currentUser?.role === 'ROLE_ANALYST'
-                  ? 'bg-[#32193A] text-white shadow'
-                  : 'bg-white/70 text-[#56495A] hover:bg-white'
-              }`}
-            >
-              Analyst
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-1 text-xs">
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-[#56495A] hover:text-[#221526] transition rounded-lg font-medium">
-            <HelpCircle className="w-4 h-4 text-[#786C7C]" />
-            <span>Support</span>
-          </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-[#56495A] hover:text-red-700 transition rounded-lg font-medium">
-            <LogOut className="w-4 h-4 text-[#786C7C]" />
-            <span>Sign Out</span>
-          </button>
-        </div>
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-16 flex-col items-center border-r border-clay/25 bg-cream/92 py-4 backdrop-blur">
+      <button
+        onClick={() => app.nav({ page: 'dashboard' })}
+        aria-label="Home"
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream text-ink shadow-[0_2px_16px_rgba(232,210,196,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95"
+      >
+        <span className="font-display text-[22px] leading-none">C</span>
+      </button>
+      <div className="mt-5 h-px w-7 bg-clay/35" />
+      <nav className="mt-5 flex flex-col items-center gap-2">
+        {NAV.map((item) => (
+          <Item key={item.id} item={item} />
+        ))}
+      </nav>
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <Item item={{ id: 'settings', icon: 'settings', label: 'Settings' }} />
+        <div className="h-px w-7 bg-clay/35" />
+        <button
+          onClick={app.logout}
+          aria-label="Sign out"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-mauve/70 transition-all duration-150 hover:bg-sand/45 hover:text-ink active:scale-90"
+        >
+          <Icon name="logout" />
+        </button>
       </div>
     </aside>
   );
-};
+}
