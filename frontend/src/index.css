@@ -294,3 +294,36 @@ option {
 @media (max-width: 1024px){ .page-shell { padding: 24px 22px 56px; gap: 22px; } }
 @media (max-width: 640px){ .page-shell { padding: 18px 16px 48px; gap: 18px; } }
 
+/* Leaflet Tile & Canvas Full Viewport Assurance */
+.leaflet-container {
+  width: 100% !important;
+  height: 650px !important;
+  min-height: 650px !important;
+  background: #f1ede8 !important;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  z-index: 1 !important;
+  position: relative !important;
+}
+.leaflet-pane, .leaflet-tile, .leaflet-marker-pane, .leaflet-overlay-pane {
+  max-width: none !important;
+}
+.leaflet-tile-container img,
+img.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: 256px !important;
+  height: 256px !important;
+  visibility: inherit !important;
+  display: block !important;
+}
+.leaflet-container .leaflet-control-zoom {
+  border: 1px solid rgba(199, 169, 163, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+.leaflet-container .leaflet-control-zoom a {
+  background-color: #F7EFE7 !important;
+  color: #3E3239 !important;
+}
+

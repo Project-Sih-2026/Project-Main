@@ -117,7 +117,7 @@ export function OperationsPage() {
           placeholder="Search vehicle registration number"
           className="h-full flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-mauve/50"
         />
-        <span className="hidden text-[14px] font-semibold text-mauve/75 sm:block">e.g. KX·4821</span>
+        <span className="hidden text-[14px] font-semibold text-mauve/75 sm:block">e.g. DL-01-AB-4821</span>
         <Btn size="sm" variant="solid" type="submit">
           Search
         </Btn>

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from app.core.database import SessionLocal
+from app.core.database import SessionLocal, Base, engine
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.camera import Camera
@@ -12,6 +12,7 @@ from app.services.ai_pipeline import generate_synthetic_evidence_image
 from app.services.normalization import normalize_plate
 
 def seed_database():
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
     # 1. Seed Users
@@ -52,12 +53,12 @@ def seed_database():
         Camera(
             id="CAM-022",
             name="CAM-022",
-            designation="Intersection B-Alpha",
-            district="Central District",
-            sector="Sector 7",
-            location_address="Central Ave · Intersection B-Alpha",
-            latitude=40.7128,
-            longitude=-74.0060,
+            designation="Connaught Inner Circle",
+            district="Connaught Core",
+            sector="Central Delhi",
+            location_address="Barakhamba Rd & Inner Circle Plaza",
+            latitude=28.6328,
+            longitude=77.2197,
             direction="Northbound",
             status="nominal",
             throughput_mbps=4.2,
@@ -67,12 +68,12 @@ def seed_database():
         Camera(
             id="CAM-023",
             name="CAM-023",
-            designation="Grand Boulevard East",
-            district="Central District",
-            sector="Sector 7",
-            location_address="Grand Blvd & 5th Ave",
-            latitude=40.7155,
-            longitude=-74.0035,
+            designation="India Gate C-Hexagon",
+            district="Central Vista",
+            sector="New Delhi Zone",
+            location_address="Rajpath & C-Hexagon Circle",
+            latitude=28.6129,
+            longitude=77.2295,
             direction="Eastbound",
             status="scanning",
             throughput_mbps=3.8,
@@ -82,12 +83,12 @@ def seed_database():
         Camera(
             id="CAM-024",
             name="CAM-024",
-            designation="Harbor Expressway North",
-            district="Waterfront District",
-            sector="Sector 8",
-            location_address="Harbor Expwy & Dock St",
-            latitude=40.7088,
-            longitude=-74.0112,
+            designation="Dhaula Kuan Interchange",
+            district="Dhaula Kuan",
+            sector="South-West Corridor",
+            location_address="NH-48 & Ring Road Flyover",
+            latitude=28.5921,
+            longitude=77.1610,
             direction="Northbound",
             status="standby",
             throughput_mbps=4.0,
@@ -97,12 +98,12 @@ def seed_database():
         Camera(
             id="CAM-025",
             name="CAM-025",
-            designation="Tech Corridor Junction",
-            district="Innovation Hub",
-            sector="Sector 4",
-            location_address="Silicon Way & Metro Dr",
-            latitude=40.7220,
-            longitude=-73.9980,
+            designation="AIIMS Ring Road Flyover",
+            district="South Extension",
+            sector="South Delhi",
+            location_address="Inner Ring Road & Aurobindo Marg",
+            latitude=28.5672,
+            longitude=77.2100,
             direction="Southbound",
             status="standby",
             throughput_mbps=4.5,
@@ -112,12 +113,12 @@ def seed_database():
         Camera(
             id="CAM-026",
             name="CAM-026",
-            designation="Westside Tunnel Approach",
-            district="West District",
-            sector="Sector 7",
-            location_address="Westway Rd & Tunnel Plaza",
-            latitude=40.7190,
-            longitude=-74.0140,
+            designation="Nelson Mandela Marg",
+            district="Vasant Kunj",
+            sector="South-West Zone",
+            location_address="Nelson Mandela Marg & Mall Road",
+            latitude=28.5412,
+            longitude=77.1555,
             direction="Westbound",
             status="nominal",
             throughput_mbps=4.1,
@@ -127,12 +128,12 @@ def seed_database():
         Camera(
             id="CAM-027",
             name="CAM-027",
-            designation="Financial Plaza South",
-            district="Central District",
-            sector="Sector 7",
-            location_address="Market St & Exchange Pl",
-            latitude=40.7075,
-            longitude=-74.0090,
+            designation="IGI Airport T3 Expressway",
+            district="Aerocity Hub",
+            sector="IGI Airport Corridor",
+            location_address="Airport Express Highway T3 Approach",
+            latitude=28.5562,
+            longitude=77.0855,
             direction="Southbound",
             status="nominal",
             throughput_mbps=4.3,

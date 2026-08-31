@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     
-    # PostgreSQL via Neon — must be set in .env or environment
-    DATABASE_URL: str
+    # PostgreSQL via Neon or fallback SQLite for local development
+    DATABASE_URL: str = "sqlite:///./traffic_analytics.db"
     
     EVIDENCE_DIR: str = "./static/evidence"
     FEEDS_DIR: str = "./static/feeds"

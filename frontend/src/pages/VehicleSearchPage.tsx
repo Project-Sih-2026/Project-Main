@@ -6,7 +6,7 @@ import { VEHICLES, camById, type Vehicle, type VehicleStatus } from '../data/moc
 
 const TYPES = ['All types', 'Sedan', 'SUV', 'Truck', 'Bus', 'Two-wheeler', 'Van'];
 const STATUSES = ['All statuses', 'clear', 'watchlist', 'flagged'];
-const QUICK = ['kx', 'truck', 'stolen', 'harbor'];
+const QUICK = ['dl-01', 'truck', 'stolen', 'dhaula'];
 
 const STATUS_BADGE = (s: VehicleStatus): 'critical' | 'medium' | 'good' =>
   s === 'flagged' ? 'critical' : s === 'watchlist' ? 'medium' : 'good';
