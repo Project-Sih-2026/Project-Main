@@ -5,6 +5,7 @@ import { useApp } from '../state/appContext';
 import { Icon } from '../components/Icons';
 import { Badge, Btn, Card, Kicker, cx } from '../components/ui';
 import { CAMERAS, HOTSPOTS, ROADS, VEHICLES, camById, timeAgo, type Vehicle, type Camera } from '../data/mock';
+import { getCamera30MinDetections, type ANPRDetection } from '../data/anprGenerator';
 
 const CONGESTION: Record<string, number> = { r1: 3, r2: 2, r3: 4, r4: 2, r5: 1, r6: 3, r7: 2, r8: 2, r9: 1, r10: 2, r11: 1, r12: 2 };
 
@@ -80,7 +81,7 @@ const SECTORS: SectorPreset[] = [
 ];
 
 // Timeline 30-Minute Blocks
-interface TimeSlice {
+interface TimeSliceDef {
   id: string;
   label: string;
   timeRange: string;
@@ -88,17 +89,16 @@ interface TimeSlice {
   startM: number;
   endH: number;
   endM: number;
-  vehCount: number;
 }
 
-const TIMELINE_SLICES: TimeSlice[] = [
-  { id: 'all', label: 'All Day (24h)', timeRange: '00:00 – 23:59', startH: 0, startM: 0, endH: 24, endM: 0, vehCount: 14 },
-  { id: 't1', label: '07:00 – 07:30', timeRange: '07:00 – 07:30', startH: 7, startM: 0, endH: 7, endM: 30, vehCount: 6 },
-  { id: 't2', label: '07:30 – 08:00', timeRange: '07:30 – 08:00', startH: 7, startM: 30, endH: 8, endM: 0, vehCount: 9 },
-  { id: 't3', label: '08:00 – 08:30 (Peak)', timeRange: '08:00 – 08:30', startH: 8, startM: 0, endH: 8, endM: 30, vehCount: 14 },
-  { id: 't4', label: '08:30 – 09:00 (Peak)', timeRange: '08:30 – 09:00', startH: 8, startM: 30, endH: 9, endM: 0, vehCount: 12 },
-  { id: 't5', label: '09:00 – 09:30', timeRange: '09:00 – 09:30', startH: 9, startM: 0, endH: 9, endM: 30, vehCount: 10 },
-  { id: 'recent', label: 'Past 30 mins', timeRange: 'Live Feed', startH: 8, startM: 45, endH: 9, endM: 30, vehCount: 11 },
+const TIMELINE_SLICES_DEF: TimeSliceDef[] = [
+  { id: 'all', label: 'All Day (24h)', timeRange: '00:00 – 23:59', startH: 0, startM: 0, endH: 24, endM: 0 },
+  { id: 't1', label: '07:00 – 07:30', timeRange: '07:00 – 07:30', startH: 7, startM: 0, endH: 7, endM: 30 },
+  { id: 't2', label: '07:30 – 08:00', timeRange: '07:30 – 08:00', startH: 7, startM: 30, endH: 8, endM: 0 },
+  { id: 't3', label: '08:00 – 08:30 (Peak)', timeRange: '08:00 – 08:30', startH: 8, startM: 0, endH: 8, endM: 30 },
+  { id: 't4', label: '08:30 – 09:00 (Peak)', timeRange: '08:30 – 09:00', startH: 8, startM: 30, endH: 9, endM: 0 },
+  { id: 't5', label: '09:00 – 09:30', timeRange: '09:00 – 09:30', startH: 9, startM: 0, endH: 9, endM: 30 },
+  { id: 'recent', label: 'Past 20-30 mins', timeRange: 'Live Surveillance Feed', startH: 8, startM: 40, endH: 9, endM: 30 },
 ];
 
 export function CityMapPage() {
@@ -124,13 +124,35 @@ export function CityMapPage() {
   const [selectedTimeSlice, setSelectedTimeSlice] = useState<string>('all');
   const [stateFilter, setStateFilter] = useState<'all' | 'DL' | 'HR' | 'UP'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [camSearchQuery, setCamSearchQuery] = useState('');
+  const [camStatusFilter, setCamStatusFilter] = useState<'all' | 'flagged' | 'watchlist' | 'clear'>('all');
 
   const [selCamId, setSelCamId] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(
     app.target.mapVehicle || app.target.vehicleId || 'v1'
   );
+  const [dynamicVehicles, setDynamicVehicles] = useState<Record<string, Vehicle>>({});
 
   const toggle = (k: keyof typeof layers) => setLayers((l) => ({ ...l, [k]: !l[k] }));
+
+  // Computed timeline slices with realistic metropolitan throughput
+  const timelineSlices = useMemo(() => {
+    const baseDensities: Record<string, number> = {
+      'all': 1850,
+      't1': 128,
+      't2': 194,
+      't3': 346,
+      't4': 392,
+      't5': 284,
+      'recent': 220,
+    };
+    return TIMELINE_SLICES_DEF.map((ts) => {
+      return {
+        ...ts,
+        vehCount: baseDensities[ts.id] || 150
+      };
+    });
+  }, []);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -209,7 +231,7 @@ export function CityMapPage() {
 
   // Filter vehicles by Sector, Time Slice, and State
   const filteredVehicles = useMemo(() => {
-    const curSlice = TIMELINE_SLICES.find((s) => s.id === selectedTimeSlice) || TIMELINE_SLICES[0];
+    const curSlice = TIMELINE_SLICES_DEF.find((s) => s.id === selectedTimeSlice) || TIMELINE_SLICES_DEF[0];
     const sec = SECTORS.find((s) => s.id === selectedSector);
 
     return VEHICLES.filter((v) => {
@@ -244,49 +266,33 @@ export function CityMapPage() {
     });
   }, [selectedSector, selectedTimeSlice, stateFilter]);
 
-  // Selected camera details and 30-min detected vehicles
+  // Selected camera details and 30-min detected vehicles (40 to 65+ real ANPR detections)
   const selCam: Camera | undefined = useMemo(() => {
     return selCamId ? camById(selCamId) : undefined;
   }, [selCamId]);
 
-  const cam30MinDetections = useMemo(() => {
+  const rawCam30MinDetections = useMemo(() => {
     if (!selCam) return [];
-    const hits: { vehicle: Vehicle; eventTime: string; speed: number; dir: string; note?: string }[] = [];
-
-    VEHICLES.forEach((v) => {
-      v.journey.forEach((evt) => {
-        if (evt.cam === selCam.code || evt.cam === selCam.id || evt.loc.toLowerCase().includes(selCam.name.toLowerCase().slice(0, 8))) {
-          hits.push({
-            vehicle: v,
-            eventTime: evt.t,
-            speed: evt.speed,
-            dir: evt.dir,
-            note: evt.note
-          });
-        }
-      });
-    });
-
-    // If none in mock journey, generate contextual simulated vehicles for that camera
-    if (hits.length === 0) {
-      VEHICLES.slice(0, 4).forEach((v, idx) => {
-        hits.push({
-          vehicle: v,
-          eventTime: `08:${40 + idx * 5}`,
-          speed: selCam.avgSpeed + (idx % 2 === 0 ? 5 : -4),
-          dir: selCam.heading.split(' ')[0] || 'Transit',
-        });
-      });
-    }
-
-    return hits;
+    return getCamera30MinDetections(selCam);
   }, [selCam]);
 
+  const filteredCamDetections = useMemo(() => {
+    return rawCam30MinDetections.filter((det) => {
+      if (camStatusFilter !== 'all' && det.status !== camStatusFilter) return false;
+      if (camSearchQuery.trim()) {
+        const q = camSearchQuery.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+        const plateClean = det.plate.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return plateClean.includes(q) || det.make.toLowerCase().includes(q) || det.model.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [rawCam30MinDetections, camStatusFilter, camSearchQuery]);
+
   // Active vehicle for route trajectory
-  const focusVeh: Vehicle | undefined = useMemo(
-    () => VEHICLES.find((v) => v.id === selectedVehicleId) || filteredVehicles[0] || VEHICLES[0],
-    [selectedVehicleId, filteredVehicles]
-  );
+  const focusVeh: Vehicle | undefined = useMemo(() => {
+    if (dynamicVehicles[selectedVehicleId]) return dynamicVehicles[selectedVehicleId];
+    return VEHICLES.find((v) => v.id === selectedVehicleId) || filteredVehicles[0] || VEHICLES[0];
+  }, [selectedVehicleId, dynamicVehicles, filteredVehicles]);
 
   // Search vehicle by plate
   const handleSearchVehicle = (e: React.FormEvent) => {
@@ -294,6 +300,7 @@ export function CityMapPage() {
     const q = searchQuery.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     if (!q) return;
 
+    // Search in primary vehicles
     const hit = VEHICLES.find(
       (v) =>
         v.plate.toLowerCase().replace(/[^a-z0-9]/g, '').includes(q) ||
@@ -306,6 +313,21 @@ export function CityMapPage() {
       setSelectedVehicleId(hit.id);
       setLayers((l) => ({ ...l, journey: true }));
       app.toast(`Tracing route for ${hit.plate} (${hit.make} ${hit.model})`);
+      return;
+    }
+
+    // Search in raw camera detections
+    const detHit = rawCam30MinDetections.find(
+      (d) =>
+        d.plate.toLowerCase().replace(/[^a-z0-9]/g, '').includes(q) ||
+        q.includes(d.plate.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+
+    if (detHit && detHit.vehicleRef) {
+      setDynamicVehicles((prev) => ({ ...prev, [detHit.vehicleRef!.id]: detHit.vehicleRef! }));
+      setSelectedVehicleId(detHit.vehicleRef.id);
+      setLayers((l) => ({ ...l, journey: true }));
+      app.toast(`Tracing ANPR route for ${detHit.plate} (${detHit.make} ${detHit.model})`);
     } else {
       app.toast(`No vehicle matches registration "${searchQuery}"`);
     }
@@ -709,7 +731,7 @@ export function CityMapPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-            {TIMELINE_SLICES.map((ts) => {
+            {timelineSlices.map((ts) => {
               const isSel = selectedTimeSlice === ts.id;
               return (
                 <button
@@ -735,7 +757,7 @@ export function CityMapPage() {
                   <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-clay/20">
                     <div
                       className={cx('h-full rounded-full', isSel ? 'bg-sand' : 'bg-dusk')}
-                      style={{ width: `${(ts.vehCount / 14) * 100}%` }}
+                      style={{ width: `${Math.min(100, Math.round((ts.vehCount / VEHICLES.length) * 100))}%` }}
                     />
                   </div>
                 </button>
@@ -854,37 +876,76 @@ export function CityMapPage() {
                   <div className="font-bold text-[13px]">{selCam.vehiclesToday.toLocaleString()}</div>
                 </div>
                 <div className="rounded-lg bg-sand/30 p-1.5">
-                  <div className="text-mauve text-[10px]">30-Min Log</div>
-                  <div className="font-bold text-[13px] text-dusk">{cam30MinDetections.length} Cars</div>
+                  <div className="text-mauve text-[10px]">30-Min Throughput</div>
+                  <div className="font-bold text-[13px] text-dusk">{rawCam30MinDetections.length} Cars ({rawCam30MinDetections.length * 30} veh/hr)</div>
+                </div>
+              </div>
+
+              {/* Camera Search & Filter Bar */}
+              <div className="flex flex-col gap-1.5 border-t border-clay/20 pt-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex flex-1 items-center">
+                    <Icon name="search" className="absolute left-2.5 h-3.5 w-3.5 text-mauve/70" />
+                    <input
+                      type="text"
+                      value={camSearchQuery}
+                      onChange={(e) => setCamSearchQuery(e.target.value)}
+                      placeholder="Filter 50+ detections (e.g. DL-01, Creta, Fortuner)..."
+                      className="h-7.5 w-full rounded-lg border border-clay/35 bg-cream pl-8 pr-2 text-[11px] font-bold text-ink outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {(['all', 'flagged', 'watchlist', 'clear'] as const).map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setCamStatusFilter(st)}
+                        className={cx(
+                          'rounded-md px-1.5 py-0.5 text-[10px] font-bold capitalize transition',
+                          camStatusFilter === st
+                            ? 'bg-dusk text-cream'
+                            : 'border border-clay/30 bg-cream text-mauve hover:bg-sand/30'
+                        )}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Cars Passed Through This Camera in Past 30 Minutes */}
-              <div className="mt-1">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-dusk mb-1.5">
-                  Vehicles Passed Through {selCam.code} in Past 30 Mins:
+              <div>
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-dusk mb-1.5">
+                  <span>Vehicles Logged at {selCam.code} (Past 30 Mins):</span>
+                  <span className="text-[10px] text-mauve font-semibold">{filteredCamDetections.length} matches</span>
                 </div>
-                <div className="max-h-36 overflow-y-auto flex flex-col gap-1.5 pr-1">
-                  {cam30MinDetections.map((det, idx) => (
+                <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1">
+                  {filteredCamDetections.map((det) => (
                     <div
-                      key={idx}
-                      className="flex items-center justify-between rounded-lg border border-clay/25 bg-cream px-2.5 py-1.5 text-[12px]"
+                      key={det.id}
+                      className="flex items-center justify-between rounded-lg border border-clay/25 bg-cream px-2.5 py-1.5 text-[12px] hover:border-dusk/40 transition"
                     >
                       <div>
-                        <div className="font-bold text-ink">{det.vehicle.plate}</div>
+                        <div className="font-bold text-ink flex items-center gap-1.5">
+                          {det.plate}
+                          <span className="text-[10px] font-normal text-mauve">({det.make} {det.model})</span>
+                        </div>
                         <div className="text-[10px] text-mauve">
-                          {det.eventTime} · {det.speed} km/h · {det.dir}
+                          {det.timeStr} · {det.speed} km/h · {det.dir} · <span className="font-semibold text-ink/80">{det.lane}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Badge tone={det.vehicle.status === 'watchlist' ? 'medium' : det.vehicle.status === 'flagged' ? 'critical' : 'good'}>
-                          {det.vehicle.status}
+                        <Badge tone={det.status === 'watchlist' ? 'medium' : det.status === 'flagged' ? 'critical' : 'good'}>
+                          {det.status}
                         </Badge>
                         <button
                           onClick={() => {
-                            setSelectedVehicleId(det.vehicle.id);
+                            if (det.vehicleRef) {
+                              setDynamicVehicles((prev) => ({ ...prev, [det.vehicleRef!.id]: det.vehicleRef! }));
+                              setSelectedVehicleId(det.vehicleRef.id);
+                            }
                             setLayers((l) => ({ ...l, journey: true }));
-                            app.toast(`Tracing full AI route for ${det.vehicle.plate}`);
+                            app.toast(`Tracing AI route for ${det.plate}`);
                           }}
                           className="rounded-md bg-dusk px-2 py-0.5 text-[11px] font-bold text-cream hover:bg-ink transition"
                         >
@@ -893,6 +954,11 @@ export function CityMapPage() {
                       </div>
                     </div>
                   ))}
+                  {filteredCamDetections.length === 0 && (
+                    <div className="p-3 text-center text-[11px] text-mauve">
+                      No detections match filter query "{camSearchQuery}"
+                    </div>
+                  )}
                 </div>
               </div>
 

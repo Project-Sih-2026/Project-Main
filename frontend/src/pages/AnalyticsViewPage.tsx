@@ -34,7 +34,16 @@ export function AnalyticsPage() {
           <select value={dist} onChange={(e) => setDist(e.target.value)} className="input-base h-10 w-44 cursor-pointer text-[14px] font-semibold">
             {districts.map((d) => <option key={d}>{d}</option>)}
           </select>
-          <Tabs items={[{ id: '24h', label: '24H' }, { id: '7d', label: '7D' }, { id: '30d', label: '30D' }]} value={rk} onChange={(id) => setRk(id as RangeKey)} />
+          <Tabs
+            items={[
+              { id: '24h', label: '24H Hourly' },
+              { id: '7d', label: '7D Weekly' },
+              { id: '30d', label: '30D Monthly' },
+              { id: '90d', label: '90D Macro' },
+            ]}
+            value={rk}
+            onChange={(id) => setRk(id as RangeKey)}
+          />
           <Btn size="sm" variant="soft" icon="download" onClick={() => app.toast('CSV export ready — demo snapshot')}>Export</Btn>
         </div>
       </div>

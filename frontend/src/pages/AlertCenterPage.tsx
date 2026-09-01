@@ -13,10 +13,18 @@ const STATUS_FILTERS = [
 ];
 const SEV_DOT: Record<Severity, string> = { critical: 'bg-ink', high: 'bg-mauve', medium: 'bg-dusk', low: 'bg-clay' };
 
+const ALERT_TIME_WINDOWS = [
+  { id: '1h', label: '1h Active' },
+  { id: '8h', label: '8h Shift' },
+  { id: '24h', label: '24h Day' },
+  { id: '7d', label: '7d Audit' },
+];
+
 export function AlertsPage() {
   const app = useApp();
   const [sev, setSev] = useState<string>('all');
   const [status, setStatus] = useState<AlertStatus | 'all'>('all');
+  const [timeScope, setTimeScope] = useState<string>('24h');
   const [q, setQ] = useState('');
   const [type, setType] = useState('All types');
   const [selId, setSelId] = useState<string | null>(null);
@@ -34,6 +42,9 @@ export function AlertsPage() {
         if (sev !== 'all' && a.severity !== sev) return false;
         if (status !== 'all' && a.status !== status) return false;
         if (type !== 'All types' && a.type !== type) return false;
+        if (timeScope === '1h' && a.minsAgo > 60) return false;
+        if (timeScope === '8h' && a.minsAgo > 480) return false;
+        if (timeScope === '24h' && a.minsAgo > 1440) return false;
         if (q.trim()) {
           const v = vehById(a.vehicleId);
           const c = camById(a.cameraId);
@@ -42,7 +53,7 @@ export function AlertsPage() {
         }
         return true;
       }),
-    [app.alerts, sev, status, type, q]
+    [app.alerts, sev, status, type, timeScope, q]
   );
 
   const sel = app.alerts.find((a) => a.id === selId);
@@ -54,12 +65,15 @@ export function AlertsPage() {
     <div className="page-shell fade-up">
       <div className="page-hero flex flex-wrap items-end justify-between gap-3 px-5 py-5 sm:px-6 sm:py-6">
         <div>
-          <Kicker className="text-sand">Alert center</Kicker>
+          <Kicker className="text-sand">Incident & Alert Center</Kicker>
           <p className="mt-1 font-display text-[34px] font-bold leading-tight text-cream">
             {counts('open')} open <span className="italic text-sand">· {counts('acknowledged')} acknowledged</span>
           </p>
         </div>
-        <Tabs items={STATUS_FILTERS} value={status} onChange={(id) => setStatus(id as AlertStatus | 'all')} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs items={ALERT_TIME_WINDOWS} value={timeScope} onChange={setTimeScope} />
+          <Tabs items={STATUS_FILTERS} value={status} onChange={(id) => setStatus(id as AlertStatus | 'all')} />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

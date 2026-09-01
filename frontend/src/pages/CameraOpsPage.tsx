@@ -15,9 +15,18 @@ const FILTERS = [
 const statusBadge = (s: CameraStatus): 'good' | 'medium' | 'critical' =>
   s === 'online' ? 'good' : s === 'degraded' ? 'medium' : 'critical';
 
+const SCOPE_WINDOWS = [
+  { id: '5m', label: '5m Live' },
+  { id: '30m', label: '30m Scope' },
+  { id: '60m', label: '60m Flow' },
+  { id: '8h', label: '8h Shift' },
+  { id: '24h', label: '24h Total' },
+];
+
 export function CamerasPage() {
   const app = useApp();
   const [filter, setFilter] = useState('all');
+  const [scopeWindow, setScopeWindow] = useState('30m');
   const [selId, setSelId] = useState('c1');
   const [playing, setPlaying] = useState(true);
   const [showVeh, setShowVeh] = useState(true);
@@ -36,12 +45,15 @@ export function CamerasPage() {
     <div className="page-shell fade-up">
       <div className="page-hero flex flex-wrap items-end justify-between gap-3 px-5 py-5 sm:px-6 sm:py-6">
         <div>
-          <Kicker className="text-sand">Camera network</Kicker>
+          <Kicker className="text-sand">Camera Network Operations</Kicker>
           <p className="mt-1 font-display text-[34px] font-bold leading-tight text-cream">
             {CAMERAS.length - offline} of {CAMERAS.length} feeds <span className="italic text-sand">streaming</span>
           </p>
         </div>
-        <Tabs items={FILTERS} value={filter} onChange={setFilter} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs items={SCOPE_WINDOWS} value={scopeWindow} onChange={setScopeWindow} />
+          <Tabs items={FILTERS} value={filter} onChange={setFilter} />
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[300px_1fr]">

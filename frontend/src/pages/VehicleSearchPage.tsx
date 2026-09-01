@@ -6,6 +6,7 @@ import { VEHICLES, camById, type Vehicle, type VehicleStatus } from '../data/moc
 
 const TYPES = ['All types', 'Sedan', 'SUV', 'Truck', 'Bus', 'Two-wheeler', 'Van'];
 const STATUSES = ['All statuses', 'clear', 'watchlist', 'flagged'];
+const TIME_WINDOWS = ['All Day (24h)', 'Live ANPR (30m)', 'Past 2 Hours', 'Shift Window (8h)', 'Past 7 Days File'];
 const QUICK = ['dl-01', 'truck', 'stolen', 'dhaula'];
 
 const STATUS_BADGE = (s: VehicleStatus): 'critical' | 'medium' | 'good' =>
@@ -42,6 +43,7 @@ export function VehicleSearchPage() {
   const [q, setQ] = useState('');
   const [type, setType] = useState(TYPES[0]);
   const [status, setStatus] = useState(STATUSES[0]);
+  const [timeWindow, setTimeWindow] = useState(TIME_WINDOWS[0]);
 
   useEffect(() => {
     if (app.target.query !== undefined) setQ(app.target.query);
@@ -63,13 +65,18 @@ export function VehicleSearchPage() {
     () =>
       VEHICLES.filter((v) => {
         const hay = `${v.plate} ${v.make} ${v.model} ${v.color} ${v.type} ${v.owner}`.toLowerCase();
-        return (
-          (q.trim() === '' || hay.includes(q.trim().toLowerCase())) &&
-          (type === TYPES[0] || v.type === type) &&
-          (status === STATUSES[0] || v.status === status)
-        );
+        const matchesQuery = q.trim() === '' || hay.includes(q.trim().toLowerCase());
+        const matchesType = type === TYPES[0] || v.type === type;
+        const matchesStatus = status === STATUSES[0] || v.status === status;
+        
+        let matchesTime = true;
+        if (timeWindow === 'Live ANPR (30m)') {
+          matchesTime = v.lastSeen.includes('min') || v.lastSeen.includes('just');
+        }
+
+        return matchesQuery && matchesType && matchesStatus && matchesTime;
       }),
-    [q, type, status]
+    [q, type, status, timeWindow]
   );
   const sel = VEHICLES.find((v) => v.id === selId) ?? results[0];
 
@@ -87,11 +94,12 @@ export function VehicleSearchPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Select value={type} onChange={setType} options={TYPES} ariaLabel="Vehicle type" className="w-[130px]" />
             <Select value={status} onChange={setStatus} options={STATUSES} ariaLabel="Vehicle status" className="w-[140px]" />
+            <Select value={timeWindow} onChange={setTimeWindow} options={TIME_WINDOWS} ariaLabel="Investigation window" className="w-[165px]" />
             <Btn
               variant="ghost"
               className="text-cream/90 hover:bg-cream/10 hover:text-cream"
-              onClick={() => { setQ(''); setType(TYPES[0]); setStatus(STATUSES[0]); }}
-              disabled={q === '' && type === TYPES[0] && status === STATUSES[0]}
+              onClick={() => { setQ(''); setType(TYPES[0]); setStatus(STATUSES[0]); setTimeWindow(TIME_WINDOWS[0]); }}
+              disabled={q === '' && type === TYPES[0] && status === STATUSES[0] && timeWindow === TIME_WINDOWS[0]}
             >
               Clear
             </Btn>

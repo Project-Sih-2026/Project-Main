@@ -136,7 +136,12 @@ export function OperationsPage() {
               <div className="mt-1 font-display text-[22px] text-ink">Vehicles per hour · all corridors</div>
             </div>
             <Tabs
-              items={[{ id: '24h', label: '24H' }, { id: '7d', label: '7D' }, { id: '30d', label: '30D' }]}
+              items={[
+                { id: '15m', label: '15m Live' },
+                { id: '8h', label: '8h Shift' },
+                { id: '24h', label: '24h Day' },
+                { id: '7d', label: '7d Week' },
+              ]}
               value={rk}
               onChange={(id) => setRk(id as RangeKey)}
             />

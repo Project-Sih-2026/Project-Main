@@ -107,21 +107,28 @@ export const VEHICLES: Vehicle[] = [
   { id: 'v2', plate: 'HR-38-T-1103', make: 'Tata', model: 'Prima 4928 Tipper', color: 'Polar White', type: 'Truck', owner: 'NCR Freight Logistics', license: 'Fleet FL-2201', status: 'flagged', note: 'Stolen — report #7741. Last confirmed at Dhaula Kuan Interchange.', flaggedReason: 'STOLEN VEHICLE — Police FIR #7741 filed at Sarita Vihar Police Station; Intercept Team Dispatched', speed: 0, lastCam: 'CAM-14', lastSeen: '14 min ago', kmToday: 118, tags: ['stolen', 'fir-7741', 'intercept-active'], road: 2, prog: 0.8, dir: 1, journey: [
     { t: '05:20', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 55, dir: 'Westbound' },
     { t: '06:05', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 48, dir: 'Westbound' },
+    { t: '07:25', cam: 'CAM-13', loc: 'Moti Bagh Ring Flyover', speed: 42, dir: 'Westbound' },
+    { t: '08:15', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 50, dir: 'Westbound' },
     { t: '08:47', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 0, dir: 'Stationary', note: '11 min dwell — intercept team notified' },
     { t: '09:03', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 44, dir: 'Eastbound' },
   ] },
   { id: 'v3', plate: 'DL-03-CC-7702', make: 'Toyota', model: 'Camry Hybrid', color: 'Silver Metallic', type: 'Sedan', owner: 'Michael Osei', license: 'DL B-1180-4432', status: 'clear', flaggedReason: 'Clear — Regular verified commuter vehicle with clean registration compliance', speed: 48, lastCam: 'CAM-09', lastSeen: 'just now', kmToday: 12, tags: ['verified-commuter'], road: 3, prog: 0.3, dir: 1, journey: [
+    { t: '07:15', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 40, dir: 'Westbound' },
     { t: '07:55', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 44, dir: 'Southbound' },
     { t: '08:31', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 51, dir: 'Southbound' },
     { t: '09:00', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 48, dir: 'Northbound' },
+    { t: '09:22', cam: 'CAM-10', loc: 'South Extension Part II', speed: 46, dir: 'Eastbound' },
   ] },
   { id: 'v4', plate: 'HR-26-DK-2258', make: 'Hyundai', model: 'Creta SX (O)', color: 'Navy Blue', type: 'SUV', owner: 'Sofia Marín', license: 'DL A-7723-1109', status: 'watchlist', note: 'Repeat red-light violations — 12 events in 30 days.', flaggedReason: 'CHRONIC TRAFFIC OFFENDER — 12 Red-Light Jumps in 30 Days & 118 km/h Speeding Violation on DND Flyway', speed: 71, lastCam: 'CAM-24', lastSeen: '6 min ago', kmToday: 66, tags: ['red-light-12x', 'speed-challan'], road: 7, prog: 0.5, dir: 1, journey: [
     { t: '06:44', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 66, dir: 'Southbound' },
     { t: '07:20', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 72, dir: 'Eastbound', note: 'Red-light sequence — 1.8s after signal' },
     { t: '08:02', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 58, dir: 'Southbound' },
+    { t: '08:28', cam: 'CAM-06', loc: 'Kartavya Path & Man Singh Rd', speed: 64, dir: 'Eastbound' },
     { t: '08:55', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 118, dir: 'Westbound', note: 'Expressway segment — flagged for speeding' },
+    { t: '09:16', cam: 'CAM-25', loc: 'Mayur Vihar Link Road', speed: 65, dir: 'Eastbound' },
   ] },
   { id: 'v5', plate: 'DL-04-NA-9041', make: 'Yamaha', model: 'MT-15 V2', color: 'Matte Black', type: 'Two-wheeler', owner: 'Iris Kato', license: 'DL C-9931-2207', status: 'clear', flaggedReason: 'Clear — Standard commuter two-wheeler in regular transit pattern', speed: 74, lastCam: 'CAM-19', lastSeen: 'just now', kmToday: 23, tags: ['commuter'], road: 4, prog: 0.2, dir: 1, journey: [
+    { t: '07:35', cam: 'CAM-18', loc: 'Munirka Ring Road Junction', speed: 52, dir: 'Southbound' },
     { t: '08:10', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 41, dir: 'Westbound' },
     { t: '08:44', cam: 'CAM-19', loc: 'Nelson Mandela Marg', speed: 68, dir: 'Southbound' },
     { t: '09:12', cam: 'CAM-19', loc: 'Nelson Mandela Marg', speed: 74, dir: 'Northbound' },
@@ -129,49 +136,166 @@ export const VEHICLES: Vehicle[] = [
   { id: 'v6', plate: 'DL-1L-EE-3319', make: 'Force', model: 'Traveller 3050', color: 'Pearl White', type: 'Van', owner: 'Delhi Express Logistics', license: 'Fleet FL-4477', status: 'clear', flaggedReason: 'Clear — Authorized Commercial Logistics Carrier with active route permit', speed: 54, lastCam: 'CAM-07', lastSeen: '3 min ago', kmToday: 88, tags: ['commercial-permit'], road: 1, prog: 0.55, dir: -1, journey: [
     { t: '06:30', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 62, dir: 'Northbound' },
     { t: '07:35', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 51, dir: 'Southbound' },
+    { t: '08:12', cam: 'CAM-02', loc: 'Barakhamba Road Plaza', speed: 48, dir: 'Southbound' },
     { t: '08:48', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 31, dir: 'Westbound', note: 'Traffic slow-down around ministry gate' },
     { t: '09:15', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 54, dir: 'Northbound' },
   ] },
   { id: 'v7', plate: 'DL-1P-TR-6620', make: 'Tata Motors', model: 'Starbus EV', color: 'DTC Green-Cream', type: 'Bus', owner: 'DTC City Transit', license: 'Fleet FL-0031', status: 'clear', flaggedReason: 'Clear — Public Transportation DTC Electric Bus on scheduled route #502', speed: 39, lastCam: 'CAM-01', lastSeen: '1 min ago', kmToday: 104, tags: ['dtc-transit'], road: 0, prog: 0.7, dir: -1, journey: [
     { t: '06:05', cam: 'CAM-19', loc: 'Nelson Mandela Marg', speed: 36, dir: 'Eastbound' },
+    { t: '07:15', cam: 'CAM-12', loc: 'Bhikaji Cama Place', speed: 38, dir: 'Eastbound' },
     { t: '07:50', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 33, dir: 'Northbound' },
+    { t: '08:35', cam: 'CAM-03', loc: 'Kasturba Gandhi Marg', speed: 35, dir: 'Northbound' },
     { t: '09:18', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 39, dir: 'Southbound' },
   ] },
   { id: 'v8', plate: 'UP-16-AX-5177', make: 'Toyota', model: 'Fortuner 4x4', color: 'Charcoal Black', type: 'SUV', owner: 'Aldo Brenner', license: 'DL B-5518-8860', status: 'flagged', note: 'BOLO — hit-and-run #5512, front bumper damage.', flaggedReason: 'POLICE BOLO — Hit & Run Incident #5512 (Barakhamba Rd) with severe front bumper damage', speed: 66, lastCam: 'CAM-14', lastSeen: '5 min ago', kmToday: 57, tags: ['bolo', 'hit-and-run', 'impound-order'], road: 2, prog: 0.35, dir: 1, journey: [
     { t: '07:02', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 52, dir: 'Southbound' },
     { t: '07:39', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 61, dir: 'Southbound' },
     { t: '08:26', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 66, dir: 'Westbound', note: 'Lane change violation at interchange ramp' },
+    { t: '08:48', cam: 'CAM-16', loc: 'Chanakyapuri Embassy Row', speed: 58, dir: 'Westbound' },
     { t: '09:08', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 64, dir: 'Westbound' },
   ] },
   { id: 'v9', plate: 'HR-55-AG-9910', make: 'Ashok Leyland', model: 'Ecomet 1215', color: 'Terracotta', type: 'Truck', owner: 'Gurugram Aggregates', license: 'Fleet FL-8812', status: 'flagged', note: 'Overweight permit expired — fine pending.', flaggedReason: 'OVERWEIGHT & PERMIT BREACH — Weigh-in-motion sensor triggered at 114% axle limit with expired permit', speed: 51, lastCam: 'CAM-19', lastSeen: '21 min ago', kmToday: 142, tags: ['compliance', 'overweight-114%'], road: 4, prog: 0.6, dir: -1, journey: [
     { t: '05:40', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 47, dir: 'Westbound' },
     { t: '07:12', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 44, dir: 'Southbound' },
+    { t: '08:08', cam: 'CAM-11', loc: 'Lajpat Nagar Ring Road', speed: 49, dir: 'Southbound' },
     { t: '08:37', cam: 'CAM-19', loc: 'Nelson Mandela Marg', speed: 51, dir: 'Eastbound', note: 'Weigh-in-motion triggered — 114% of limit' },
+    { t: '09:05', cam: 'CAM-20', loc: 'Mahipalpur NH-48 Bypass', speed: 55, dir: 'Westbound' },
   ] },
   { id: 'v10', plate: 'DL-09-CB-3388', make: 'Honda', model: 'City VTEC', color: 'Bronze Metallic', type: 'Sedan', owner: 'R. Okafor', license: 'DL A-2210-7743', status: 'watchlist', note: 'Surveillance interest — NCR task force referral.', flaggedReason: 'SPECIAL TASK FORCE WATCHLIST — High-priority surveillance interest referral from Crime Branch unit', speed: 59, lastCam: 'CAM-09', lastSeen: '18 min ago', kmToday: 27, tags: ['task-force', 'crime-branch'], road: 3, prog: 0.1, dir: -1, journey: [
     { t: '06:58', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 55, dir: 'Northbound' },
     { t: '07:47', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 62, dir: 'Northbound' },
+    { t: '08:14', cam: 'CAM-04', loc: 'Tolstoy Marg Junction', speed: 53, dir: 'Southbound' },
     { t: '08:40', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 59, dir: 'Southbound', note: 'First sighting in 6 days' },
+    { t: '09:10', cam: 'CAM-13', loc: 'Moti Bagh Ring Flyover', speed: 57, dir: 'Westbound' },
   ] },
   { id: 'v11', plate: 'DL-08-CA-1044', make: 'Mahindra', model: 'Scorpio-N Z8', color: 'Deep Forest Green', type: 'SUV', owner: 'Vikram Rajput', license: 'DL A-9912-3321', status: 'watchlist', flaggedReason: 'UNAUTHORIZED HIGH-BEAM / FLASHERS — Recurring illegal siren & beacon usage in diplomatic zone', speed: 68, lastCam: 'CAM-15', lastSeen: '8 min ago', kmToday: 35, tags: ['illegal-beacon', 'vip-violation'], road: 2, prog: 0.4, dir: 1, journey: [
     { t: '07:30', cam: 'CAM-15', loc: 'Shanti Path Diplomatic Ring', speed: 58, dir: 'Northbound' },
     { t: '08:15', cam: 'CAM-06', loc: 'Kartavya Path & Man Singh Rd', speed: 64, dir: 'Eastbound' },
     { t: '08:50', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 68, dir: 'Southbound' },
+    { t: '09:14', cam: 'CAM-08', loc: 'Ashoka Road Roundabout', speed: 62, dir: 'Westbound' },
   ] },
   { id: 'v12', plate: 'UP-14-BT-9902', make: 'Maruti Suzuki', model: 'Brezza ZXi', color: 'Magma Grey', type: 'SUV', owner: 'Pooja Verma', license: 'UP 14-8821-4410', status: 'clear', flaggedReason: 'Clear — Standard private suburban commuter with valid fastag & PUC', speed: 52, lastCam: 'CAM-24', lastSeen: '4 min ago', kmToday: 49, tags: ['noida-commuter'], road: 5, prog: 0.6, dir: 1, journey: [
     { t: '07:45', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 60, dir: 'Westbound' },
     { t: '08:20', cam: 'CAM-10', loc: 'South Extension Part II', speed: 48, dir: 'Westbound' },
     { t: '08:52', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 52, dir: 'Westbound' },
+    { t: '09:20', cam: 'CAM-12', loc: 'Bhikaji Cama Place', speed: 50, dir: 'Westbound' },
   ] },
   { id: 'v13', plate: 'DL-02-CD-5520', make: 'Mercedes-Benz', model: 'E-Class E220d', color: 'Obsidian Black', type: 'Sedan', owner: 'Oberoi Aviation Transport', license: 'DL C-7714-9901', status: 'clear', flaggedReason: 'Clear — Chauffeur VIP airport transfer with clean compliance record', speed: 65, lastCam: 'CAM-22', lastSeen: '9 min ago', kmToday: 82, tags: ['airport-transfer'], road: 6, prog: 0.7, dir: 1, journey: [
     { t: '07:15', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 45, dir: 'Southbound' },
     { t: '08:00', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 62, dir: 'Westbound' },
+    { t: '08:25', cam: 'CAM-21', loc: 'Aerocity Hospitality District', speed: 55, dir: 'Westbound' },
     { t: '08:45', cam: 'CAM-22', loc: 'IGI Airport T3 Expressway', speed: 65, dir: 'Westbound' },
+    { t: '09:18', cam: 'CAM-23', loc: 'IGI Airport Terminal 1 Departures', speed: 48, dir: 'Eastbound' },
   ] },
   { id: 'v14', plate: 'HR-26-BQ-4411', make: 'Kia', model: 'Seltos GTX', color: 'Gravity Grey', type: 'SUV', owner: 'Ankit Sharma', license: 'HR 26-4401-2299', status: 'watchlist', flaggedReason: 'PUC COMPLIANCE EXPIRED — Automated pollution monitoring camera alert at Dhaula Kuan corridor', speed: 57, lastCam: 'CAM-14', lastSeen: '12 min ago', kmToday: 38, tags: ['puc-expired', 'emission-alert'], road: 2, prog: 0.5, dir: 1, journey: [
     { t: '07:22', cam: 'CAM-20', loc: 'Mahipalpur NH-48 Bypass', speed: 54, dir: 'Eastbound' },
     { t: '08:05', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 57, dir: 'Eastbound' },
     { t: '08:40', cam: 'CAM-13', loc: 'Moti Bagh Ring Flyover', speed: 50, dir: 'Eastbound' },
+    { t: '09:08', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 53, dir: 'Eastbound' },
+  ] },
+  { id: 'v15', plate: 'DL-05-SR-2201', make: 'Tata', model: 'Nexon EV Max', color: 'Teal Blue', type: 'SUV', owner: 'Rajesh Nair', license: 'DL C-8899-1144', status: 'clear', flaggedReason: 'Clear — Registered Private Electric Vehicle with valid FASTag', speed: 54, lastCam: 'CAM-05', lastSeen: '7 min ago', kmToday: 31, tags: ['ev', 'daily-commute'], road: 1, prog: 0.45, dir: 1, journey: [
+    { t: '07:18', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 62, dir: 'Westbound' },
+    { t: '07:52', cam: 'CAM-10', loc: 'South Extension Part II', speed: 48, dir: 'Northbound' },
+    { t: '08:24', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 50, dir: 'Northbound' },
+    { t: '08:58', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 45, dir: 'Northbound' },
+    { t: '09:20', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 54, dir: 'Northbound' },
+  ] },
+  { id: 'v16', plate: 'HR-55-CK-7822', make: 'Maruti Suzuki', model: 'Swift Dzire', color: 'Arctic White', type: 'Sedan', owner: 'NCR City Cabs Ltd', license: 'Commercial TX-9921', status: 'watchlist', flaggedReason: 'COMMERCIAL FITNESS AUDIT PENDING — 3 Unpaid Speeding Challans on Outer Ring Road', speed: 64, lastCam: 'CAM-18', lastSeen: '11 min ago', kmToday: 95, tags: ['cab', 'unpaid-challan'], road: 4, prog: 0.7, dir: 1, journey: [
+    { t: '07:05', cam: 'CAM-21', loc: 'Aerocity Hospitality District', speed: 58, dir: 'Eastbound' },
+    { t: '07:44', cam: 'CAM-20', loc: 'Mahipalpur NH-48 Bypass', speed: 60, dir: 'Eastbound' },
+    { t: '08:18', cam: 'CAM-19', loc: 'Nelson Mandela Marg', speed: 62, dir: 'Eastbound' },
+    { t: '08:52', cam: 'CAM-18', loc: 'Munirka Ring Road Junction', speed: 64, dir: 'Northbound' },
+    { t: '09:16', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 58, dir: 'Northbound' },
+  ] },
+  { id: 'v17', plate: 'UP-16-DZ-3390', make: 'Hyundai', model: 'Verna 1.5 Turbo', color: 'Titan Grey', type: 'Sedan', owner: 'Kunal Malhotra', license: 'UP 16-2244-8800', status: 'watchlist', flaggedReason: 'SPEED VIOLATION DETECTED — 104 km/h in 60 km/h Zone clocked on Barakhamba Road', speed: 82, lastCam: 'CAM-02', lastSeen: '6 min ago', kmToday: 52, tags: ['overspeed', 'fine-queued'], road: 0, prog: 0.3, dir: -1, journey: [
+    { t: '07:38', cam: 'CAM-26', loc: 'Akshardham NH-9 Corridor', speed: 78, dir: 'Westbound' },
+    { t: '08:12', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 88, dir: 'Westbound' },
+    { t: '08:44', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 65, dir: 'Westbound' },
+    { t: '09:05', cam: 'CAM-02', loc: 'Barakhamba Road Plaza', speed: 82, dir: 'Northbound', note: 'Clocked 82 km/h in 50 zone' },
+    { t: '09:24', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 60, dir: 'Northbound' },
+  ] },
+  { id: 'v18', plate: 'DL-12-CP-8844', make: 'Royal Enfield', model: 'Hunter 350', color: 'Rebel Red', type: 'Two-wheeler', owner: 'Aman Deep', license: 'DL A-4411-0022', status: 'clear', flaggedReason: 'Clear — Verified Commuter Motorcycle with valid helmet compliance detection', speed: 46, lastCam: 'CAM-17', lastSeen: '8 min ago', kmToday: 18, tags: ['two-wheeler', 'commute'], road: 2, prog: 0.2, dir: 1, journey: [
+    { t: '07:28', cam: 'CAM-16', loc: 'Chanakyapuri Embassy Row', speed: 42, dir: 'Eastbound' },
+    { t: '08:04', cam: 'CAM-17', loc: 'Satya Marg Diplomatic Post', speed: 45, dir: 'Northbound' },
+    { t: '08:38', cam: 'CAM-06', loc: 'Kartavya Path & Man Singh Rd', speed: 44, dir: 'Eastbound' },
+    { t: '09:06', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 46, dir: 'Eastbound' },
+  ] },
+  { id: 'v19', plate: 'DL-01-ZG-9912', make: 'Toyota', model: 'Innova HyCross', color: 'Pearl White', type: 'SUV', owner: 'Ministry Protocol Transport', license: 'Govt GOV-0012', status: 'clear', flaggedReason: 'Clear — Authorized Central Government Diplomatic Escort Vehicle', speed: 58, lastCam: 'CAM-06', lastSeen: '4 min ago', kmToday: 64, tags: ['diplomatic', 'vip-escort'], road: 1, prog: 0.6, dir: 1, journey: [
+    { t: '07:10', cam: 'CAM-15', loc: 'Shanti Path Diplomatic Ring', speed: 50, dir: 'Northbound' },
+    { t: '07:48', cam: 'CAM-17', loc: 'Satya Marg Diplomatic Post', speed: 52, dir: 'Northbound' },
+    { t: '08:22', cam: 'CAM-06', loc: 'Kartavya Path & Man Singh Rd', speed: 58, dir: 'Northbound' },
+    { t: '08:50', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 55, dir: 'Northbound' },
+    { t: '09:15', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 56, dir: 'Northbound' },
+  ] },
+  { id: 'v20', plate: 'HR-26-EP-1199', make: 'BMW', model: '330Li M Sport', color: 'Portimao Blue', type: 'Sedan', owner: 'Siddharth Mehra', license: 'HR 26-9922-3311', status: 'watchlist', flaggedReason: 'MODIFIED EXHAUST & EXCESS DECIBEL ALERT — Acoustic Noise Sensor Triggered at Kartavya Path', speed: 69, lastCam: 'CAM-06', lastSeen: '10 min ago', kmToday: 47, tags: ['noise-violation', 'acoustic-sensor'], road: 0, prog: 0.5, dir: -1, journey: [
+    { t: '07:30', cam: 'CAM-22', loc: 'IGI Airport T3 Expressway', speed: 75, dir: 'Eastbound' },
+    { t: '08:02', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 68, dir: 'Eastbound' },
+    { t: '08:34', cam: 'CAM-15', loc: 'Shanti Path Diplomatic Ring', speed: 60, dir: 'Eastbound' },
+    { t: '09:02', cam: 'CAM-06', loc: 'Kartavya Path & Man Singh Rd', speed: 69, dir: 'Eastbound', note: 'Acoustic sensor: 96dB' },
+    { t: '09:25', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 64, dir: 'Southbound' },
+  ] },
+  { id: 'v21', plate: 'UP-14-EA-4512', make: 'Tata', model: 'Ace Gold HT', color: 'Signal Yellow', type: 'Van', owner: 'Ghaziabad Fresh Supplies', license: 'Commercial CM-4491', status: 'flagged', flaggedReason: 'NO-ENTRY TIME RESTRICTION VIOLATION — Heavy Goods Entry into Central Vista Restricted Hours', speed: 42, lastCam: 'CAM-07', lastSeen: '15 min ago', kmToday: 73, tags: ['no-entry', 'commercial-ban'], road: 1, prog: 0.4, dir: 1, journey: [
+    { t: '06:50', cam: 'CAM-26', loc: 'Akshardham NH-9 Corridor', speed: 48, dir: 'Westbound' },
+    { t: '07:32', cam: 'CAM-25', loc: 'Mayur Vihar Link Road', speed: 45, dir: 'Westbound' },
+    { t: '08:15', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 39, dir: 'Northbound', note: 'Commercial vehicle in restricted zone' },
+    { t: '08:49', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 42, dir: 'Northbound' },
+    { t: '09:12', cam: 'CAM-03', loc: 'Kasturba Gandhi Marg', speed: 38, dir: 'Northbound' },
+  ] },
+  { id: 'v22', plate: 'DL-04-CA-7711', make: 'Volkswagen', model: 'Taigun GT Plus', color: 'Wild Cherry Red', type: 'SUV', owner: 'Devika Singhal', license: 'DL C-7722-1199', status: 'clear', flaggedReason: 'Clear — Regular Suburban Verified Daily Commuter', speed: 51, lastCam: 'CAM-11', lastSeen: '5 min ago', kmToday: 29, tags: ['commuter'], road: 3, prog: 0.35, dir: 1, journey: [
+    { t: '07:40', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 64, dir: 'Westbound' },
+    { t: '08:15', cam: 'CAM-10', loc: 'South Extension Part II', speed: 47, dir: 'Westbound' },
+    { t: '08:46', cam: 'CAM-11', loc: 'Lajpat Nagar Ring Road', speed: 51, dir: 'Southbound' },
+    { t: '09:14', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 49, dir: 'Westbound' },
+  ] },
+  { id: 'v23', plate: 'HR-38-Q-6022', make: 'BharatBenz', model: '1617R Medium Truck', color: 'Navy Blue', type: 'Truck', owner: 'Northern Interstate Freight', license: 'Fleet FL-9912', status: 'clear', flaggedReason: 'Clear — Inter-State Commercial Carrier with Active Green Toll Pass', speed: 49, lastCam: 'CAM-20', lastSeen: '16 min ago', kmToday: 135, tags: ['interstate-freight'], road: 5, prog: 0.8, dir: 1, journey: [
+    { t: '06:15', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 52, dir: 'Westbound' },
+    { t: '07:20', cam: 'CAM-11', loc: 'Lajpat Nagar Ring Road', speed: 44, dir: 'Westbound' },
+    { t: '08:10', cam: 'CAM-13', loc: 'Moti Bagh Ring Flyover', speed: 46, dir: 'Westbound' },
+    { t: '08:50', cam: 'CAM-20', loc: 'Mahipalpur NH-48 Bypass', speed: 49, dir: 'Westbound' },
+  ] },
+  { id: 'v24', plate: 'DL-09-AA-5001', make: 'Skoda', model: 'Slavia 1.5 TSI', color: 'Crystal Blue', type: 'Sedan', owner: 'Gaurav Batra', license: 'DL A-5001-9988', status: 'clear', flaggedReason: 'Clear — Regular verified commuter vehicle with clean registration compliance', speed: 56, lastCam: 'CAM-04', lastSeen: '12 min ago', kmToday: 33, tags: ['verified'], road: 0, prog: 0.4, dir: 1, journey: [
+    { t: '07:22', cam: 'CAM-08', loc: 'Ashoka Road Roundabout', speed: 48, dir: 'Northbound' },
+    { t: '07:56', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 50, dir: 'Northbound' },
+    { t: '08:30', cam: 'CAM-04', loc: 'Tolstoy Marg Junction', speed: 56, dir: 'Northbound' },
+    { t: '09:05', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 52, dir: 'Northbound' },
+  ] },
+  { id: 'v25', plate: 'DL-01-TA-1988', make: 'Bajaj', model: 'Pulsar NS200', color: 'Burnt Red', type: 'Two-wheeler', owner: 'Sunil Kumar', license: 'DL B-1988-4422', status: 'clear', flaggedReason: 'Clear — Regular Verified Commuter Motorcycle', speed: 61, lastCam: 'CAM-13', lastSeen: '6 min ago', kmToday: 24, tags: ['commuter'], road: 2, prog: 0.6, dir: 1, journey: [
+    { t: '07:44', cam: 'CAM-18', loc: 'Munirka Ring Road Junction', speed: 55, dir: 'Northbound' },
+    { t: '08:16', cam: 'CAM-13', loc: 'Moti Bagh Ring Flyover', speed: 61, dir: 'Northbound' },
+    { t: '08:48', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 58, dir: 'Northbound' },
+    { t: '09:18', cam: 'CAM-16', loc: 'Chanakyapuri Embassy Row', speed: 52, dir: 'Eastbound' },
+  ] },
+  { id: 'v26', plate: 'UP-16-CB-9090', make: 'MG', model: 'Hector Plus', color: 'Candy White', type: 'SUV', owner: 'Meera Chawla', license: 'UP 16-9090-1122', status: 'clear', flaggedReason: 'Clear — Noida-Delhi Verified Commuter with clean driving history', speed: 53, lastCam: 'CAM-25', lastSeen: '14 min ago', kmToday: 42, tags: ['noida-commuter'], road: 7, prog: 0.5, dir: 1, journey: [
+    { t: '07:35', cam: 'CAM-25', loc: 'Mayur Vihar Link Road', speed: 58, dir: 'Westbound' },
+    { t: '08:08', cam: 'CAM-24', loc: 'DND Tollway Gateway', speed: 62, dir: 'Westbound' },
+    { t: '08:42', cam: 'CAM-10', loc: 'South Extension Part II', speed: 49, dir: 'Westbound' },
+    { t: '09:11', cam: 'CAM-09', loc: 'AIIMS Ring Road Flyover', speed: 53, dir: 'Westbound' },
+  ] },
+  { id: 'v27', plate: 'HR-26-DR-5544', make: 'Mahindra', model: 'XUV700 AX7', color: 'Midnight Black', type: 'SUV', owner: 'Pranav Joshi', license: 'HR 26-5544-3322', status: 'watchlist', flaggedReason: 'SUSPICIOUS DWELL PATTERN — Vehicle Stationary at Sensitive Diplomatic Zone for >18 Mins', speed: 0, lastCam: 'CAM-16', lastSeen: '3 min ago', kmToday: 48, tags: ['dwell-alert', 'diplomatic-zone'], road: 2, prog: 0.3, dir: 1, journey: [
+    { t: '07:15', cam: 'CAM-20', loc: 'Mahipalpur NH-48 Bypass', speed: 65, dir: 'Eastbound' },
+    { t: '07:50', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 58, dir: 'Eastbound' },
+    { t: '08:25', cam: 'CAM-15', loc: 'Shanti Path Diplomatic Ring', speed: 48, dir: 'Eastbound' },
+    { t: '08:58', cam: 'CAM-16', loc: 'Chanakyapuri Embassy Row', speed: 0, dir: 'Stationary', note: '18 min dwell logged' },
+    { t: '09:21', cam: 'CAM-16', loc: 'Chanakyapuri Embassy Row', speed: 38, dir: 'Northbound' },
+  ] },
+  { id: 'v28', plate: 'DL-03-EC-1212', make: 'Honda', model: 'Amaze VX', color: 'Radiant Red', type: 'Sedan', owner: 'Suresh Menon', license: 'DL C-1212-7788', status: 'clear', flaggedReason: 'Clear — Regular Suburban Verified Daily Commuter', speed: 47, lastCam: 'CAM-08', lastSeen: '9 min ago', kmToday: 21, tags: ['verified'], road: 0, prog: 0.2, dir: 1, journey: [
+    { t: '07:50', cam: 'CAM-05', loc: 'India Gate C-Hexagon', speed: 42, dir: 'Westbound' },
+    { t: '08:22', cam: 'CAM-08', loc: 'Ashoka Road Roundabout', speed: 47, dir: 'Northbound' },
+    { t: '08:55', cam: 'CAM-07', loc: 'Janpath Crossing', speed: 45, dir: 'Northbound' },
+    { t: '09:24', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 48, dir: 'Northbound' },
+  ] },
+  { id: 'v29', plate: 'DL-11-CA-9933', make: 'Hyundai', model: 'i20 N-Line', color: 'Starry Night', type: 'Sedan', owner: 'Rohit Khanna', license: 'DL A-9933-2211', status: 'clear', flaggedReason: 'Clear — Regular verified commuter vehicle with clean registration compliance', speed: 55, lastCam: 'CAM-03', lastSeen: '5 min ago', kmToday: 37, tags: ['verified'], road: 1, prog: 0.4, dir: 1, journey: [
+    { t: '07:30', cam: 'CAM-06', loc: 'Kartavya Path & Man Singh Rd', speed: 50, dir: 'Northbound' },
+    { t: '08:05', cam: 'CAM-04', loc: 'Tolstoy Marg Junction', speed: 52, dir: 'Northbound' },
+    { t: '08:42', cam: 'CAM-03', loc: 'Kasturba Gandhi Marg', speed: 55, dir: 'Northbound' },
+    { t: '09:16', cam: 'CAM-01', loc: 'Connaught Inner Circle', speed: 53, dir: 'Northbound' },
+  ] },
+  { id: 'v30', plate: 'HR-55-DA-4004', make: 'Kia', model: 'Carnival Limousine', color: 'Aurora Black', type: 'Van', owner: 'Corporate VIP Shuttles', license: 'Commercial CM-8822', status: 'clear', flaggedReason: 'Clear — Authorized Corporate VIP Transit Carrier', speed: 62, lastCam: 'CAM-21', lastSeen: '13 min ago', kmToday: 76, tags: ['corporate-fleet'], road: 6, prog: 0.65, dir: 1, journey: [
+    { t: '07:10', cam: 'CAM-22', loc: 'IGI Airport T3 Expressway', speed: 68, dir: 'Eastbound' },
+    { t: '07:45', cam: 'CAM-21', loc: 'Aerocity Hospitality District', speed: 62, dir: 'Eastbound' },
+    { t: '08:20', cam: 'CAM-20', loc: 'Mahipalpur NH-48 Bypass', speed: 60, dir: 'Eastbound' },
+    { t: '08:55', cam: 'CAM-14', loc: 'Dhaula Kuan Interchange', speed: 58, dir: 'Eastbound' },
+    { t: '09:22', cam: 'CAM-12', loc: 'Bhikaji Cama Place', speed: 54, dir: 'Eastbound' },
   ] },
 ];
 
@@ -210,7 +334,7 @@ export const VIOLATIONS = [
   { type: 'Wrong-way', count: 31 }, { type: 'Unregistered', count: 12 },
 ];
 
-export type RangeKey = '24h' | '7d' | '30d';
+export type RangeKey = '15m' | '8h' | '24h' | '7d' | '30d' | '90d';
 export interface RangeData {
   labels: string[]; volume: number[]; speed: number[];
   kpis: { vehicles: number; unique: number; ocr: number; avgSpeed: number; alerts: number; congestion: number; d: [string, string, string, string] };
@@ -219,6 +343,18 @@ export interface RangeData {
 const H24 = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
 export const RANGES: Record<RangeKey, RangeData> = {
+  '15m': {
+    labels: ['-15m', '-12m', '-9m', '-6m', '-3m', 'Live'],
+    volume: [1420, 1490, 1540, 1580, 1620, 1650],
+    speed: [34, 33, 31, 30, 29, 31],
+    kpis: { vehicles: 412, unique: 388, ocr: 96.2, avgSpeed: 31, alerts: 3, congestion: 68, d: ['+8.4%', '+1.2%', '+1', '+5 pts'] },
+  },
+  '8h': {
+    labels: ['01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00'],
+    volume: [300, 330, 480, 760, 1180, 1420, 1560, 1640],
+    speed: [56, 52, 44, 38, 31, 29, 27, 26],
+    kpis: { vehicles: 7670, unique: 2190, ocr: 95.4, avgSpeed: 32, alerts: 19, congestion: 64, d: ['+5.1%', '+0.9%', '+4', '+2 pts'] },
+  },
   '24h': {
     labels: H24,
     volume: [420, 380, 340, 310, 300, 330, 480, 760, 1180, 1420, 1350, 1280, 1240, 1180, 1220, 1310, 1480, 1560, 1320, 1040, 860, 700, 560, 480],
@@ -237,9 +373,23 @@ export const RANGES: Record<RangeKey, RangeData> = {
     speed: [36, 35, 36, 34, 33, 31, 41, 36, 35, 34, 34, 33, 31, 40, 36, 35, 36, 34, 33, 32, 30, 41, 35, 34, 34, 33, 32, 30, 41, 38],
     kpis: { vehicles: 681400, unique: 61240, ocr: 94.6, avgSpeed: 34, alerts: 1290, congestion: 60, d: ['+6.1%', '−1.2%', '+22', '+1 pt'] },
   },
+  '90d': {
+    labels: ['Month 1', 'Month 2', 'Month 3'],
+    volume: [681400, 712000, 745000],
+    speed: [34, 35, 33],
+    kpis: { vehicles: 2138400, unique: 178000, ocr: 95.8, avgSpeed: 34, alerts: 3820, congestion: 59, d: ['+8.2%', '+1.5%', '+45', '+2 pts'] },
+  },
 };
 
 export const PEAKS: Record<RangeKey, { window: string; vol: number; note: string }[]> = {
+  '15m': [
+    { window: 'Last 5 mins', vol: 1650, note: 'Sudden bottleneck at AIIMS Flyover' },
+    { window: '10 mins ago', vol: 1540, note: 'Dhaula Kuan ramp merge surge' },
+  ],
+  '8h': [
+    { window: '07:30 – 08:30', vol: 1640, note: 'Shift peak — Connaught Core inbound' },
+    { window: '06:00 – 07:00', vol: 1180, note: 'Early morning freight clearing' },
+  ],
   '24h': [
     { window: '08:00 – 09:30', vol: 1480, note: 'Inbound peak — Connaught Core & Janpath' },
     { window: '17:00 – 18:30', vol: 1560, note: 'Outbound peak — DND Flyway & NH-48' },
@@ -254,6 +404,10 @@ export const PEAKS: Record<RangeKey, { window: string; vol: number; note: string
     { window: 'Fri 17:00 – 19:00', vol: 1680, note: 'Recurring weekly maximum' },
     { window: 'Sat 20:00 – 22:00', vol: 1490, note: 'Weekend retail & airport rush' },
     { window: 'Mon 08:00 – 09:30', vol: 1470, note: 'Week-start NCR commuter surge' },
+  ],
+  '90d': [
+    { window: 'Festival Week Fri 18:00', vol: 1980, note: 'Quarterly all-time peak' },
+    { window: 'National Holiday Eve', vol: 1820, note: 'Inter-state egress choke' },
   ],
 };
 
