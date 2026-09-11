@@ -1,0 +1,329 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #3E3239;
+  --color-mauve: #6B5560;
+  --color-dusk: #9E8189;
+  --color-clay: #C7A9A3;
+  --color-sand: #E8D2C4;
+  --color-cream: #F7EFE7;
+  --font-display: "Didot", "Bodoni 72", "Playfair Display", Georgia, serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: #F7EFE7;
+  color: #3E3239;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+option {
+  background: #F7EFE7;
+  color: #3E3239;
+}
+
+::selection {
+  background: rgba(199, 169, 163, 0.35);
+  color: #F7EFE7;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(199, 169, 163, 0.22) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(199, 169, 163, 0.2);
+  border-radius: 99px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .input-base {
+    width: 100%;
+    height: 42px;
+    padding: 0 14px;
+    background: rgba(247, 239, 231, 0.92);
+    border: 1px solid rgba(199, 169, 163, 0.38);
+    border-radius: 12px;
+    font-size: 13px;
+    color: #3E3239;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .input-base::placeholder {
+    color: rgba(107, 85, 96, 0.52);
+  }
+  .input-base:focus {
+    border-color: rgba(107, 85, 96, 0.5);
+    background: rgba(247, 239, 231, 0.98);
+  }
+
+  .hit {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: rgba(62, 50, 57, 0.9);
+    font-weight: 600;
+    transition: background 0.12s;
+  }
+  .hit:hover {
+    background: rgba(199, 169, 163, 0.16);
+  }
+
+  .page-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 26px 30px 46px;
+    max-width: 1560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .page-hero {
+    background: linear-gradient(135deg, rgba(62, 50, 57, 0.96) 0%, rgba(107, 85, 96, 0.94) 52%, rgba(158, 129, 137, 0.9) 100%);
+    color: #F7EFE7;
+    border: 1px solid rgba(199, 169, 163, 0.24);
+    border-radius: 24px;
+    box-shadow: 0 18px 50px rgba(62, 50, 57, 0.18);
+  }
+  .section-contrast {
+    background: linear-gradient(180deg, rgba(247, 239, 231, 0.94) 0%, rgba(232, 210, 196, 0.88) 100%);
+    border: 1px solid rgba(199, 169, 163, 0.28);
+    border-radius: 22px;
+    box-shadow: 0 10px 28px rgba(62, 50, 57, 0.08);
+  }
+  .compact .page-shell {
+    gap: 13px;
+    padding: 15px 20px 30px;
+  }
+
+  .grain {
+    background-image: repeating-linear-gradient(0deg, rgba(62, 50, 57, 0.018) 0 1px, transparent 1px 3px);
+  }
+
+  .feed-scan {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 22%;
+    top: -25%;
+    background: linear-gradient(to bottom, transparent, rgba(247, 239, 231, 0.07), transparent);
+    animation: scan 4.6s linear infinite;
+  }
+
+  .glide {
+    position: absolute;
+    width: 34px;
+    height: 9px;
+    border-radius: 3px;
+    background: rgba(232, 210, 196, 0.5);
+    box-shadow: 0 0 14px rgba(232, 210, 196, 0.3);
+    animation: glide linear infinite;
+  }
+
+  .flow {
+    stroke-dasharray: 5 9;
+    animation: dashmove 1.4s linear infinite;
+  }
+
+  .ping-ring {
+    transform-box: fill-box;
+    transform-origin: center;
+    fill: none;
+    stroke: rgba(232, 210, 196, 0.75);
+    stroke-width: 1.2;
+    animation: ringpulse 1.8s ease-out infinite;
+  }
+
+  .toast-in {
+    animation: toastin 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  }
+
+  .fade-up {
+    animation: fadeup 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgba(199, 169, 163, 0.14);
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(232, 210, 196, 0.35), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  .card-lift {
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-2px);
+    border-color: rgba(199, 169, 163, 0.38);
+    box-shadow: 0 12px 32px -14px rgba(0, 0, 0, 0.5);
+  }
+
+  .panel {
+    background: rgba(232, 210, 196, 0.56);
+    border: 1px solid rgba(199, 169, 163, 0.34);
+    border-radius: 14px;
+  }
+
+  .panel-strong {
+    background: #E8D2C4;
+    border: 1px solid rgba(199, 169, 163, 0.42);
+    border-radius: 14px;
+  }
+
+  .block-light {
+    background: #E8D2C4;
+    color: #3E3239;
+    border-radius: 14px;
+  }
+
+  .no-motion *,
+  .no-motion *::before,
+  .no-motion *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes scan {
+  0% { top: -25%; }
+  100% { top: 110%; }
+}
+@keyframes glide {
+  from { left: -12%; }
+  to { left: 108%; }
+}
+@keyframes dashmove {
+  to { stroke-dashoffset: -28; }
+}
+@keyframes ringpulse {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@keyframes toastin {
+  from { transform: translateY(10px); opacity: 0; }
+}
+@keyframes fadeup {
+  from { transform: translateY(8px); opacity: 0; }
+}
+
+@layer components {
+  /* Skeleton / loading shimmer (brief §7) */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(247, 239, 231, 0.07), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* Mid-tone panel — mauve surface for secondary columns/rails (brief §4 contrast) */
+  .panel-mid {
+    background: rgba(232, 210, 196, 0.62);
+    border: 1px solid rgba(199, 169, 163, 0.34);
+  }
+  /* Deep panel — darker than canvas for nav/telemetry strips */
+  .panel-deep {
+    background: rgba(107, 85, 96, 0.9);
+    border: 1px solid rgba(199, 169, 163, 0.24);
+  }
+
+  /* Unified card hover: lift + border + shadow (brief §7) */
+  .card-hover {
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(199, 169, 163, 0.35);
+    box-shadow: 0 10px 30px rgba(30, 22, 27, 0.35);
+  }
+  .card-hover:active {
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+
+/* == visual-pass overrides == */
+.page-shell { gap: 30px; padding: 34px 44px 72px; }
+.compact .page-shell { gap: 16px; padding: 18px 24px 40px; }
+.hit { gap: 12px; padding: 10px 12px; font-size: 14px; }
+.input-base { font-size: 14px; height: 44px; }
+.panel-strong { background: rgba(247,239,231,.07); border: 1px solid rgba(247,239,231,.16); border-radius: 16px; box-shadow: 0 18px 50px -30px rgba(0,0,0,.9); }
+.block-quiet { background: rgba(247,239,231,.02); border: 1px solid transparent; border-radius: 16px; }
+@media (max-width: 1024px){ .page-shell { padding: 24px 22px 56px; gap: 22px; } }
+@media (max-width: 640px){ .page-shell { padding: 18px 16px 48px; gap: 18px; } }
+
+/* Leaflet Tile & Canvas Full Viewport Assurance */
+.leaflet-container {
+  width: 100% !important;
+  height: 650px !important;
+  min-height: 650px !important;
+  background: #f1ede8 !important;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  z-index: 1 !important;
+  position: relative !important;
+}
+.leaflet-pane, .leaflet-tile, .leaflet-marker-pane, .leaflet-overlay-pane {
+  max-width: none !important;
+}
+.leaflet-tile-container img,
+img.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: 256px !important;
+  height: 256px !important;
+  visibility: inherit !important;
+  display: block !important;
+}
+.leaflet-container .leaflet-control-zoom {
+  border: 1px solid rgba(199, 169, 163, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+.leaflet-container .leaflet-control-zoom a {
+  background-color: #F7EFE7 !important;
+  color: #3E3239 !important;
+}
+
