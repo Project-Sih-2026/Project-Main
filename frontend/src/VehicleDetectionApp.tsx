@@ -74,20 +74,22 @@ export default function VehicleDetectionApp() {
         <header className="sticky top-0 z-50 border-b border-clay/20 bg-cream/95 backdrop-blur px-4 py-3 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
-                <Icon name="camera" className="h-5 w-5" />
-              </div>
+              <img
+                src="/netra-logo.png"
+                alt="NETRA"
+                className="h-9 w-auto object-contain drop-shadow-sm transition-transform hover:scale-105"
+              />
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="font-display text-sm font-bold tracking-tight text-ink">
-                    AI Vehicle Detection & Plate Registry
+                    NETRA • AI Vehicle Detection & Plate Registry
                   </h2>
                   <span className="rounded-md bg-blue-500/15 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-mono font-bold text-blue-800">
                     PORT 5174
                   </span>
                 </div>
                 <p className="text-[11px] text-mauve">
-                  Standalone Edge Ingestion • YOLOv8 ANPR Pipeline
+                  National Edge Ingestion • YOLOv8 Multi-Vehicle Pipeline
                 </p>
               </div>
             </div>

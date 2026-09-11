@@ -37,10 +37,14 @@ export function LoginPage() {
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1440px] flex-col px-6 pb-8 pt-8 sm:px-10 sm:pt-10 lg:px-16 lg:pb-12 lg:pt-12">
         {/* Branding — upper left with generous margins */}
         <div className="fade-up flex items-center gap-3.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream font-display text-xl text-ink">C</span>
-          <div>
-            <div className="font-display text-[16px] uppercase tracking-[0.24em] text-cream">City Traffic</div>
-            <Kicker className="mt-1">Operations Intelligence Console</Kicker>
+          <img
+            src="/netra-logo.png"
+            alt="NETRA"
+            className="h-12 w-auto object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-transform hover:scale-105"
+          />
+          <div className="border-l border-cream/20 pl-3.5">
+            <div className="font-display text-[17px] uppercase tracking-[0.24em] text-cream font-bold">NETRA</div>
+            <Kicker className="mt-0.5 text-cream/75">Operations Intelligence Console</Kicker>
           </div>
         </div>
 

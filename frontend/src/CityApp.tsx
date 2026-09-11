@@ -156,7 +156,7 @@ export default function CityApp() {
   };
 
   useEffect(() => {
-    document.title = user ? 'City Traffic Intelligence — Operations Console' : 'Sign in — City Traffic Intelligence';
+    document.title = user ? 'NETRA — Operations Intelligence Console' : 'Sign in — NETRA Traffic Intelligence';
   }, [user]);
 
   if (!user)
