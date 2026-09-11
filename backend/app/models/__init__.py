@@ -6,6 +6,7 @@ from app.models.watchlist import Watchlist
 from app.models.alert import Alert, AlertAction
 from app.models.audit_log import AuditLog
 from app.models.retention_policy import RetentionPolicy
+from app.models.hospital import Hospital
 
 __all__ = [
     "User",
@@ -17,5 +18,6 @@ __all__ = [
     "Alert",
     "AlertAction",
     "AuditLog",
-    "RetentionPolicy"
+    "RetentionPolicy",
+    "Hospital"
 ]

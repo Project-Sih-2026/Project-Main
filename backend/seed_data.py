@@ -8,6 +8,7 @@ from app.models.detection import Detection
 from app.models.watchlist import Watchlist
 from app.models.alert import Alert, AlertAction
 from app.models.retention_policy import RetentionPolicy
+from app.models.hospital import Hospital
 from app.services.ai_pipeline import generate_synthetic_evidence_image
 from app.services.normalization import normalize_plate
 
@@ -273,6 +274,47 @@ def seed_database():
         if not db.query(RetentionPolicy).filter(RetentionPolicy.id == pol.id).first():
             db.add(pol)
     db.commit()
+
+    # 7. Seed 20 East Delhi Hospitals (Backend Database Only - Not Plotted on Map)
+    hospitals = [
+        Hospital(id="HOSP-ED-01", name="Guru Teg Bahadur (GTB) Hospital & UCMS", hospital_type="Government Teaching Hospital", district="Shahdara / Dilshad Garden", address="Taharpur Road, Dilshad Garden, Delhi - 110095", latitude=28.6835, longitude=77.3115, emergency_phone="+91-11-22586262", total_beds=1500, has_trauma_center=True),
+        Hospital(id="HOSP-ED-02", name="Max Super Speciality Hospital, Patparganj", hospital_type="Private Super Speciality", district="Patparganj", address="108A, IP Extension, Patparganj, Delhi - 110092", latitude=28.6292, longitude=77.3094, emergency_phone="+91-11-43033333", total_beds=400, has_trauma_center=True),
+        Hospital(id="HOSP-ED-03", name="Lal Bahadur Shastri Hospital (LBS Hospital)", hospital_type="Government District Hospital", district="Mayur Vihar", address="Khichripur, Mayur Vihar Phase-II, Delhi - 110091", latitude=28.6186, longitude=77.3108, emergency_phone="+91-11-22774145", total_beds=350, has_trauma_center=True),
+        Hospital(id="HOSP-ED-04", name="Dr. Hedgewar Arogya Sansthan", hospital_type="Government Multi Speciality", district="Karkardooma", address="CBD Grounds, Karkardooma, Delhi - 110032", latitude=28.6536, longitude=77.3005, emergency_phone="+91-11-22308000", total_beds=300, has_trauma_center=True),
+        Hospital(id="HOSP-ED-05", name="Rajiv Gandhi Super Speciality Hospital", hospital_type="Government Autonomous Institute", district="Dilshad Garden", address="Tahirpur, Dilshad Garden, Delhi - 110093", latitude=28.6868, longitude=77.3175, emergency_phone="+91-11-22890000", total_beds=650, has_trauma_center=True),
+        Hospital(id="HOSP-ED-06", name="Chacha Nehru Bal Chikitsalaya", hospital_type="Government Pediatric Hospital", district="Geeta Colony", address="Geeta Colony, East Delhi - 110031", latitude=28.6508, longitude=77.2718, emergency_phone="+91-11-22044811", total_beds=220, has_trauma_center=False),
+        Hospital(id="HOSP-ED-07", name="Institute of Human Behaviour & Allied Sciences (IHBAS)", hospital_type="Government Neuro-Psychiatric", district="Dilshad Garden", address="GT Road, Dilshad Garden, Delhi - 110095", latitude=28.6795, longitude=77.3160, emergency_phone="+91-11-22597777", total_beds=500, has_trauma_center=False),
+        Hospital(id="HOSP-ED-08", name="Swami Dayanand Hospital (SDNH)", hospital_type="Municipal Multi Speciality", district="Shahdara", address="Dilshad Garden Road, Shahdara, Delhi - 110095", latitude=28.6775, longitude=77.3060, emergency_phone="+91-11-22588383", total_beds=370, has_trauma_center=True),
+        Hospital(id="HOSP-ED-09", name="Dharamshila Narayana Superspeciality Hospital", hospital_type="Private Oncology & Multi Speciality", district="Vasundhara Enclave", address="Vasundhara Enclave, Near New Ashok Nagar Metro, Delhi - 110096", latitude=28.6015, longitude=77.3245, emergency_phone="+91-11-43066666", total_beds=350, has_trauma_center=True),
+        Hospital(id="HOSP-ED-10", name="Kailash Deepak Memorial Hospital", hospital_type="Private Super Speciality", district="Karkardooma", address="Institutional Area, Vikas Marg Ext II, Delhi - 110092", latitude=28.6475, longitude=77.2990, emergency_phone="+91-11-22144444", total_beds=200, has_trauma_center=False),
+        Hospital(id="HOSP-ED-11", name="Metro Multispeciality Hospital", hospital_type="Private Multi Speciality", district="Preet Vihar", address="21 Community Centre, Preet Vihar, Delhi - 110092", latitude=28.6420, longitude=77.2940, emergency_phone="+91-11-42421000", total_beds=150, has_trauma_center=False),
+        Hospital(id="HOSP-ED-12", name="Shanti Mukand Hospital", hospital_type="Charitable Trust Multi Speciality", district="Karkardooma", address="2 Institutional Area, Vikas Marg Ext, Delhi - 110092", latitude=28.6480, longitude=77.3030, emergency_phone="+91-11-47276600", total_beds=200, has_trauma_center=True),
+        Hospital(id="HOSP-ED-13", name="Goyal Hospital & Urology Centre", hospital_type="Private Speciality Hospital", district="Krishna Nagar", address="E-4/8, Krishna Nagar, Delhi - 110051", latitude=28.6558, longitude=77.2785, emergency_phone="+91-11-22093333", total_beds=80, has_trauma_center=False),
+        Hospital(id="HOSP-ED-14", name="Makkar Multispeciality Hospital", hospital_type="Private Multi Speciality", district="Laxmi Nagar", address="A-1 Priyadarshini Vihar, Vikas Marg, Delhi - 110092", latitude=28.6360, longitude=77.2845, emergency_phone="+91-11-22521111", total_beds=100, has_trauma_center=False),
+        Hospital(id="HOSP-ED-15", name="Suraksha Multi Speciality Hospital", hospital_type="Private Multi Speciality", district="Vivek Vihar", address="1/1 Surya Nagar Border, Vivek Vihar, Delhi - 110095", latitude=28.6655, longitude=77.3150, emergency_phone="+91-11-22158888", total_beds=100, has_trauma_center=False),
+        Hospital(id="HOSP-ED-16", name="Jeevan Anmol Hospital", hospital_type="Private Multi Speciality", district="Mayur Vihar", address="Pocket-1, Mayur Vihar Phase-I, Delhi - 110091", latitude=28.6030, longitude=77.2955, emergency_phone="+91-11-47355555", total_beds=100, has_trauma_center=False),
+        Hospital(id="HOSP-ED-17", name="East Delhi Medical Centre", hospital_type="Private Multi Speciality", district="Shahdara", address="1/550 Mansarovar Park, GT Road, Shahdara, Delhi - 110032", latitude=28.6750, longitude=77.2980, emergency_phone="+91-11-22119999", total_beds=120, has_trauma_center=False),
+        Hospital(id="HOSP-ED-18", name="Jag Pravesh Chandra Hospital", hospital_type="Government Multi Speciality", district="Shastri Park", address="Pushta Road, Shastri Park, Delhi - 110053", latitude=28.6710, longitude=77.2585, emergency_phone="+91-11-22184453", total_beds=200, has_trauma_center=True),
+        Hospital(id="HOSP-ED-19", name="Dr. B.R. Sur Medical Institution & Hospital", hospital_type="Government Homeopathic & General Hospital", district="Laxmi Nagar", address="Nanak Chand Block, Shakarpur / Laxmi Nagar, Delhi - 110092", latitude=28.6320, longitude=77.2790, emergency_phone="+91-11-22441234", total_beds=90, has_trauma_center=False),
+        Hospital(id="HOSP-ED-20", name="Ghazipur Community Health Center", hospital_type="Government Community Health Center", district="Ghazipur", address="Main Ghazipur Dairy Farm Road, Ghazipur, Delhi - 110096", latitude=28.6225, longitude=77.3315, emergency_phone="+91-11-22789012", total_beds=80, has_trauma_center=True)
+    ]
+    for hosp in hospitals:
+        existing = db.query(Hospital).filter(Hospital.id == hosp.id).first()
+        if not existing:
+            db.add(hosp)
+        else:
+            existing.name = hosp.name
+            existing.hospital_type = hosp.hospital_type
+            existing.district = hosp.district
+            existing.address = hosp.address
+            existing.latitude = hosp.latitude
+            existing.longitude = hosp.longitude
+            existing.emergency_phone = hosp.emergency_phone
+            existing.total_beds = hosp.total_beds
+            existing.has_trauma_center = hosp.has_trauma_center
+    db.commit()
+    print("Hospitals seeded.")
+
     print("Database seeding completed successfully!")
     db.close()
 

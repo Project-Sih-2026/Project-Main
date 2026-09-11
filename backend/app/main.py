@@ -14,7 +14,7 @@ from app.models import (
 )
 from app.api.v1 import (
     auth, cameras, detections, routes, search,
-    alerts, analytics, health, audit, export
+    alerts, analytics, health, audit, export, hospitals
 )
 from app.services.telemetry_service import manager
 from app.services.ai_pipeline import ensure_evidence_dirs
@@ -78,6 +78,7 @@ app.include_router(analytics.router, prefix=settings.API_V1_STR)
 app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(audit.router, prefix=settings.API_V1_STR)
 app.include_router(export.router, prefix=settings.API_V1_STR)
+app.include_router(hospitals.router, prefix=settings.API_V1_STR)
 
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry_endpoint(websocket: WebSocket):
