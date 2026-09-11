@@ -18,6 +18,7 @@ class Detection(Base):
     model_version = Column(String, default="YOLOv8-ANPR-v2.4")
     
     vehicle_type = Column(String, default="Sedan")     # Sedan, SUV, Commercial Truck, Transit Van, Motorcycle
+    owner_name = Column(String, nullable=True, default="")
     bounding_box = Column(Text, nullable=True)          # JSON array [ymin, xmin, ymax, xmax]
     plate_bounding_box = Column(Text, nullable=True)
     

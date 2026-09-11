@@ -12,20 +12,93 @@ import { AlertsPage } from './pages/AlertCenterPage';
 import { AnalyticsPage } from './pages/AnalyticsViewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import {
-  ALERTS, DEFAULT_SETTINGS, VEHICLES,
-  type AlertStatus, type Settings, type User,
+  ALERTS, DEFAULT_SETTINGS, VEHICLES, setLiveVehicles,
+  type AlertStatus, type Settings, type User, type Vehicle, type TrafficAlert
 } from './data/mock';
+import { api } from './services/api';
+import { detectionsToVehicles, detectionsToAlerts, backendAlertsToTrafficAlerts } from './services/dataAdapter';
 
 export default function CityApp() {
-  const [page, setPage] = useState<PageId>('dashboard');
+  const getInitialPage = (): PageId => {
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    if (hash === 'upload' || hash === 'detection' || hash === 'anpr') {
+      window.location.href = 'http://localhost:5174';
+      return 'dashboard';
+    }
+    if (hash === 'vehicles' || hash === 'search') return 'vehicles';
+    if (hash === 'cameras') return 'cameras';
+    if (hash === 'map') return 'map';
+    if (hash === 'alerts') return 'alerts';
+    if (hash === 'analytics') return 'analytics';
+    if (hash === 'settings') return 'settings';
+    return 'dashboard';
+  };
+
+  const [page, setPage] = useState<PageId>(getInitialPage);
   const [target, setTarget] = useState<Nav>({});
   const [navSeq, setNavSeq] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [vehicles, setVehicles] = useState(VEHICLES);
-  const [alerts, setAlerts] = useState(ALERTS);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('civic_user');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return { name: 'Ava Chen', email: 'ava.chen@cityops.gov', role: 'Operator' };
+  });
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [alerts, setAlerts] = useState<TrafficAlert[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const fetchLiveData = useCallback(async () => {
+    try {
+      const [dets, alts] = await Promise.all([
+        api.getDetections({ limit: 200 }).catch(() => []),
+        api.getAlerts().catch(() => []),
+      ]);
+      if (Array.isArray(dets) && dets.length > 0) {
+        const liveVehs = detectionsToVehicles(dets);
+        setLiveVehicles(liveVehs);
+        setVehicles(liveVehs);
+
+        const liveAltsFromDets = detectionsToAlerts(dets);
+        const liveAltsFromBackend = Array.isArray(alts) ? backendAlertsToTrafficAlerts(alts, dets) : [];
+
+        const alertMap = new Map<string, TrafficAlert>();
+        liveAltsFromDets.forEach((a) => alertMap.set(a.id, a));
+        liveAltsFromBackend.forEach((a) => alertMap.set(a.id, a));
+        setAlerts(Array.from(alertMap.values()));
+      }
+    } catch (e) {
+      console.warn('CityApp failed to fetch live database detections:', e);
+    }
+  }, []);
+
+  // Poll database on mount and every 4 seconds to sync any uploads from Port 5174
+  useEffect(() => {
+    fetchLiveData();
+    const interval = setInterval(fetchLiveData, 4000);
+    return () => clearInterval(interval);
+  }, [fetchLiveData]);
+
+  // Sync window.location.hash with active page
+  useEffect(() => {
+    window.location.hash = page;
+  }, [page]);
+
+  // Listen to external hash changes
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash === 'upload' || hash === 'detection' || hash === 'anpr') {
+        window.location.href = 'http://localhost:5174';
+      } else if (['dashboard', 'vehicles', 'cameras', 'map', 'alerts', 'analytics', 'settings'].includes(hash)) {
+        setPage(hash as PageId);
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   const toast = useCallback((msg: string) => {
     const id = Date.now() + Math.random();
@@ -44,7 +117,9 @@ export default function CityApp() {
     if (!email.includes('@') || pass.length < 4) return false;
     const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
     const role = email.startsWith('noor') ? 'Analyst' : email.startsWith('eli') ? 'Administrator' : 'Operator';
-    setUser({ name, email, role });
+    const newUser: User = { name, email, role };
+    setUser(newUser);
+    try { localStorage.setItem('civic_user', JSON.stringify(newUser)); } catch (e) {}
     setPage('dashboard');
     return true;
   }, []);
@@ -70,10 +145,9 @@ export default function CityApp() {
       toast(`Alert ${id.toUpperCase()} → ${s}`);
     },
     resetData: () => {
-      setVehicles(VEHICLES);
-      setAlerts(ALERTS);
+      fetchLiveData();
       setSettings(DEFAULT_SETTINGS);
-      toast('Demo data restored to snapshot');
+      toast('Live database synchronized');
     },
     settings,
     update: (p: Partial<Settings>) => setSettings((s) => ({ ...s, ...p })),
@@ -102,6 +176,7 @@ export default function CityApp() {
       case 'alerts': return <AlertsPage />;
       case 'analytics': return <AnalyticsPage />;
       case 'settings': return <SettingsPage />;
+      default: return <DashboardPage />;
     }
   };
 

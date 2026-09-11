@@ -37,6 +37,7 @@ export interface Detection {
   ocr_confidence: number;
   model_version: string;
   vehicle_type: string;
+  owner_name?: string;
   bounding_box?: string;
   plate_bounding_box?: string;
   evidence_image_uri: string;
@@ -142,6 +143,9 @@ export interface VehicleHistoryStop {
   confidence_score: number;
   evidence_image_uri: string;
   status: string;
+  distance_from_prev_km?: number;
+  duration_mins_from_prev?: number;
+  estimated_speed_kmh?: number;
 }
 
 export interface VehicleJourney {
@@ -149,6 +153,7 @@ export interface VehicleJourney {
   total_observations: number;
   first_seen: string;
   last_seen: string;
+  total_distance_km?: number;
   observation_stops: VehicleHistoryStop[];
   disclaimer: string;
 }

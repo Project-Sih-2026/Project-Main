@@ -1,16 +1,25 @@
 import uuid
+import cv2
+import numpy as np
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user_optional, require_role
 from app.models.user import User
 from app.models.detection import Detection
 from app.models.ocr_correction import OCRCorrection
-from app.schemas.detection import DetectionResponse, OCRCorrectionCreate, OCRCorrectionResponse
+from app.schemas.detection import (
+    DetectionResponse, 
+    OCRCorrectionCreate, 
+    OCRCorrectionResponse,
+    DetectionIngestItem,
+    DetectionIngestBatchRequest,
+    DetectionUpdate
+)
 from app.services.normalization import normalize_plate
 from app.services.alert_engine import check_and_generate_alerts
-from app.services.ai_pipeline import simulate_pipeline_inference
+from app.services.ai_pipeline import simulate_pipeline_inference, get_ai_pipeline
 from app.services.audit_service import log_audit_event
 
 router = APIRouter(prefix="/detections", tags=["Detections & OCR"])
@@ -88,6 +97,93 @@ def simulate_detection(
     
     return detection
 
+@router.post("/ingest", response_model=DetectionResponse)
+def ingest_detection(
+    item: DetectionIngestItem,
+    db: Session = Depends(get_db)
+):
+    """
+    Ingests a single license plate detection from an AI model or CCTV edge stream.
+    """
+    raw = item.plate_text.strip()
+    norm = normalize_plate(raw)
+    if not norm:
+        raise HTTPException(status_code=400, detail="Invalid plate text provided")
+        
+    det_id = f"det-{uuid.uuid4().hex[:10]}"
+    dt = item.timestamp or datetime.now(timezone.utc)
+    
+    detection = Detection(
+        id=det_id,
+        camera_id=item.camera_id,
+        timestamp=dt,
+        raw_plate_text=raw,
+        normalized_plate_text=norm,
+        confidence_score=item.confidence_score,
+        ocr_confidence=item.ocr_confidence,
+        model_version=item.model_version,
+        vehicle_type=item.vehicle_type,
+        bounding_box=item.bounding_box,
+        plate_bounding_box=item.plate_bounding_box,
+        evidence_image_uri=item.evidence_image_uri or f"/static/frames/{item.camera_id.lower()}_mock.jpg",
+        plate_crop_uri=item.plate_crop_uri or f"/static/crops/crop_{raw.lower()[:6]}.jpg",
+        processing_status="COMPLETED"
+    )
+    
+    db.add(detection)
+    db.commit()
+    db.refresh(detection)
+    
+    check_and_generate_alerts(db, detection)
+    db.refresh(detection)
+    
+    return detection
+
+@router.post("/ingest/batch", response_model=list[DetectionResponse])
+def ingest_batch_detections(
+    batch: DetectionIngestBatchRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Ingests 1 or more license plate detections concurrently (e.g. multi-vehicle frame).
+    """
+    results = []
+    for item in batch.detections:
+        raw = item.plate_text.strip()
+        norm = normalize_plate(raw)
+        if not norm:
+            continue
+            
+        det_id = f"det-{uuid.uuid4().hex[:10]}"
+        dt = item.timestamp or datetime.now(timezone.utc)
+        
+        detection = Detection(
+            id=det_id,
+            camera_id=item.camera_id,
+            timestamp=dt,
+            raw_plate_text=raw,
+            normalized_plate_text=norm,
+            confidence_score=item.confidence_score,
+            ocr_confidence=item.ocr_confidence,
+            model_version=item.model_version,
+            vehicle_type=item.vehicle_type,
+            bounding_box=item.bounding_box,
+            plate_bounding_box=item.plate_bounding_box,
+            evidence_image_uri=item.evidence_image_uri or f"/static/frames/{item.camera_id.lower()}_mock.jpg",
+            plate_crop_uri=item.plate_crop_uri or f"/static/crops/crop_{raw.lower()[:6]}.jpg",
+            processing_status="COMPLETED"
+        )
+        
+        db.add(detection)
+        db.commit()
+        db.refresh(detection)
+        
+        check_and_generate_alerts(db, detection)
+        db.refresh(detection)
+        results.append(detection)
+        
+    return results
+
 @router.post("/{detection_id}/correct", response_model=OCRCorrectionResponse)
 def submit_ocr_correction(
     detection_id: str,
@@ -157,3 +253,195 @@ def get_ocr_revisions(detection_id: str, db: Session = Depends(get_db)):
         OCRCorrection.detection_id == detection_id
     ).order_by(OCRCorrection.revision_number.asc()).all()
     return revisions
+
+@router.get("/ai/model-info")
+def get_ai_model_metadata():
+    """
+    Returns YOLOv8 AI Model metadata, loaded weights path, and class labels (81 classes including number_plate).
+    """
+    pipeline = get_ai_pipeline()
+    return pipeline.get_model_info()
+
+@router.post("/infer-frame", response_model=DetectionResponse)
+async def infer_uploaded_frame(
+    camera_id: str = "CAM-KN-01",
+    file: UploadFile = File(...),
+    custom_plate: str | None = None,
+    owner_name: str | None = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Directly infers objects and license plates on an uploaded CCTV frame using YOLO best.pt model.
+    """
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    if frame is None:
+        raise HTTPException(status_code=400, detail="Could not decode image file")
+        
+    pipeline = get_ai_pipeline()
+    res = pipeline.infer_frame(frame, camera_id=camera_id, custom_raw_plate=custom_plate)
+    
+    det_id = f"det-{uuid.uuid4().hex[:10]}"
+    detection = Detection(
+        id=det_id,
+        camera_id=res["camera_id"],
+        timestamp=datetime.now(timezone.utc),
+        raw_plate_text=res["raw_plate_text"],
+        normalized_plate_text=res["normalized_plate_text"],
+        confidence_score=res["confidence_score"],
+        ocr_confidence=res["ocr_confidence"],
+        model_version=res["model_version"],
+        vehicle_type=res["vehicle_type"],
+        owner_name=owner_name or "",
+        bounding_box=res["bounding_box"],
+        plate_bounding_box=res["plate_bounding_box"],
+        evidence_image_uri=res["evidence_image_uri"],
+        plate_crop_uri=res["plate_crop_uri"],
+        processing_status=res["processing_status"]
+    )
+    
+    db.add(detection)
+    db.commit()
+    db.refresh(detection)
+    
+    check_and_generate_alerts(db, detection)
+    db.refresh(detection)
+    
+    return detection
+
+
+@router.post("/upload-route")
+async def infer_uploaded_frame_with_route(
+    camera_id: str = "CAM-KN-01",
+    custom_plate: str | None = None,
+    owner_name: str | None = None,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Infers objects and license plate from uploaded image for chosen CCTV camera,
+    saves detection, checks watchlists, and returns detection + full vehicle journey route.
+    """
+    from app.api.v1.routes import get_vehicle_history
+    
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    
+    if frame is None:
+        raise HTTPException(status_code=400, detail="Could not decode image file")
+        
+    pipeline = get_ai_pipeline()
+    res = pipeline.infer_frame(frame, camera_id=camera_id, custom_raw_plate=custom_plate)
+
+    entries = res.get("entries", [res])
+    results_list = []
+
+    # Parse owner names if comma-separated
+    owner_names_list = []
+    if owner_name:
+        owner_names_list = [on.strip() for on in owner_name.split(",") if on.strip()]
+
+    for idx, entry in enumerate(entries):
+        det_id = f"det-{uuid.uuid4().hex[:10]}"
+        o_name = owner_names_list[idx] if idx < len(owner_names_list) else (owner_names_list[0] if owner_names_list else "")
+
+        det = Detection(
+            id=det_id,
+            camera_id=entry["camera_id"],
+            timestamp=datetime.now(timezone.utc),
+            raw_plate_text=entry["raw_plate_text"],
+            normalized_plate_text=entry["normalized_plate_text"],
+            confidence_score=entry["confidence_score"],
+            ocr_confidence=entry["ocr_confidence"],
+            model_version=entry["model_version"],
+            vehicle_type=entry["vehicle_type"],
+            owner_name=o_name,
+            bounding_box=entry["bounding_box"],
+            plate_bounding_box=entry["plate_bounding_box"],
+            evidence_image_uri=entry["evidence_image_uri"],
+            plate_crop_uri=entry["plate_crop_uri"],
+            processing_status=entry["processing_status"]
+        )
+        db.add(det)
+        db.commit()
+        db.refresh(det)
+
+        check_and_generate_alerts(db, det)
+        db.refresh(det)
+
+        # Query complete vehicle journey route
+        journey = None
+        try:
+            journey = get_vehicle_history(plate=det.normalized_plate_text, db=db)
+        except Exception:
+            journey = None
+
+        results_list.append({
+            "detection": det,
+            "journey": journey
+        })
+
+    primary = results_list[0]
+    return {
+        "detection": primary["detection"],
+        "journey": primary["journey"],
+        "detections": results_list,
+        "count": len(results_list)
+    }
+
+@router.patch("/{detection_id}", response_model=DetectionResponse)
+def update_detection(
+    detection_id: str,
+    payload: DetectionUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Updates editable fields of a stored detection record (e.g. Owner/Vehicle Name, Vehicle Type, Plate).
+    """
+    det = db.query(Detection).filter(Detection.id == detection_id).first()
+    if not det:
+        raise HTTPException(status_code=404, detail="Detection record not found")
+    if payload.owner_name is not None:
+        det.owner_name = payload.owner_name
+    if payload.vehicle_type is not None:
+        det.vehicle_type = payload.vehicle_type
+    if payload.normalized_plate_text is not None:
+        det.normalized_plate_text = normalize_plate(payload.normalized_plate_text)
+    db.commit()
+    db.refresh(det)
+    return det
+
+@router.delete("/purge-all")
+def purge_all_detections(db: Session = Depends(get_db)):
+    """
+    Purges all detection records, associated alerts, and OCR corrections.
+    """
+    from app.models.alert import Alert, AlertAction
+    db.query(OCRCorrection).delete()
+    db.query(AlertAction).delete()
+    db.query(Alert).delete()
+    db.query(Detection).delete()
+    db.commit()
+    return {"status": "success", "message": "All detections and related alerts purged successfully."}
+
+@router.delete("/{detection_id}")
+def delete_detection(detection_id: str, db: Session = Depends(get_db)):
+    """
+    Deletes a single detection record by ID.
+    """
+    from app.models.alert import Alert, AlertAction
+    db.query(OCRCorrection).filter(OCRCorrection.detection_id == detection_id).delete()
+    alerts = db.query(Alert).filter(Alert.detection_id == detection_id).all()
+    for a in alerts:
+        db.query(AlertAction).filter(AlertAction.alert_id == a.id).delete()
+        db.delete(a)
+    det = db.query(Detection).filter(Detection.id == detection_id).first()
+    if not det:
+        raise HTTPException(status_code=404, detail="Detection record not found")
+    db.delete(det)
+    db.commit()
+    return {"status": "success", "message": f"Detection {detection_id} deleted."}
+

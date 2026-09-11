@@ -1,7 +1,9 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class AuditLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     user_id: str
     username: str
@@ -11,9 +13,6 @@ class AuditLogResponse(BaseModel):
     details_json: str | None
     ip_address: str
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class SystemHealthResponse(BaseModel):
     connectivity_status: str     # OPTIMAL, DEGRADED, CRITICAL

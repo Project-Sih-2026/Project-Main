@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { AlertStatus, Settings, TrafficAlert, User, Vehicle } from '../data/mock';
 
-export type PageId = 'dashboard' | 'vehicles' | 'cameras' | 'map' | 'alerts' | 'analytics' | 'settings';
+export type PageId = 'dashboard' | 'vehicles' | 'cameras' | 'map' | 'alerts' | 'analytics' | 'settings' | 'upload';
 
 /** Payload used when navigating — pages re-initialise from it (keyed by navSeq). */
 export interface Nav {

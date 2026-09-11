@@ -33,7 +33,7 @@ export function CamerasPage() {
   const [showGrid, setShowGrid] = useState(false);
   const cam = camById(selId) ?? CAMERAS[0];
   const list = CAMERAS.filter((c) => filter === 'all' || c.status === filter);
-  const near = VEHICLES.filter((v) => v.lastCam === cam.code).slice(0, 4);
+  const near = app.vehicles.filter((v) => v.lastCam === cam.code || v.lastCam === cam.id || v.journey.some((j) => j.cam === cam.code || j.cam === cam.id)).slice(0, 6);
 
   useEffect(() => {
     if (app.target.cameraId) setSelId(app.target.cameraId);
@@ -127,7 +127,19 @@ export function CamerasPage() {
             <Card className="p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <Kicker>Plates captured — {cam.code}</Kicker>
-                <Badge tone="neutral">last 30 min</Badge>
+                <div className="flex items-center gap-2">
+                  <a
+                    href="http://localhost:5174"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-lg border border-amber-600/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-800 hover:bg-amber-500/20 transition-all"
+                  >
+                    <Icon name="upload" className="h-3 w-3 text-amber-600" />
+                    <span>Upload on 5174</span>
+                    <Icon name="arrowUpRight" className="h-2.5 w-2.5" />
+                  </a>
+                  <Badge tone="neutral">last 30 min</Badge>
+                </div>
               </div>
               {near.length === 0 ? (
                 <Empty icon="car" title="No watchlist vehicles at this camera" sub="Regular traffic continues to be captured and classified." />

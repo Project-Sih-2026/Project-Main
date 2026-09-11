@@ -18,16 +18,32 @@ def test_cameras_list():
     response = client.get("/api/v1/cameras")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) >= 1
-    assert any(c["id"] == "CAM-022" for c in data)
+    assert len(data) == 20
+    assert any(c["id"] == "CAM-KN-01" for c in data)
+    assert any(c["id"] == "CAM-GN-01" for c in data)
 
 def test_camera_telemetry():
-    response = client.get("/api/v1/cameras/CAM-022/telemetry")
+    response = client.get("/api/v1/cameras/CAM-KN-01/telemetry")
     assert response.status_code == 200
     data = response.json()
-    assert data["camera_id"] == "CAM-022"
+    assert data["camera_id"] == "CAM-KN-01"
     assert "throughput_mbps" in data
     assert "ping_ms" in data
+
+def test_camera_distances_and_nearest():
+    response = client.get("/api/v1/cameras/distances")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_cameras"] == 20
+    assert data["all_pairs_count"] == 380
+    assert "CAM-KN-01" in data["matrix"]
+    assert "CAM-KN-02" in data["matrix"]["CAM-KN-01"]
+
+    near_res = client.get("/api/v1/cameras/CAM-KN-01/nearest")
+    assert near_res.status_code == 200
+    near_data = near_res.json()
+    assert len(near_data["nearest"]) > 0
+    assert near_data["nearest"][0]["camera_id"] == "CAM-KN-02"
 
 def test_detections_and_dual_storage():
     response = client.get("/api/v1/detections")
@@ -122,3 +138,78 @@ def test_audit_logging():
     assert len(logs) >= 1
     actions = [l["action_type"] for l in logs]
     assert any("OCR_CORRECTION" in a or "ALERT" in a or "AUTH" in a for a in actions)
+
+def test_ingest_and_multi_hop_route_tracking():
+    # Ingest detection at Camera 1
+    ingest_res1 = client.post("/api/v1/detections/ingest", json={
+        "camera_id": "CAM-001",
+        "plate_text": "DL 09 XY 9999",
+        "confidence_score": 0.96,
+        "vehicle_type": "SUV"
+    })
+    assert ingest_res1.status_code == 200
+    assert ingest_res1.json()["normalized_plate_text"] == "DL09XY9999"
+
+    # Ingest detection at Camera 2
+    ingest_res2 = client.post("/api/v1/detections/ingest", json={
+        "camera_id": "CAM-002",
+        "plate_text": "DL-09-XY-9999",
+        "confidence_score": 0.94,
+        "vehicle_type": "SUV"
+    })
+    assert ingest_res2.status_code == 200
+
+    # Ingest batch with Camera 3
+    batch_res = client.post("/api/v1/detections/ingest/batch", json={
+        "detections": [
+            {"camera_id": "CAM-003", "plate_text": "DL09XY9999", "vehicle_type": "SUV"},
+            {"camera_id": "CAM-004", "plate_text": "HR26DK8888", "vehicle_type": "Sedan"}
+        ]
+    })
+    assert batch_res.status_code == 200
+    assert len(batch_res.json()) == 2
+
+    # Query vehicle history sequence
+    history_res = client.get("/api/v1/vehicles/DL09XY9999/history")
+    assert history_res.status_code == 200
+    history = history_res.json()
+    assert history["total_observations"] >= 3
+    assert history["total_distance_km"] >= 0
+    assert len(history["observation_stops"]) >= 3
+    assert history["observation_stops"][0]["stop_number"] == 1
+    assert history["observation_stops"][1]["stop_number"] == 2
+
+def test_yolo_ai_model_metadata_and_inference():
+    # 1. Test AI Model Info Endpoint
+    info_res = client.get("/api/v1/detections/ai/model-info")
+    assert info_res.status_code == 200
+    info = info_res.json()
+    assert info["status"] in ["LOADED", "FALLBACK"]
+    assert info["architecture"] == "YOLOv8-ANPR-Custom"
+    assert info["plate_class_id"] == 80
+    assert "number_plate" in str(info["classes"])
+
+    # 2. Test Direct Inference on Frame Upload
+    import numpy as np
+    import cv2
+    import io
+
+    # Create synthetic frame with dummy vehicle
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    cv2.rectangle(frame, (100, 100), (540, 400), (200, 200, 200), -1)
+    cv2.putText(frame, "DL-01-AB-1234", (150, 350), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+    _, encoded = cv2.imencode(".jpg", frame)
+    
+    file_bytes = io.BytesIO(encoded.tobytes())
+    files = {"file": ("test_frame.jpg", file_bytes, "image/jpeg")}
+    
+    infer_res = client.post("/api/v1/detections/infer-frame?camera_id=CAM-KN-01&custom_plate=DL-01-AB-1234", files=files)
+    assert infer_res.status_code == 200
+    data = infer_res.json()
+    assert data["camera_id"] == "CAM-KN-01"
+    assert data["normalized_plate_text"] == "DL01AB1234"
+    assert data["confidence_score"] > 0.8
+    assert "evidence_image_uri" in data
+    assert "plate_crop_uri" in data
+
+

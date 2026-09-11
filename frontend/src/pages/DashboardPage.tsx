@@ -4,15 +4,17 @@ import { AreaChart } from '../components/Charts';
 import { CameraFeed } from '../components/CameraFeed';
 import { Icon, type IconName } from '../components/Icons';
 import { Badge, Btn, Card, Kicker, Select, Tabs, cx, useClock } from '../components/ui';
-import { CAMERAS, HOTSPOTS, RANGES, VEHICLES, timeAgo, type RangeKey } from '../data/mock';
+import { CAMERAS, HOTSPOTS, RANGES, timeAgo, type RangeKey } from '../data/mock';
+import { api, BACKEND_STATIC } from '../services/api';
+import type { Detection } from '../types';
 
-const KPIS = (rk: RangeKey, openAlerts: number) => {
+const KPIS = (rk: RangeKey, openAlerts: number, vehicleCount: number) => {
   const r = RANGES[rk];
   const online = CAMERAS.filter((c) => c.status === 'online').length;
   return [
-    { label: 'Vehicles tracked', v: r.kpis.vehicles.toLocaleString(), d: r.kpis.d[0], icon: 'car' as IconName, light: false },
+    { label: 'Real vehicles tracked', v: String(vehicleCount), d: `${vehicleCount} active in DB`, icon: 'car' as IconName, light: false },
     { label: 'Cameras online', v: `${online} / ${CAMERAS.length}`, d: '+2 restored', icon: 'camera' as IconName, light: false },
-    { label: 'Active alerts', v: String(openAlerts), d: 'live — triage now', icon: 'bell' as IconName, light: true },
+    { label: 'Active alerts', v: String(openAlerts), d: openAlerts > 0 ? 'live — triage now' : 'nominal', icon: 'bell' as IconName, light: openAlerts > 0 },
     { label: 'Avg OCR confidence', v: r.kpis.ocr + '%', d: r.kpis.d[2], icon: 'eye' as IconName, light: false },
     { label: 'System status', v: 'Operational', d: 'all feeds synced', icon: 'shield' as IconName, light: false },
   ];
@@ -64,7 +66,7 @@ export function OperationsPage() {
   const visibleCams = CAMERAS.filter((c) => district === 'All districts' || c.district === district);
   const cam = CAMERAS.find((c) => c.id === camId) ?? visibleCams[0] ?? CAMERAS[0];
   const openAlerts = useMemo(() => app.alerts.filter((a) => a.status === 'open').slice(0, 5), [app.alerts]);
-  const tracked = VEHICLES.filter((v) => v.status !== 'clear');
+  const tracked = app.vehicles.filter((v) => v.status !== 'clear');
   const openCount = app.alerts.filter((a) => a.status === 'open').length;
   const now = useClock();
   const hour = now.getHours();
@@ -88,8 +90,50 @@ export function OperationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [district]);
 
+  const [liveDetections, setLiveDetections] = useState<Detection[]>([]);
+
+  const fetchRecent = () => {
+    api.getDetections({ limit: 6 }).then((data) => {
+      if (Array.isArray(data)) setLiveDetections(data);
+    }).catch((err) => console.warn('Dashboard failed to load live detections:', err));
+  };
+
+  useEffect(() => {
+    fetchRecent();
+    const interval = setInterval(fetchRecent, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="page-shell fade-up">
+      {/* Top Banner connecting to Port 5174 */}
+      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white font-bold shadow-sm">
+            <Icon name="camera" className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-display font-bold text-sm text-ink">Edge AI CCTV Detection & Ingestion Portal</span>
+              <span className="rounded bg-amber-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+            </div>
+            <p className="text-xs text-mauve mt-0.5">
+              Upload CCTV images, recognize license plates with YOLOv8, and view real-time database ingestions across both portals.
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="http://localhost:5174"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition-all shrink-0"
+        >
+          <span>Open Detection Portal</span>
+          <Icon name="arrowUpRight" className="h-3.5 w-3.5" />
+        </a>
+      </div>
+
       <div className="page-hero flex flex-wrap items-end justify-between gap-3 px-5 py-5 sm:px-6 sm:py-6">
         <div>
           <Kicker className="text-sand">{greet}, {app.user?.name.split(' ')[0] ?? 'Operator'}</Kicker>
@@ -124,7 +168,7 @@ export function OperationsPage() {
       </form>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
-        {KPIS(rk, openCount).map((k) => (
+        {KPIS(rk, openCount, app.vehicles.length).map((k) => (
           <Kpi key={k.label} {...k} />
         ))}
       </div>
@@ -199,6 +243,79 @@ export function OperationsPage() {
           </div>
         </Card>
       </div>
+
+      {/* Live AI Detections & Evidence Gallery from Port 5174 */}
+      <Card tone="strong" className="section-contrast p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-clay/20 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Kicker>Live Database Ingestions</Kicker>
+              <span className="rounded bg-amber-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+            </div>
+            <div className="mt-1 font-display text-[20px] text-ink">
+              Recent YOLOv8 Vehicle Detections ({liveDetections.length} Records)
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Btn size="sm" variant="ghost" icon="car" onClick={() => app.nav({ page: 'vehicles' })}>
+              View in Vehicle Search <Icon name="arrowRight" className="h-3.5 w-3.5" />
+            </Btn>
+            <a
+              href="http://localhost:5174"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-amber-600/10 hover:bg-amber-600/20 px-3 py-1.5 text-xs font-bold text-amber-800 transition-colors"
+            >
+              <span>Ingest New Frame</span>
+              <Icon name="arrowUpRight" className="h-3 w-3 text-amber-700" />
+            </a>
+          </div>
+        </div>
+
+        {liveDetections.length > 0 ? (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            {liveDetections.map((d) => (
+              <div
+                key={d.id}
+                onClick={() => app.nav({ page: 'vehicles', query: d.normalized_plate_text })}
+                className="group cursor-pointer rounded-xl border border-clay/25 bg-cream/70 hover:border-amber-500/50 hover:bg-amber-500/5 p-2.5 transition-all shadow-sm"
+              >
+                <div className="h-24 w-full rounded-lg bg-black/90 overflow-hidden flex items-center justify-center border border-clay/30 relative">
+                  <img
+                    src={d.plate_crop_uri?.startsWith('http') ? d.plate_crop_uri : `${BACKEND_STATIC}${d.plate_crop_uri || d.evidence_image_uri}`}
+                    alt="Plate Crop"
+                    className="h-full w-full object-contain p-1"
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                  <span className="absolute bottom-1 right-1 font-mono text-[9px] bg-black/80 text-amber-400 font-bold px-1 rounded">
+                    {d.camera_id}
+                  </span>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="font-mono text-xs font-black text-ink">{d.normalized_plate_text}</span>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                    {d.vehicle_type}
+                  </span>
+                </div>
+
+                <div className="mt-0.5 flex items-center justify-between text-[11px] text-mauve">
+                  <span className="truncate max-w-[100px]">{d.owner_name || 'No name'}</span>
+                  <span className="font-mono text-[10px] text-emerald-700 font-bold">{(d.ocr_confidence * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center text-xs text-mauve">
+            <p className="font-semibold text-ink">No vehicle frames ingested in the database yet</p>
+            <p className="mt-1 text-mauve/75">
+              Upload a vehicle image on <a href="http://localhost:5174" target="_blank" rel="noreferrer" className="text-amber-700 underline font-bold">Port 5174</a> to see live ANPR recognition here.
+            </p>
+          </div>
+        )}
+      </Card>
+
       <div className="grid gap-4 xl:grid-cols-3">
         <Card tone="quiet" className="section-contrast p-4 sm:p-5">
           <div className="flex items-center justify-between">
@@ -206,14 +323,21 @@ export function OperationsPage() {
             <Btn variant="ghost" size="sm" onClick={() => app.nav({ page: 'vehicles' })}>Vehicle search <Icon name="arrowRight" className="h-3.5 w-3.5" /></Btn>
           </div>
           <div className="mt-3 flex flex-col gap-1">
-            {tracked.map((v) => (
-              <button key={v.id} onClick={() => app.nav({ page: 'vehicles', vehicleId: v.id })} className="hit">
-                <span className="w-[74px] font-display text-[14px] tracking-wide text-ink">{v.plate}</span>
-                <Badge tone={v.status === 'flagged' ? 'critical' : 'medium'}>{v.status}</Badge>
-                <span className="ml-auto text-[14px] font-semibold tabular-nums text-mauve/75">{app.fmtSpeed(v.speed)}</span>
-                <Icon name="locate" className="h-3.5 w-3.5 text-dusk/70" />
-              </button>
-            ))}
+            {tracked.length > 0 ? (
+              tracked.map((v) => (
+                <button key={v.id} onClick={() => app.nav({ page: 'vehicles', vehicleId: v.id })} className="hit">
+                  <span className="w-[74px] font-display text-[14px] tracking-wide text-ink">{v.plate}</span>
+                  <Badge tone={v.status === 'flagged' ? 'critical' : 'medium'}>{v.status}</Badge>
+                  <span className="ml-auto text-[14px] font-semibold tabular-nums text-mauve/75">{app.fmtSpeed(v.speed)}</span>
+                  <Icon name="locate" className="h-3.5 w-3.5 text-dusk/70" />
+                </button>
+              ))
+            ) : (
+              <div className="py-4 text-center text-xs text-mauve/80">
+                <span className="font-semibold text-emerald-800">✓ All vehicles cleared</span>
+                <p className="mt-0.5 text-[11px] text-mauve/70">No active watchlist or stolen vehicle flags</p>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -223,16 +347,23 @@ export function OperationsPage() {
             <Btn variant="ghost" size="sm" onClick={() => app.nav({ page: 'alerts', statusFilter: 'open' })}>Alert center <Icon name="arrowRight" className="h-3.5 w-3.5" /></Btn>
           </div>
           <div className="mt-3 flex flex-col gap-1">
-            {openAlerts.map((a) => (
-              <button key={a.id} onClick={() => app.nav({ page: 'alerts', alertId: a.id, statusFilter: 'open' })} className="hit items-start">
-                <span className={cx('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', a.severity === 'critical' ? 'bg-sand' : a.severity === 'high' ? 'bg-clay' : 'bg-dusk')} />
-                <span className="flex-1">
-                  <span className="block truncate text-[13.5px] font-semibold text-ink/90">{a.title}</span>
-                  <span className="text-[14px] font-semibold text-mauve/70">{a.zone} · {timeAgo(a.minsAgo)}</span>
-                </span>
-                <Icon name="chevronRight" className="mt-1 h-3.5 w-3.5 text-dusk/70" />
-              </button>
-            ))}
+            {openAlerts.length > 0 ? (
+              openAlerts.map((a) => (
+                <button key={a.id} onClick={() => app.nav({ page: 'alerts', alertId: a.id, statusFilter: 'open' })} className="hit items-start">
+                  <span className={cx('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', a.severity === 'critical' ? 'bg-sand' : a.severity === 'high' ? 'bg-clay' : 'bg-dusk')} />
+                  <span className="flex-1">
+                    <span className="block truncate text-[13.5px] font-semibold text-ink/90">{a.title}</span>
+                    <span className="text-[14px] font-semibold text-mauve/70">{a.zone} · {timeAgo(a.minsAgo)}</span>
+                  </span>
+                  <Icon name="chevronRight" className="mt-1 h-3.5 w-3.5 text-dusk/70" />
+                </button>
+              ))
+            ) : (
+              <div className="py-4 text-center text-xs text-mauve/80">
+                <span className="font-semibold text-emerald-800">✓ Zero active alerts</span>
+                <p className="mt-0.5 text-[11px] text-mauve/70">Corridors operating nominally</p>
+              </div>
+            )}
           </div>
         </Card>
 

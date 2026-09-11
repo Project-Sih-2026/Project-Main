@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class CameraBase(BaseModel):
     id: str
@@ -42,11 +42,10 @@ class CameraTelemetryResponse(BaseModel):
     last_heartbeat: datetime
 
 class CameraResponse(CameraBase):
+    model_config = ConfigDict(from_attributes=True)
+
     throughput_mbps: float
     uptime_str: str
     ping_ms: int
     last_heartbeat: datetime
     created_at: datetime
-
-    class Config:
-        from_attributes = True

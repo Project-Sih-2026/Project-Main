@@ -52,6 +52,19 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
           </button>
         </form>
 
+        <a
+          href="http://localhost:5174"
+          target="_blank"
+          rel="noreferrer"
+          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-amber-600/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-500/20 transition-all shadow-sm"
+          title="Open Standalone AI Vehicle Detection & Ingestion Portal on Port 5174"
+        >
+          <Icon name="camera" className="h-3.5 w-3.5 text-amber-600" />
+          <span>AI Detection Portal</span>
+          <span className="font-mono text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-bold">5174</span>
+          <Icon name="arrowUpRight" className="h-3 w-3 text-amber-700" />
+        </a>
+
         <div className="hidden items-center gap-2 rounded-xl border border-clay/30 bg-sand/45 px-3 py-2 md:flex">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sand opacity-60" />

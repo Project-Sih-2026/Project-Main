@@ -2,24 +2,31 @@ import { Icon, type IconName } from '../Icons';
 import { cx } from '../ui';
 import { useApp, type PageId } from '../../state/appContext';
 
-const NAV: { id: PageId; icon: IconName; label: string }[] = [
+const NAV: { id: PageId; icon: IconName; label: string; externalUrl?: string }[] = [
   { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
   { id: 'vehicles', icon: 'car', label: 'Vehicle Search' },
   { id: 'cameras', icon: 'camera', label: 'Cameras' },
   { id: 'map', icon: 'map', label: 'City Map' },
   { id: 'alerts', icon: 'bell', label: 'Alerts' },
   { id: 'analytics', icon: 'chart', label: 'Analytics' },
+  { id: 'dashboard' as any, icon: 'upload', label: 'AI Detection Portal (Port 5174)', externalUrl: 'http://localhost:5174' },
 ];
 
 export function Sidebar() {
   const app = useApp();
   const openAlerts = app.alerts.filter((a) => a.status === 'open').length;
 
-  const Item = ({ item }: { item: { id: PageId; icon: IconName; label: string } }) => {
+  const Item = ({ item }: { item: { id: PageId; icon: IconName; label: string; externalUrl?: string } }) => {
     const active = app.page === item.id;
     return (
       <button
-        onClick={() => app.nav({ page: item.id })}
+        onClick={() => {
+          if (item.externalUrl) {
+            window.open(item.externalUrl, '_blank');
+          } else {
+            app.nav({ page: item.id });
+          }
+        }}
         aria-label={item.label}
         className={cx(
           'group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-150 active:scale-90',

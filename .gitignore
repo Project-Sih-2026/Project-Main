@@ -35,5 +35,7 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .vscode/
-.idea/
 *.pt
+*.zip
+backend/static/evidence/*.jpg
+backend/static/evidence/*.png

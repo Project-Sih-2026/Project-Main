@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class WatchlistBase(BaseModel):
     normalized_plate: str
@@ -13,13 +13,12 @@ class WatchlistCreate(WatchlistBase):
     pass
 
 class WatchlistResponse(WatchlistBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     created_by: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class AlertActionCreate(BaseModel):
     action: str  # ACKNOWLEDGE, ASSIGN, ESCALATE, ANNOTATE, RESOLVE, DISMISS
@@ -28,6 +27,8 @@ class AlertActionCreate(BaseModel):
     reason: str | None = None  # Mandatory if action == DISMISS
 
 class AlertResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     detection_id: str
     camera_id: str
@@ -41,9 +42,6 @@ class AlertResponse(BaseModel):
     resolution_notes: str | None
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 class AlertDetailResponse(AlertResponse):
     detection: dict | None = None

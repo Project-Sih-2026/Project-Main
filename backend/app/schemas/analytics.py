@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class AnalyticsKPISummary(BaseModel):
     total_detection_events: int
@@ -22,6 +22,8 @@ class HotspotIntersection(BaseModel):
     congestion_index: float
 
 class VehicleHistoryStop(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     stop_number: int
     camera_id: str
     camera_designation: str
@@ -33,11 +35,17 @@ class VehicleHistoryStop(BaseModel):
     confidence_score: float
     evidence_image_uri: str
     status: str
+    distance_from_prev_km: float | None = None
+    duration_mins_from_prev: float | None = None
+    estimated_speed_kmh: float | None = None
 
 class VehicleJourneyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     plate: str
     total_observations: int
     first_seen: datetime
     last_seen: datetime
+    total_distance_km: float = 0.0
     observation_stops: list[VehicleHistoryStop]
     disclaimer: str = "Discrete camera observation sequence. Does not represent continuous GPS tracking."

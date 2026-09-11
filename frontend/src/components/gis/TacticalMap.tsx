@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Camera, VehicleJourney } from '../../types';
@@ -21,31 +21,105 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const routeLayerRef = useRef<L.LayerGroup | null>(null);
+  const clickMarkerRef = useRef<L.Marker | null>(null);
+  const [inspectedLocation, setInspectedLocation] = useState<{
+    lat: number;
+    lng: number;
+    nearestCam?: string;
+    distanceMeters?: number;
+    time: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
       const map = L.map(mapContainerRef.current, {
-        center: [40.7135, -74.0060],
-        zoom: 14,
-        zoomControl: false
+        center: [28.6585, 77.2730],
+        zoom: 15,
+        minZoom: 12,
+        maxZoom: 19,
+        zoomControl: false,
+        preferCanvas: true
       });
 
-      // Light/Ivory CartoDB Positron Basemap Tiles matching inspiration UI
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
+      // OpenStreetMap High-Resolution Colored Basemap (100% Free, No Watermark, No API Key)
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+        minZoom: 12,
+        keepBuffer: 8,
+        updateWhenIdle: false,
+        updateWhenZooming: false
       }).addTo(map);
 
       L.control.zoom({ position: 'bottomright' }).addTo(map);
 
       markersLayerRef.current = L.layerGroup().addTo(map);
       routeLayerRef.current = L.layerGroup().addTo(map);
+
+      // Handle map click for instant coordinate inspection
+      map.on('click', (e: L.LeafletMouseEvent) => {
+        const { lat, lng } = e.latlng;
+        let nearest: Camera | null = null;
+        let minDist = Infinity;
+        cameras.forEach((c) => {
+          const d = Math.hypot(c.latitude - lat, c.longitude - lng) * 111000;
+          if (d < minDist) {
+            minDist = d;
+            nearest = c;
+          }
+        });
+
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setInspectedLocation({
+          lat,
+          lng,
+          nearestCam: nearest ? `${(nearest as any).designation || (nearest as any).name} (${(nearest as any).id})` : undefined,
+          distanceMeters: Math.round(minDist),
+          time: timeStr
+        });
+
+        if (clickMarkerRef.current) {
+          map.removeLayer(clickMarkerRef.current);
+        }
+
+        const clickIcon = L.divIcon({
+          className: 'custom-click-pin',
+          html: `
+            <div style="display: flex; flex-direction: column; align-items: center;">
+              <div style="width: 14px; height: 14px; border-radius: 50%; background: #E86A67; border: 2.5px solid #FFFFFF; box-shadow: 0 0 8px rgba(232,106,103,0.8);"></div>
+              <div style="width: 2px; height: 10px; background: #E86A67;"></div>
+            </div>
+          `,
+          iconSize: [20, 24],
+          iconAnchor: [10, 24]
+        });
+
+        const marker = L.marker([lat, lng], { icon: clickIcon }).addTo(map);
+        marker.bindPopup(`
+          <div style="padding: 4px; font-family: sans-serif; min-width: 200px;">
+            <div style="font-weight: 800; color: #28142E; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+              <span>📍 Inspected Coordinate</span>
+              <span style="font-size: 10px; color: #786C7C;">${timeStr}</span>
+            </div>
+            <div style="font-family: monospace; font-size: 11px; background: #FAF7F2; padding: 4px 6px; border-radius: 6px; border: 1px solid #E8E0D2; color: #28142E; font-weight: bold; margin-bottom: 4px;">
+              ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
+            </div>
+            ${nearest ? `
+              <div style="font-size: 11px; color: #56495A;">
+                <span style="color: #786C7C;">Nearest Sensor:</span><br/>
+                <strong>${(nearest as any).designation || (nearest as any).name}</strong> (~${Math.round(minDist)}m away)
+              </div>
+            ` : ''}
+          </div>
+        `).openPopup();
+        clickMarkerRef.current = marker;
+      });
+
       mapInstanceRef.current = map;
     }
-  }, []);
+  }, [cameras]);
 
   // Update Camera Markers
   useEffect(() => {
@@ -180,11 +254,51 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       const polyline = L.polyline(latlngs, {
         color: '#28142E',
-        weight: 3,
-        dashArray: '8, 8',
-        opacity: 0.85
+        weight: 3.5,
+        dashArray: '6, 6',
+        opacity: 0.9
       });
       routeLayerRef.current.addLayer(polyline);
+
+      // Add midpoint directional hop badges between consecutive stops
+      if (journey.observation_stops.length > 1) {
+        for (let i = 0; i < journey.observation_stops.length - 1; i++) {
+          const s1 = journey.observation_stops[i];
+          const s2 = journey.observation_stops[i + 1];
+          const midLat = (s1.latitude + s2.latitude) / 2;
+          const midLng = (s1.longitude + s2.longitude) / 2;
+
+          const midIcon = L.divIcon({
+            className: 'custom-hop-midpoint',
+            html: `
+              <div style="
+                background: #28142E;
+                color: #FAF7F2;
+                font-family: monospace;
+                font-size: 9px;
+                font-weight: 800;
+                padding: 2px 6px;
+                border-radius: 9999px;
+                border: 1.5px solid #FFFFFF;
+                box-shadow: 0 2px 6px rgba(40, 20, 46, 0.4);
+                white-space: nowrap;
+                display: flex;
+                align-items: center;
+                gap: 3px;
+                pointer-events: none;
+              ">
+                <span>Stop ${s1.stop_number} → ${s2.stop_number}</span>
+                ${s2.distance_from_prev_km !== undefined && s2.distance_from_prev_km !== null ? `<span>(${s2.distance_from_prev_km}km)</span>` : ''}
+              </div>
+            `,
+            iconSize: [90, 20],
+            iconAnchor: [45, 10]
+          });
+
+          const midMarker = L.marker([midLat, midLng], { icon: midIcon, interactive: false });
+          routeLayerRef.current.addLayer(midMarker);
+        }
+      }
 
       if (latlngs.length > 1) {
         mapInstanceRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
@@ -207,8 +321,35 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
       {/* Map Compass Indicator */}
       <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#DED3C4] text-xs font-mono font-bold text-[#28142E] flex items-center gap-1.5 shadow-sm">
         <Compass className="w-3.5 h-3.5 text-[#28142E]" />
-        <span>GIS CONTEXT</span>
+        <span>KRISHNA / GANDHI NAGAR GIS</span>
       </div>
+
+      {/* Floating Active Inspected Coordinates HUD */}
+      {inspectedLocation && (
+        <div className="absolute bottom-3 left-3 z-[1000] bg-[#28142E]/95 text-white backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20 shadow-2xl flex items-center gap-3 font-mono text-xs max-w-md">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#E86A67] shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-[#F8F5EE] flex items-center gap-2">
+              <span>{inspectedLocation.lat.toFixed(5)}° N, {inspectedLocation.lng.toFixed(5)}° E</span>
+              <span className="text-[10px] text-[#C7A9A3]">({inspectedLocation.time})</span>
+            </div>
+            {inspectedLocation.nearestCam && (
+              <div className="text-[10.5px] text-[#E8D2C4] truncate">
+                Near: {inspectedLocation.nearestCam} (~{inspectedLocation.distanceMeters}m away)
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              navigator.clipboard?.writeText(`${inspectedLocation.lat.toFixed(5)}, ${inspectedLocation.lng.toFixed(5)}`);
+            }}
+            className="px-2.5 py-1 rounded bg-white/15 hover:bg-white/25 text-[10px] text-[#F8F5EE] uppercase tracking-wider font-bold transition shrink-0"
+            title="Copy Coordinates"
+          >
+            Copy
+          </button>
+        </div>
+      )}
     </div>
   );
 };

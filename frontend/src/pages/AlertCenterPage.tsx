@@ -35,7 +35,9 @@ export function AlertsPage() {
     if (t.alertId) setSelId(t.alertId);
   }, [app.navSeq, app.target]);
 
-  const types = ['All types', ...Array.from(new Set(app.alerts.map((a) => a.type)))];
+  const getVeh = (id: string) =>
+    app.vehicles.find((v) => v.id === id || v.plate.replace(/[^A-Z0-9]/gi, '') === id.replace(/[^A-Z0-9]/gi, '')) || vehById(id);
+
   const rows = useMemo(
     () =>
       app.alerts.filter((a) => {
@@ -46,18 +48,18 @@ export function AlertsPage() {
         if (timeScope === '8h' && a.minsAgo > 480) return false;
         if (timeScope === '24h' && a.minsAgo > 1440) return false;
         if (q.trim()) {
-          const v = vehById(a.vehicleId);
+          const v = getVeh(a.vehicleId);
           const c = camById(a.cameraId);
           const hay = `${a.title} ${a.zone} ${v?.plate ?? ''} ${c?.name ?? ''} ${c?.code ?? ''}`.toLowerCase();
           if (!hay.includes(q.trim().toLowerCase())) return false;
         }
         return true;
       }),
-    [app.alerts, sev, status, type, timeScope, q]
+    [app.alerts, app.vehicles, sev, status, type, timeScope, q]
   );
 
   const sel = app.alerts.find((a) => a.id === selId);
-  const selVeh = sel ? vehById(sel.vehicleId) : undefined;
+  const selVeh = sel ? getVeh(sel.vehicleId) : undefined;
   const selCam = sel ? camById(sel.cameraId) : undefined;
   const counts = (s: string) => app.alerts.filter((a) => a.status === s).length;
 
@@ -98,7 +100,7 @@ export function AlertsPage() {
           <div className="flex flex-col">
             {rows.length === 0 && <Empty icon="bell" title="No alerts match these filters" sub="Try clearing the search or severity filters." />}
             {rows.map((a) => {
-              const v = vehById(a.vehicleId);
+              const v = getVeh(a.vehicleId);
               const c = camById(a.cameraId);
               return (
                 <button key={a.id} onClick={() => setSelId(a.id)} className={cx('flex items-start gap-3 rounded-xl px-3 py-3 text-left transition-colors duration-150', selId === a.id ? 'bg-sand/55' : 'hover:bg-cream/90')}>

@@ -69,9 +69,11 @@ export function Kicker({ children, className }: { children: ReactNode; className
 
 export function Badge({
   tone = 'neutral',
+  className,
   children,
 }: {
   tone?: 'critical' | 'high' | 'medium' | 'low' | 'neutral' | 'good';
+  className?: string;
   children: ReactNode;
 }) {
   const t = {
@@ -82,7 +84,7 @@ export function Badge({
     neutral: 'bg-sand/60 text-mauve',
     good: 'bg-cream text-mauve border border-clay/35',
   }[tone];
-  return <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[14px] font-bold uppercase tracking-[0.08em]', t)}>{children}</span>;
+  return <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[14px] font-bold uppercase tracking-[0.08em]', t, className)}>{children}</span>;
 }
 
 export const sevTone = (s: string): 'critical' | 'high' | 'medium' | 'low' =>
@@ -209,7 +211,7 @@ export function Bars({ data, onClick }: { data: { label: string; value: number; 
   );
 }
 
-export function Toasts({ items }: { items: { id: number; msg: string }[] }) {
+export function Toasts({ items = [] }: { items?: { id: number; msg: string }[] }) {
   return (
     <div className="pointer-events-none fixed bottom-6 right-6 z-[80] flex flex-col gap-2">
       {items.map((t) => (

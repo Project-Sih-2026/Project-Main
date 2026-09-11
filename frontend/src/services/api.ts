@@ -60,6 +60,32 @@ export const api = {
     const res = await fetch(`${API_BASE}/detections/simulate?${params.toString()}`, { method: "POST" });
     return res.json();
   },
+  uploadFrameAndGetRoute: async (
+    cameraId: string,
+    file: File,
+    customPlate?: string,
+    ownerName?: string
+  ): Promise<{
+    detection: Detection;
+    journey: VehicleJourney | null;
+    detections?: Array<{ detection: Detection; journey: VehicleJourney | null }>;
+    count?: number;
+  }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const params = new URLSearchParams({ camera_id: cameraId });
+    if (customPlate) params.append("custom_plate", customPlate);
+    if (ownerName) params.append("owner_name", ownerName);
+    const res = await fetch(`${API_BASE}/detections/upload-route?${params.toString()}`, {
+      method: "POST",
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to process image upload");
+    }
+    return res.json();
+  },
   submitOCRCorrection: async (detectionId: string, payload: { corrected_plate: string; reason: string; notes?: string }): Promise<OCRCorrection> => {
     const res = await fetch(`${API_BASE}/detections/${detectionId}/correct`, {
       method: "POST",
@@ -74,6 +100,34 @@ export const api = {
   },
   getOCRRevisions: async (detectionId: string): Promise<OCRCorrection[]> => {
     const res = await fetch(`${API_BASE}/detections/${detectionId}/revisions`);
+    return res.json();
+  },
+  deleteDetection: async (detectionId: string): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/detections/${detectionId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to delete detection");
+    }
+    return res.json();
+  },
+  purgeAllDetections: async (): Promise<{ status: string; message: string }> => {
+    const res = await fetch(`${API_BASE}/detections/purge-all`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to purge detections");
+    }
+    return res.json();
+  },
+  updateDetection: async (detectionId: string, payload: { owner_name?: string; vehicle_type?: string; normalized_plate_text?: string }): Promise<Detection> => {
+    const res = await fetch(`${API_BASE}/detections/${detectionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "Failed to update detection");
+    }
     return res.json();
   },
 

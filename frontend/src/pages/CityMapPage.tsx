@@ -4,10 +4,101 @@ import 'leaflet/dist/leaflet.css';
 import { useApp } from '../state/appContext';
 import { Icon } from '../components/Icons';
 import { Badge, Btn, Card, Kicker, cx } from '../components/ui';
-import { CAMERAS, HOTSPOTS, ROADS, VEHICLES, camById, timeAgo, type Vehicle, type Camera } from '../data/mock';
+import { CAMERAS, HOTSPOTS, ROADS, VEHICLES, camById, timeAgo, type Vehicle, type Camera, type Road } from '../data/mock';
 import { getCamera30MinDetections, type ANPRDetection } from '../data/anprGenerator';
+import { getCameraDistance, getNearestCameras, formatDistance, type CameraDistanceTarget } from '../data/cameraDistances';
+import { CameraFeed } from '../components/CameraFeed';
+import { calculateInterCameraSpeed, type InterCameraSpeedResult } from '../data/speedTrapEngine';
 
 const CONGESTION: Record<string, number> = { r1: 3, r2: 2, r3: 4, r4: 2, r5: 1, r6: 3, r7: 2, r8: 2, r9: 1, r10: 2, r11: 1, r12: 2 };
+
+export interface HotspotCorridor {
+  id: string;
+  name: string;
+  fromCam: string;
+  toCam: string;
+  severity: 'critical' | 'high' | 'medium';
+  congestionIndex: number;
+  delayMins: number;
+  avgSpeed: number;
+  vehiclesPerHour: number;
+  bottleneckReason: string;
+}
+
+export const HOTSPOT_CORRIDORS: HotspotCorridor[] = [
+  {
+    id: 'cor-1',
+    name: 'Lal Quarter ↔ Vijay Chowk Radial',
+    fromCam: 'CAM-KN-01',
+    toCam: 'CAM-KN-02',
+    severity: 'critical',
+    congestionIndex: 88,
+    delayMins: 6.2,
+    avgSpeed: 14,
+    vehiclesPerHour: 1940,
+    bottleneckReason: 'High pedestrian conflict & retail vehicle loading choke'
+  },
+  {
+    id: 'cor-2',
+    name: 'Jheel Khurenja ↔ Gandhi Nagar Link',
+    fromCam: 'CAM-KN-04',
+    toCam: 'CAM-GN-01',
+    severity: 'critical',
+    congestionIndex: 84,
+    delayMins: 5.5,
+    avgSpeed: 16,
+    vehiclesPerHour: 1720,
+    bottleneckReason: 'Pushta road merge & wholesale textile logistics bottleneck'
+  },
+  {
+    id: 'cor-3',
+    name: 'Gandhi Nagar Core (Market ↔ Ashok Gali)',
+    fromCam: 'CAM-GN-01',
+    toCam: 'CAM-GN-06',
+    severity: 'high',
+    congestionIndex: 78,
+    delayMins: 4.1,
+    avgSpeed: 18,
+    vehiclesPerHour: 1450,
+    bottleneckReason: 'Narrow market lane obstruction & auto-rickshaw queue'
+  },
+  {
+    id: 'cor-4',
+    name: 'Shastri Park Pushta Highway Corridor',
+    fromCam: 'CAM-GN-04',
+    toCam: 'CAM-GN-08',
+    severity: 'high',
+    congestionIndex: 72,
+    delayMins: 3.8,
+    avgSpeed: 28,
+    vehiclesPerHour: 2480,
+    bottleneckReason: 'GT Road merge wave & inter-state freight surge'
+  },
+  {
+    id: 'cor-5',
+    name: 'Vikas Marg ↔ Swarn Cinema Arterial',
+    fromCam: 'CAM-KN-03',
+    toCam: 'CAM-KN-06',
+    severity: 'medium',
+    congestionIndex: 64,
+    delayMins: 2.5,
+    avgSpeed: 26,
+    vehiclesPerHour: 1890,
+    bottleneckReason: 'Metro station feeder traffic & bus stop deceleration'
+  },
+  {
+    id: 'cor-6',
+    name: 'Mahila Colony ↔ Geeta Colony Flyover Descent',
+    fromCam: 'CAM-GN-02',
+    toCam: 'CAM-GN-05',
+    severity: 'medium',
+    congestionIndex: 61,
+    delayMins: 2.2,
+    avgSpeed: 30,
+    vehiclesPerHour: 1620,
+    bottleneckReason: 'Flyover off-ramp deceleration & signal queue'
+  }
+];
 
 // Defined Sector Extents for Instant Sector Zoom
 interface SectorPreset {
@@ -23,60 +114,44 @@ interface SectorPreset {
 const SECTORS: SectorPreset[] = [
   {
     id: 'all',
-    name: 'Whole Delhi NCR',
-    district: 'National Capital Region',
-    center: [28.590, 77.195],
-    zoom: 12,
-    camCount: 26,
-    bounds: [[28.520, 77.060], [28.660, 77.320]]
-  },
-  {
-    id: 'central-vista',
-    name: 'Central Vista & India Gate',
-    district: 'Central Vista',
-    center: [28.6150, 77.2240],
+    name: 'Krishna Nagar & Gandhi Nagar Grid',
+    district: 'East Delhi Tactical Sector',
+    center: [28.6585, 77.2730],
     zoom: 14.5,
+    camCount: 20,
+    bounds: [[28.648, 77.255], [28.672, 77.292]]
+  },
+  {
+    id: 'krishna-nagar',
+    name: 'Krishna Nagar Core & Lal Quarter',
+    district: 'Krishna Nagar',
+    center: [28.6570, 77.2800],
+    zoom: 15.5,
+    camCount: 10,
+  },
+  {
+    id: 'gandhi-nagar',
+    name: 'Gandhi Nagar Market & Subhash Mohalla',
+    district: 'Gandhi Nagar',
+    center: [28.6620, 77.2665],
+    zoom: 15.5,
+    camCount: 10,
+  },
+  {
+    id: 'pushta-corridor',
+    name: 'Pushta Highway & Shastri Park Link',
+    district: 'Gandhi Nagar',
+    center: [28.6680, 77.2630],
+    zoom: 15.2,
     camCount: 4,
   },
   {
-    id: 'connaught',
-    name: 'Connaught Core & Barakhamba',
-    district: 'Connaught Core',
-    center: [28.6310, 77.2220],
-    zoom: 14.5,
+    id: 'vikas-marg',
+    name: 'Vikas Marg & Metro Station Entry',
+    district: 'Krishna Nagar',
+    center: [28.6525, 77.2760],
+    zoom: 15.2,
     camCount: 4,
-  },
-  {
-    id: 'south-ring',
-    name: 'South Delhi & AIIMS Ring Road',
-    district: 'South Extension',
-    center: [28.5690, 77.2280],
-    zoom: 14,
-    camCount: 6,
-  },
-  {
-    id: 'dhaula-kuan',
-    name: 'Dhaula Kuan & Chanakyapuri',
-    district: 'Dhaula Kuan',
-    center: [28.5940, 77.1720],
-    zoom: 14,
-    camCount: 4,
-  },
-  {
-    id: 'aerocity',
-    name: 'Aerocity & IGI Airport T3',
-    district: 'Aerocity Hub',
-    center: [28.5560, 77.1050],
-    zoom: 13.8,
-    camCount: 3,
-  },
-  {
-    id: 'dnd-east',
-    name: 'DND Flyway & East Gateways',
-    district: 'DND Gateway',
-    center: [28.5860, 77.2800],
-    zoom: 13.8,
-    camCount: 3,
   },
 ];
 
@@ -108,11 +183,16 @@ export function CityMapPage() {
   const camerasLayerRef = useRef<L.LayerGroup | null>(null);
   const alertsLayerRef = useRef<L.LayerGroup | null>(null);
   const hotspotsLayerRef = useRef<L.LayerGroup | null>(null);
+  const corridorsLayerRef = useRef<L.LayerGroup | null>(null);
+  const interCameraDistLayerRef = useRef<L.LayerGroup | null>(null);
   const journeyLayerRef = useRef<L.LayerGroup | null>(null);
   const altCorridorLayerRef = useRef<L.LayerGroup | null>(null);
+  const clickMarkerRef = useRef<L.Marker | null>(null);
 
   const [layers, setLayers] = useState({
     cameras: true,
+    corridors: true,
+    distances: true,
     journey: true,
     altRoutes: true,
     alerts: true,
@@ -126,6 +206,13 @@ export function CityMapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [camSearchQuery, setCamSearchQuery] = useState('');
   const [camStatusFilter, setCamStatusFilter] = useState<'all' | 'flagged' | 'watchlist' | 'clear'>('all');
+  const [inspectedLoc, setInspectedLoc] = useState<{
+    lat: number;
+    lng: number;
+    nearestCam?: string;
+    distanceMeters?: number;
+    time: string;
+  } | null>(null);
 
   const [selCamId, setSelCamId] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(
@@ -133,26 +220,48 @@ export function CityMapPage() {
   );
   const [dynamicVehicles, setDynamicVehicles] = useState<Record<string, Vehicle>>({});
 
+  // Inter-Camera Section Speed Trap Analyzer State
+  const [speedSourceCam, setSpeedSourceCam] = useState<string>('c2'); // CAM-KN-02
+  const [speedSourceTime, setSpeedSourceTime] = useState<string>('08:45');
+  const [speedTargetCam, setSpeedTargetCam] = useState<string>('c18'); // CAM-GN-08
+  const [speedTargetTime, setSpeedTargetTime] = useState<string>('08:47');
+  const [speedLimit, setSpeedLimit] = useState<number>(50);
+  const [speedResult, setSpeedResult] = useState<InterCameraSpeedResult | null>(null);
+
+  useEffect(() => {
+    const res = calculateInterCameraSpeed(
+      speedSourceCam,
+      speedSourceTime,
+      speedTargetCam,
+      speedTargetTime,
+      'DL-01-AB-1234',
+      speedLimit
+    );
+    setSpeedResult(res);
+  }, [speedSourceCam, speedSourceTime, speedTargetCam, speedTargetTime, speedLimit]);
+
   const toggle = (k: keyof typeof layers) => setLayers((l) => ({ ...l, [k]: !l[k] }));
 
-  // Computed timeline slices with realistic metropolitan throughput
+  // Computed timeline slices with actual database vehicle observations
   const timelineSlices = useMemo(() => {
-    const baseDensities: Record<string, number> = {
-      'all': 1850,
-      't1': 128,
-      't2': 194,
-      't3': 346,
-      't4': 392,
-      't5': 284,
-      'recent': 220,
-    };
     return TIMELINE_SLICES_DEF.map((ts) => {
+      const count = app.vehicles.filter((v) => {
+        if (ts.id === 'all') return true;
+        if (ts.id === 'recent') return v.lastSeen.includes('min') || v.lastSeen.includes('just');
+        return v.journey.some((evt) => {
+          const [h, m] = evt.t.split(':').map((x) => parseInt(x, 10));
+          const totalMins = h * 60 + m;
+          const startMins = ts.startH * 60 + ts.startM;
+          const endMins = ts.endH * 60 + ts.endM;
+          return totalMins >= startMins && totalMins <= endMins;
+        });
+      }).length;
       return {
         ...ts,
-        vehCount: baseDensities[ts.id] || 150
+        vehCount: count
       };
     });
-  }, []);
+  }, [app.vehicles]);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -164,31 +273,97 @@ export function CityMapPage() {
     }
 
     const map = L.map(mapContainerRef.current, {
-      center: [28.590, 77.195],
-      zoom: 12,
-      minZoom: 10,
-      maxZoom: 18,
+      center: [28.6585, 77.2730],
+      zoom: 15,
+      minZoom: 11,
+      maxZoom: 19,
       zoomControl: false,
-      attributionControl: false
+      attributionControl: false,
+      preferCanvas: true
     });
 
-    // High-performance OpenStreetMap Standard Tiles
+    // OpenStreetMap High-Resolution Colored Basemap (100% Free, No Watermark, No API Key)
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      minZoom: 10,
-      attribution: '&copy; OpenStreetMap'
+      maxZoom: 19,
+      minZoom: 11,
+      keepBuffer: 8,
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     camerasLayerRef.current = L.layerGroup().addTo(map);
+    interCameraDistLayerRef.current = L.layerGroup().addTo(map);
+    corridorsLayerRef.current = L.layerGroup().addTo(map);
     alertsLayerRef.current = L.layerGroup().addTo(map);
     hotspotsLayerRef.current = L.layerGroup().addTo(map);
     altCorridorLayerRef.current = L.layerGroup().addTo(map);
     journeyLayerRef.current = L.layerGroup().addTo(map);
 
-    // Fit initial full Delhi corridor view
-    map.fitBounds([[28.520, 77.060], [28.660, 77.320]], { padding: [30, 30] });
+    // Fit Krishna Nagar & Gandhi Nagar grid view
+    map.fitBounds([[28.648, 77.255], [28.672, 77.292]], { padding: [30, 30] });
+
+    // Handle map click anywhere for instant coordinate inspection
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      let nearest: Camera | null = null;
+      let minDist = Infinity;
+      CAMERAS.forEach((c) => {
+        const d = Math.hypot(c.lat - lat, c.lng - lng) * 111000;
+        if (d < minDist) {
+          minDist = d;
+          nearest = c;
+        }
+      });
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setInspectedLoc({
+        lat,
+        lng,
+        nearestCam: nearest ? `${(nearest as Camera).name} (${(nearest as Camera).code})` : undefined,
+        distanceMeters: Math.round(minDist),
+        time: timeStr
+      });
+
+      if (clickMarkerRef.current) {
+        map.removeLayer(clickMarkerRef.current);
+      }
+
+      const clickIcon = L.divIcon({
+        className: 'custom-city-click-pin',
+        html: `
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: #E86A67; border: 2.5px solid #FFFFFF; box-shadow: 0 0 10px rgba(232,106,103,0.9);"></div>
+            <div style="width: 2px; height: 10px; background: #E86A67;"></div>
+          </div>
+        `,
+        iconSize: [20, 24],
+        iconAnchor: [10, 24]
+      });
+
+      const marker = L.marker([lat, lng], { icon: clickIcon }).addTo(map);
+      marker.bindPopup(`
+        <div style="padding: 4px; font-family: sans-serif; min-width: 200px;">
+          <div style="font-weight: 800; color: #1E293B; font-size: 12px; margin-bottom: 3px; display: flex; align-items: center; justify-content: space-between;">
+            <span>📍 Inspected Coordinate</span>
+            <span style="font-size: 10px; color: #64748B;">${timeStr}</span>
+          </div>
+          <div style="font-family: monospace; font-size: 11px; background: #F1F5F9; padding: 4px 6px; border-radius: 6px; border: 1px solid #CBD5E1; color: #0F172A; font-weight: bold; margin-bottom: 4px;">
+            ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
+          </div>
+          ${nearest ? `
+            <div style="font-size: 11px; color: #334155;">
+              <span style="color: #64748B;">Nearest Sensor:</span><br/>
+              <strong>${(nearest as Camera).name}</strong> (~${Math.round(minDist)}m away)
+            </div>
+          ` : ''}
+        </div>
+      `).openPopup();
+      clickMarkerRef.current = marker;
+      app.toast(`Inspected: ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E`);
+    });
 
     mapInstanceRef.current = map;
     setMapReady(true);
@@ -234,7 +409,7 @@ export function CityMapPage() {
     const curSlice = TIMELINE_SLICES_DEF.find((s) => s.id === selectedTimeSlice) || TIMELINE_SLICES_DEF[0];
     const sec = SECTORS.find((s) => s.id === selectedSector);
 
-    return VEHICLES.filter((v) => {
+    return app.vehicles.filter((v) => {
       // State Filter (DL, HR, UP)
       if (stateFilter !== 'all') {
         const prefix = v.plate.split('-')[0]?.toUpperCase();
@@ -264,17 +439,40 @@ export function CityMapPage() {
 
       return hasObs;
     });
-  }, [selectedSector, selectedTimeSlice, stateFilter]);
+  }, [selectedSector, selectedTimeSlice, stateFilter, app.vehicles]);
 
-  // Selected camera details and 30-min detected vehicles (40 to 65+ real ANPR detections)
+  // Selected camera details and actual detected vehicles from database
   const selCam: Camera | undefined = useMemo(() => {
     return selCamId ? camById(selCamId) : undefined;
   }, [selCamId]);
 
-  const rawCam30MinDetections = useMemo(() => {
+  const rawCam30MinDetections = useMemo((): ANPRDetection[] => {
     if (!selCam) return [];
-    return getCamera30MinDetections(selCam);
-  }, [selCam]);
+    const actualDets: ANPRDetection[] = [];
+    app.vehicles.forEach((v) => {
+      v.journey.forEach((evt, idx) => {
+        if (evt.cam === selCam.code || evt.cam === selCam.id) {
+          actualDets.push({
+            id: `${v.id}-${idx}`,
+            plate: v.plate,
+            make: v.make,
+            model: v.model,
+            color: v.color,
+            type: v.type,
+            speed: evt.speed || v.speed,
+            timeStr: evt.t,
+            status: v.status,
+            flaggedReason: v.flaggedReason,
+            confidence: 0.94 + ((idx % 5) * 0.01),
+            dir: evt.dir,
+            lane: 'Lane 1',
+            vehicleRef: v,
+          });
+        }
+      });
+    });
+    return actualDets;
+  }, [selCam, app.vehicles]);
 
   const filteredCamDetections = useMemo(() => {
     return rawCam30MinDetections.filter((det) => {
@@ -291,8 +489,8 @@ export function CityMapPage() {
   // Active vehicle for route trajectory
   const focusVeh: Vehicle | undefined = useMemo(() => {
     if (dynamicVehicles[selectedVehicleId]) return dynamicVehicles[selectedVehicleId];
-    return VEHICLES.find((v) => v.id === selectedVehicleId) || filteredVehicles[0] || VEHICLES[0];
-  }, [selectedVehicleId, dynamicVehicles, filteredVehicles]);
+    return app.vehicles.find((v) => v.id === selectedVehicleId || v.plate === selectedVehicleId) || filteredVehicles[0] || app.vehicles[0];
+  }, [selectedVehicleId, dynamicVehicles, filteredVehicles, app.vehicles]);
 
   // Search vehicle by plate
   const handleSearchVehicle = (e: React.FormEvent) => {
@@ -301,7 +499,7 @@ export function CityMapPage() {
     if (!q) return;
 
     // Search in primary vehicles
-    const hit = VEHICLES.find(
+    const hit = app.vehicles.find(
       (v) =>
         v.plate.toLowerCase().replace(/[^a-z0-9]/g, '').includes(q) ||
         q.includes(v.plate.toLowerCase().replace(/[^a-z0-9]/g, '')) ||
@@ -333,50 +531,66 @@ export function CityMapPage() {
     }
   };
 
-  // Render Camera Markers on Map
+  // Render Camera Markers + Inter-Camera Distance Vectors on Map
   useEffect(() => {
-    if (!mapReady || !mapInstanceRef.current || !camerasLayerRef.current) return;
+    if (!mapReady || !mapInstanceRef.current || !camerasLayerRef.current || !interCameraDistLayerRef.current) return;
     camerasLayerRef.current.clearLayers();
+    interCameraDistLayerRef.current.clearLayers();
 
     if (!layers.cameras) return;
 
+    // 1. Draw Camera Markers with precision tactical badge
     CAMERAS.forEach((cam) => {
       const isSelected = selCamId === cam.id || selCamId === cam.code;
       const isOnline = cam.status === 'online';
       const isDegraded = cam.status === 'degraded';
 
-      const statusColor = isOnline ? '#2563EB' : isDegraded ? '#D97706' : '#DC2626';
-      const bgColor = isSelected ? '#1E293B' : '#FFFFFF';
-      const textColor = isSelected ? '#FFFFFF' : '#1E293B';
+      const statusColor = isOnline ? '#3B82F6' : isDegraded ? '#F59E0B' : '#EF4444';
+      const codeShort = cam.code.replace('CAM-', '');
 
       const customIcon = L.divIcon({
-        className: 'custom-leaflet-camera',
+        className: 'custom-leaflet-camera-pin',
         html: `
           <div style="
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            width: ${isSelected ? '36px' : '30px'};
-            height: ${isSelected ? '36px' : '30px'};
-            border-radius: 50%;
-            background: ${bgColor};
-            border: 2.5px solid ${statusColor};
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            color: ${textColor};
-            font-family: system-ui, sans-serif;
-            font-size: 11px;
-            font-weight: 800;
             cursor: pointer;
-            position: relative;
-            transform: ${isSelected ? 'scale(1.15)' : 'scale(1)'};
-            transition: all 0.2s ease;
+            transform: ${isSelected ? 'scale(1.18)' : 'scale(1)'};
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
           ">
-            ${cam.code.replace('CAM-', '')}
-            ${isOnline ? `<span style="position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%; background: #10B981; border: 1.5px solid #FFFFFF;"></span>` : ''}
+            <div style="
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              padding: 3px 7px;
+              border-radius: 9999px;
+              background: ${isSelected ? '#1E293B' : '#0F172A'};
+              border: 1.5px solid ${statusColor};
+              box-shadow: 0 0 10px ${isSelected ? statusColor : 'rgba(0,0,0,0.3)'};
+              color: #FFFFFF;
+              font-family: system-ui, -apple-system, sans-serif;
+              font-size: 11px;
+              font-weight: 700;
+              line-height: 1;
+              white-space: nowrap;
+            ">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: ${isOnline ? '#10B981' : isDegraded ? '#F59E0B' : '#EF4444'}; box-shadow: 0 0 6px ${isOnline ? '#10B981' : '#EF4444'};"></span>
+              <span>${codeShort}</span>
+            </div>
+            <div style="
+              width: 0;
+              height: 0;
+              border-left: 4px solid transparent;
+              border-right: 4px solid transparent;
+              border-top: 5px solid ${statusColor};
+              margin-top: -1px;
+            "></div>
           </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        iconSize: [60, 26],
+        iconAnchor: [30, 26]
       });
 
       const marker = L.marker([cam.lat, cam.lng], { icon: customIcon });
@@ -384,15 +598,162 @@ export function CityMapPage() {
       marker.on('click', () => {
         setSelCamId(cam.id);
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo([cam.lat, cam.lng], Math.max(mapInstanceRef.current.getZoom(), 14), { duration: 0.6 });
+          mapInstanceRef.current.flyTo([cam.lat, cam.lng], Math.max(mapInstanceRef.current.getZoom(), 15), { duration: 0.5 });
         }
       });
 
-      marker.bindTooltip(`<strong>${cam.code}</strong>: ${cam.name}`, { direction: 'top', offset: [0, -16] });
+      marker.bindTooltip(`<strong>${cam.code}</strong>: ${cam.name}<br/><span style="color: #64748B; font-size: 10px;">${cam.district} · ${cam.avgSpeed} km/h avg</span>`, {
+        direction: 'top',
+        offset: [0, -26]
+      });
 
       camerasLayerRef.current?.addLayer(marker);
     });
-  }, [mapReady, layers.cameras, selCamId]);
+
+    // 2. Draw Inter-Camera Distance Vectors from Selected Camera to Closest Neighbors
+    if (selCamId && layers.distances) {
+      const selectedCam = CAMERAS.find((c) => c.id === selCamId || c.code === selCamId);
+      if (selectedCam) {
+        const neighbors = getNearestCameras(selectedCam.id, 4);
+        neighbors.forEach((nbr) => {
+          const targetCam = CAMERAS.find((c) => c.id === nbr.target_id || c.code === nbr.target_id);
+          if (!targetCam) return;
+
+          // Dashed vector connecting camera pair
+          const distVector = L.polyline(
+            [[selectedCam.lat, selectedCam.lng], [targetCam.lat, targetCam.lng]],
+            {
+              color: '#3B82F6',
+              weight: 2,
+              opacity: 0.8,
+              dashArray: '4, 4',
+              lineCap: 'round'
+            }
+          );
+          interCameraDistLayerRef.current?.addLayer(distVector);
+
+          // Midpoint distance pill
+          const midLat = (selectedCam.lat + targetCam.lat) / 2;
+          const midLng = (selectedCam.lng + targetCam.lng) / 2;
+          const distPillIcon = L.divIcon({
+            className: 'custom-dist-tag',
+            html: `
+              <div style="
+                background: #0F172A;
+                border: 1px solid #3B82F6;
+                color: #93C5FD;
+                font-family: monospace;
+                font-size: 10px;
+                font-weight: bold;
+                padding: 1.5px 5px;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                white-space: nowrap;
+              ">
+                📏 ${nbr.distance_meters}m · ${nbr.est_transit_mins}m
+              </div>
+            `,
+            iconSize: [85, 18],
+            iconAnchor: [42, 9]
+          });
+          const distTagMarker = L.marker([midLat, midLng], { icon: distPillIcon });
+          interCameraDistLayerRef.current?.addLayer(distTagMarker);
+        });
+      }
+    }
+  }, [mapReady, layers.cameras, layers.distances, selCamId]);
+
+  // Render Inter-Camera Hotspot & Bottleneck Corridors
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !corridorsLayerRef.current) return;
+    corridorsLayerRef.current.clearLayers();
+
+    if (!layers.corridors) return;
+
+    HOTSPOT_CORRIDORS.forEach((cor) => {
+      const camA = CAMERAS.find((c) => c.code === cor.fromCam || c.id === cor.fromCam);
+      const camB = CAMERAS.find((c) => c.code === cor.toCam || c.id === cor.toCam);
+      if (!camA || !camB) return;
+
+      const corColor = cor.severity === 'critical' ? '#DC2626' : cor.severity === 'high' ? '#EA580C' : '#EAB308';
+
+      // Outer glow line
+      const casing = L.polyline([[camA.lat, camA.lng], [camB.lat, camB.lng]], {
+        color: corColor,
+        weight: 8,
+        opacity: 0.35,
+        lineCap: 'round',
+        lineJoin: 'round'
+      });
+
+      // Inner animated dashed line
+      const line = L.polyline([[camA.lat, camA.lng], [camB.lat, camB.lng]], {
+        color: corColor,
+        weight: 3.5,
+        opacity: 0.9,
+        dashArray: '6, 4',
+        lineCap: 'round',
+        lineJoin: 'round'
+      });
+
+      corridorsLayerRef.current?.addLayer(casing);
+      corridorsLayerRef.current?.addLayer(line);
+
+      // Midpoint Corridor Choke Badge
+      const midLat = (camA.lat + camB.lat) / 2;
+      const midLng = (camA.lng + camB.lng) / 2;
+
+      const badgeIcon = L.divIcon({
+        className: 'custom-corridor-badge',
+        html: `
+          <div style="
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #0F172A;
+            border: 1.5px solid ${corColor};
+            color: #FFFFFF;
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-family: system-ui, sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            box-shadow: 0 0 10px ${corColor}90;
+            white-space: nowrap;
+            cursor: pointer;
+          ">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${corColor}; box-shadow: 0 0 6px ${corColor};"></span>
+            <span>${cor.congestionIndex}% Choke (+${cor.delayMins}m)</span>
+          </div>
+        `,
+        iconSize: [125, 22],
+        iconAnchor: [62, 11]
+      });
+
+      const badgeMarker = L.marker([midLat, midLng], { icon: badgeIcon });
+      badgeMarker.bindPopup(`
+        <div style="padding: 4px; font-family: sans-serif; min-width: 220px;">
+          <div style="font-weight: 800; color: #1E293B; font-size: 12px; margin-bottom: 2px;">
+            ⚠️ Inter-Camera Bottleneck
+          </div>
+          <div style="font-size: 11px; font-weight: bold; color: ${corColor}; margin-bottom: 4px;">
+            ${cor.name}
+          </div>
+          <div style="font-size: 10.5px; color: #475569; margin-bottom: 4px;">
+            • Link: <strong>${camA.code} ➔ ${camB.code}</strong><br/>
+            • Congestion Index: <strong>${cor.congestionIndex}%</strong><br/>
+            • Estimated Delay: <strong>+${cor.delayMins} min</strong> (${cor.avgSpeed} km/h avg)<br/>
+            • Peak Hourly Flow: <strong>${cor.vehiclesPerHour.toLocaleString()} veh/hr</strong>
+          </div>
+          <div style="font-size: 10px; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 6px; border-radius: 4px; color: #334155;">
+            <strong>Choke Cause:</strong> ${cor.bottleneckReason}
+          </div>
+        </div>
+      `);
+
+      corridorsLayerRef.current?.addLayer(badgeMarker);
+    });
+  }, [mapReady, layers.corridors]);
 
   // Render Clean Chronological AI Route + Probable Alternative Branches (No Criss-Cross Web)
   useEffect(() => {
@@ -570,7 +931,7 @@ export function CityMapPage() {
     }
   }, [mapReady, layers.journey, layers.altRoutes, focusVeh]);
 
-  // Render Hotspots Layer
+  // Render Hotspots Layer (Tactical concentrated choke points)
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current || !hotspotsLayerRef.current) return;
     hotspotsLayerRef.current.clearLayers();
@@ -578,20 +939,77 @@ export function CityMapPage() {
     if (!layers.congestion) return;
 
     HOTSPOTS.forEach((h) => {
-      const color = h.level === 3 ? '#DC2626' : h.level === 2 ? '#D97706' : '#CA8A04';
-      const circle = L.circle([h.lat, h.lng], {
+      const color = h.level === 3 ? '#DC2626' : h.level === 2 ? '#D97706' : '#EAB308';
+      const outerRadius = h.level === 3 ? 110 : h.level === 2 ? 85 : 65;
+      const innerRadius = h.level === 3 ? 35 : h.level === 2 ? 25 : 18;
+
+      // Concentrated Outer Zone
+      const outerCircle = L.circle([h.lat, h.lng], {
         color: color,
+        weight: 1.5,
+        opacity: 0.8,
+        dashArray: '4, 4',
         fillColor: color,
-        fillOpacity: 0.2,
-        radius: 450 + h.level * 200
+        fillOpacity: 0.15,
+        radius: outerRadius
       });
 
-      circle.bindTooltip(`<strong>${h.name}</strong><br/>${h.veh.toLocaleString()} veh/hr · ${h.note}`, {
-        sticky: true,
-        direction: 'top'
+      // High Intensity Core Zone
+      const innerCircle = L.circle([h.lat, h.lng], {
+        color: color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.45,
+        radius: innerRadius
       });
 
-      hotspotsLayerRef.current?.addLayer(circle);
+      // Center Tactical Beacon Icon
+      const beaconIcon = L.divIcon({
+        className: 'custom-hotspot-beacon',
+        html: `
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: ${color};
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 0 10px ${color};
+            font-size: 10px;
+            color: #FFFFFF;
+            font-weight: 800;
+          ">
+            <div style="width: 6px; height: 6px; border-radius: 50%; background: #FFFFFF;"></div>
+          </div>
+        `,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+      });
+      const beaconMarker = L.marker([h.lat, h.lng], { icon: beaconIcon });
+
+      const tooltipContent = `
+        <div style="padding: 2px; font-family: sans-serif;">
+          <div style="font-weight: 800; color: #1E293B; font-size: 12px; margin-bottom: 2px;">
+            ⚠️ Hotspot: ${h.name}
+          </div>
+          <div style="font-size: 11px; color: #475569;">
+            Density: <strong>${h.veh.toLocaleString()} veh/hr</strong> (Level ${h.level})
+          </div>
+          <div style="font-size: 10.5px; color: #64748B; margin-top: 2px;">
+            ${h.note}
+          </div>
+        </div>
+      `;
+
+      outerCircle.bindTooltip(tooltipContent, { sticky: true, direction: 'top' });
+      innerCircle.bindTooltip(tooltipContent, { sticky: true, direction: 'top' });
+      beaconMarker.bindTooltip(tooltipContent, { sticky: true, direction: 'top' });
+
+      hotspotsLayerRef.current?.addLayer(outerCircle);
+      hotspotsLayerRef.current?.addLayer(innerCircle);
+      hotspotsLayerRef.current?.addLayer(beaconMarker);
     });
   }, [mapReady, layers.congestion]);
 
@@ -672,7 +1090,17 @@ export function CityMapPage() {
               )}
             >
               {layers[k] ? '● ' : '○ '}
-              {k === 'journey' ? 'AI Road Route' : k === 'altRoutes' ? 'Feasible Branches' : k}
+              {k === 'journey'
+                ? 'AI Road Route'
+                : k === 'altRoutes'
+                ? 'Feasible Branches'
+                : k === 'corridors'
+                ? 'Bottleneck Corridors'
+                : k === 'distances'
+                ? 'Sensor Distance Grid'
+                : k === 'congestion'
+                ? 'Hotspot Zones'
+                : k}
             </button>
           ))}
         </div>
@@ -757,7 +1185,7 @@ export function CityMapPage() {
                   <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-clay/20">
                     <div
                       className={cx('h-full rounded-full', isSel ? 'bg-sand' : 'bg-dusk')}
-                      style={{ width: `${Math.min(100, Math.round((ts.vehCount / VEHICLES.length) * 100))}%` }}
+                      style={{ width: `${Math.min(100, Math.round((ts.vehCount / Math.max(1, app.vehicles.length)) * 100))}%` }}
                     />
                   </div>
                 </button>
@@ -834,22 +1262,49 @@ export function CityMapPage() {
 
           {/* Map Legend Overlay */}
           <div className="pointer-events-none absolute left-5 top-5 z-[999] flex flex-col gap-1.5 rounded-lg border border-clay/20 bg-cream/90 px-3 py-2 text-[11px] font-semibold text-ink shadow-sm backdrop-blur">
-            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#2563EB]" /> Surveillance Node (26 Active)</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#2563EB]" /> Surveillance Node (20 Active)</span>
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#D97706]" /> AI Estimated Primary Path</span>
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#8B5CF6]" /> Probable Alternative Branch</span>
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#DC2626]" /> Priority Alert Incident</span>
           </div>
 
-          {/* Dedicated Camera 30-Minute Detections Sheet on Map */}
+          {/* Floating Active Inspected Coordinate HUD */}
+          {inspectedLoc && (
+            <div className="absolute top-5 right-5 z-[999] flex items-center gap-3 rounded-xl border border-clay/35 bg-ink/95 px-4 py-2.5 text-cream shadow-2xl backdrop-blur font-mono text-xs max-w-sm">
+              <div className="h-2.5 w-2.5 rounded-full bg-[#E86A67] shrink-0 animate-ping" />
+              <div className="min-w-0 flex-1">
+                <div className="font-bold flex items-center justify-between gap-2">
+                  <span>{inspectedLoc.lat.toFixed(5)}° N, {inspectedLoc.lng.toFixed(5)}° E</span>
+                  <span className="text-[10px] text-sand/80 font-normal">{inspectedLoc.time}</span>
+                </div>
+                {inspectedLoc.nearestCam && (
+                  <div className="text-[11px] text-sand truncate">
+                    Near: {inspectedLoc.nearestCam} (~{inspectedLoc.distanceMeters}m)
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard?.writeText(`${inspectedLoc.lat.toFixed(5)}, ${inspectedLoc.lng.toFixed(5)}`);
+                  app.toast(`Copied ${inspectedLoc.lat.toFixed(5)}, ${inspectedLoc.lng.toFixed(5)}`);
+                }}
+                className="rounded bg-cream/20 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cream hover:bg-cream/30 transition shrink-0"
+              >
+                Copy
+              </button>
+            </div>
+          )}
+
+          {/* Dedicated Camera Inspector & Distance Matrix Sheet on Map */}
           {selCam && (
-            <div className="absolute bottom-5 left-5 right-5 z-[1000] flex flex-col gap-2 rounded-xl border border-clay/35 bg-cream/95 p-4 shadow-2xl backdrop-blur sm:right-auto sm:max-w-lg">
+            <div className="absolute bottom-5 left-5 right-5 z-[1000] flex flex-col gap-2 rounded-xl border border-clay/35 bg-cream/95 p-4 shadow-2xl backdrop-blur sm:right-auto sm:max-w-md max-h-[580px] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-clay/25 pb-2">
                 <div>
-                  <div className="text-[16px] font-bold text-ink flex items-center gap-2">
+                  <div className="text-[15px] font-bold text-ink flex items-center gap-2">
                     <Icon name="camera" className="h-4 w-4 text-dusk" />
                     {selCam.code}: {selCam.name}
                   </div>
-                  <div className="text-[12px] font-semibold text-mauve">
+                  <div className="text-[11.5px] font-semibold text-mauve">
                     {selCam.district} · Heading: {selCam.heading}
                   </div>
                 </div>
@@ -865,100 +1320,88 @@ export function CityMapPage() {
                 </div>
               </div>
 
-              {/* Camera Telemetrics */}
-              <div className="grid grid-cols-3 gap-2 text-center text-[11px] text-ink">
-                <div className="rounded-lg bg-sand/30 p-1.5">
-                  <div className="text-mauve text-[10px]">Avg Speed</div>
-                  <div className="font-bold text-[13px]">{selCam.avgSpeed} km/h</div>
+              {/* Compact Tactical CCTV Stream Viewer */}
+              <CameraFeed cam={selCam} className="h-32 w-full rounded-lg" />
+
+              {/* Nearest Neighboring Sensors with Haversine Distances & Jump Actions */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-2 text-[11px]">
+                <div className="flex items-center justify-between font-bold text-blue-900 mb-1">
+                  <span>📏 Closest Grid Sensors:</span>
+                  <span className="text-[10px] text-blue-600 font-normal">Haversine GPS Matrix</span>
                 </div>
-                <div className="rounded-lg bg-sand/30 p-1.5">
-                  <div className="text-mauve text-[10px]">Today's Volume</div>
-                  <div className="font-bold text-[13px]">{selCam.vehiclesToday.toLocaleString()}</div>
-                </div>
-                <div className="rounded-lg bg-sand/30 p-1.5">
-                  <div className="text-mauve text-[10px]">30-Min Throughput</div>
-                  <div className="font-bold text-[13px] text-dusk">{rawCam30MinDetections.length} Cars ({rawCam30MinDetections.length * 30} veh/hr)</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {getNearestCameras(selCam.id, 4).map((nbr) => {
+                    const tCam = CAMERAS.find((c) => c.id === nbr.target_id || c.code === nbr.target_id);
+                    return (
+                      <button
+                        key={nbr.target_id}
+                        onClick={() => {
+                          setSelCamId(nbr.target_id);
+                          if (tCam && mapInstanceRef.current) {
+                            mapInstanceRef.current.flyTo([tCam.lat, tCam.lng], 15, { duration: 0.5 });
+                          }
+                        }}
+                        className="flex items-center justify-between rounded bg-white px-2 py-1 border border-blue-200 hover:border-blue-400 text-left transition"
+                      >
+                        <span className="font-bold text-slate-800 text-[10.5px]">
+                          {nbr.target_id.replace('CAM-', '')}
+                        </span>
+                        <span className="font-mono font-semibold text-blue-700 text-[10px]">
+                          {nbr.distance_meters}m ({nbr.est_transit_mins}m)
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Camera Search & Filter Bar */}
-              <div className="flex flex-col gap-1.5 border-t border-clay/20 pt-2">
-                <div className="flex items-center gap-2">
-                  <div className="relative flex flex-1 items-center">
-                    <Icon name="search" className="absolute left-2.5 h-3.5 w-3.5 text-mauve/70" />
-                    <input
-                      type="text"
-                      value={camSearchQuery}
-                      onChange={(e) => setCamSearchQuery(e.target.value)}
-                      placeholder="Filter 50+ detections (e.g. DL-01, Creta, Fortuner)..."
-                      className="h-7.5 w-full rounded-lg border border-clay/35 bg-cream pl-8 pr-2 text-[11px] font-bold text-ink outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {(['all', 'flagged', 'watchlist', 'clear'] as const).map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => setCamStatusFilter(st)}
-                        className={cx(
-                          'rounded-md px-1.5 py-0.5 text-[10px] font-bold capitalize transition',
-                          camStatusFilter === st
-                            ? 'bg-dusk text-cream'
-                            : 'border border-clay/30 bg-cream text-mauve hover:bg-sand/30'
-                        )}
-                      >
-                        {st}
-                      </button>
-                    ))}
-                  </div>
+              {/* Camera Telemetrics */}
+              <div className="grid grid-cols-3 gap-1.5 text-center text-[10.5px] text-ink">
+                <div className="rounded-lg bg-sand/30 p-1">
+                  <div className="text-mauve text-[9.5px]">Avg Speed</div>
+                  <div className="font-bold text-[12px]">{selCam.avgSpeed} km/h</div>
+                </div>
+                <div className="rounded-lg bg-sand/30 p-1">
+                  <div className="text-mauve text-[9.5px]">Today's Vol</div>
+                  <div className="font-bold text-[12px]">{selCam.vehiclesToday.toLocaleString()}</div>
+                </div>
+                <div className="rounded-lg bg-sand/30 p-1">
+                  <div className="text-mauve text-[9.5px]">30-Min Flow</div>
+                  <div className="font-bold text-[12px] text-dusk">{rawCam30MinDetections.length * 30} v/h</div>
                 </div>
               </div>
 
               {/* Cars Passed Through This Camera in Past 30 Minutes */}
               <div>
-                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-dusk mb-1.5">
-                  <span>Vehicles Logged at {selCam.code} (Past 30 Mins):</span>
+                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-dusk mb-1">
+                  <span>Plates Logged (Past 30m):</span>
                   <span className="text-[10px] text-mauve font-semibold">{filteredCamDetections.length} matches</span>
                 </div>
-                <div className="max-h-48 overflow-y-auto flex flex-col gap-1.5 pr-1">
-                  {filteredCamDetections.map((det) => (
+                <div className="max-h-32 overflow-y-auto flex flex-col gap-1 pr-1">
+                  {filteredCamDetections.slice(0, 8).map((det) => (
                     <div
                       key={det.id}
-                      className="flex items-center justify-between rounded-lg border border-clay/25 bg-cream px-2.5 py-1.5 text-[12px] hover:border-dusk/40 transition"
+                      className="flex items-center justify-between rounded border border-clay/25 bg-cream px-2 py-1 text-[11px] hover:border-dusk/40 transition"
                     >
-                      <div>
-                        <div className="font-bold text-ink flex items-center gap-1.5">
-                          {det.plate}
-                          <span className="text-[10px] font-normal text-mauve">({det.make} {det.model})</span>
-                        </div>
-                        <div className="text-[10px] text-mauve">
-                          {det.timeStr} · {det.speed} km/h · {det.dir} · <span className="font-semibold text-ink/80">{det.lane}</span>
-                        </div>
+                      <div className="truncate min-w-0 pr-1">
+                        <span className="font-bold text-ink">{det.plate}</span>
+                        <span className="text-[9.5px] text-mauve ml-1.5">({det.make} {det.model})</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Badge tone={det.status === 'watchlist' ? 'medium' : det.status === 'flagged' ? 'critical' : 'good'}>
-                          {det.status}
-                        </Badge>
-                        <button
-                          onClick={() => {
-                            if (det.vehicleRef) {
-                              setDynamicVehicles((prev) => ({ ...prev, [det.vehicleRef!.id]: det.vehicleRef! }));
-                              setSelectedVehicleId(det.vehicleRef.id);
-                            }
-                            setLayers((l) => ({ ...l, journey: true }));
-                            app.toast(`Tracing AI route for ${det.plate}`);
-                          }}
-                          className="rounded-md bg-dusk px-2 py-0.5 text-[11px] font-bold text-cream hover:bg-ink transition"
-                        >
-                          Trace Route
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          if (det.vehicleRef) {
+                            setDynamicVehicles((prev) => ({ ...prev, [det.vehicleRef!.id]: det.vehicleRef! }));
+                            setSelectedVehicleId(det.vehicleRef.id);
+                          }
+                          setLayers((l) => ({ ...l, journey: true }));
+                          app.toast(`Tracing AI route for ${det.plate}`);
+                        }}
+                        className="rounded bg-dusk px-1.5 py-0.5 text-[10px] font-bold text-cream hover:bg-ink transition shrink-0"
+                      >
+                        Trace
+                      </button>
                     </div>
                   ))}
-                  {filteredCamDetections.length === 0 && (
-                    <div className="p-3 text-center text-[11px] text-mauve">
-                      No detections match filter query "{camSearchQuery}"
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -967,11 +1410,11 @@ export function CityMapPage() {
                 <Btn
                   size="sm"
                   variant="solid"
-                  className="flex-1"
+                  className="flex-1 text-[12px] h-8"
                   icon="camera"
                   onClick={() => app.nav({ page: 'cameras', cameraId: selCam.id })}
                 >
-                  Open Live Camera Stream
+                  Full Camera Operations
                 </Btn>
               </div>
             </div>
@@ -1097,35 +1540,169 @@ export function CityMapPage() {
             onClick={() => handleSelectSector('all')}
             className="mt-3 w-full rounded-lg border border-clay/35 bg-cream/70 py-2 text-[12px] font-bold text-ink hover:bg-sand/40 transition text-center"
           >
-            Reset to Whole Delhi Grid
+            Reset to Tactical Grid
           </button>
         </Card>
 
-        {/* Column 3: Corridor Congestion & Open Alerts */}
+        {/* Column 3: Inter-Camera Speed Trap Radar & Anomaly Detector */}
         <div className="flex flex-col gap-4">
-          <Card className="p-4">
-            <Kicker>Corridor Congestion</Kicker>
-            <div className="mt-3 flex flex-col gap-2.5">
-              {ROADS.slice(0, 4).map((rd) => {
-                const lv = CONGESTION[rd.id] || 2;
-                return (
-                  <button key={rd.id} onClick={() => app.toast(`${rd.name} — ${['free', 'light', 'moderate', 'heavy'][lv - 1]} traffic`)} className="group text-left">
-                    <div className="flex items-center justify-between text-[13px]">
-                      <span className="font-semibold text-ink/90 group-hover:text-ink">{rd.name}</span>
-                      <span className="font-semibold capitalize text-mauve">{['free', 'light', 'moderate', 'heavy'][lv - 1]}</span>
+          <Card className="border-clay/30 bg-sand/45 p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <Kicker>Point-to-Point Speed Trap Radar</Kicker>
+                <Badge tone={speedResult?.isViolation ? 'critical' : 'good'}>
+                  {speedResult?.statusLabel || 'Active'}
+                </Badge>
+              </div>
+              <p className="mt-1 text-[11.5px] text-mauve/80">
+                Calculates average velocity over shortest road corridor between any 2 camera sightings:
+              </p>
+
+              {/* Camera Sightings & Time Inputs */}
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[11.5px]">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-mauve mb-1">1. Entry Camera</label>
+                  <select
+                    value={speedSourceCam}
+                    onChange={(e) => setSpeedSourceCam(e.target.value)}
+                    className="w-full rounded-lg border border-clay/35 bg-cream p-1.5 text-[11px] font-bold text-ink outline-none"
+                  >
+                    {CAMERAS.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} ({c.district})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-1 flex items-center gap-1">
+                    <span className="text-[10px] text-mauve">Time:</span>
+                    <input
+                      type="text"
+                      value={speedSourceTime}
+                      onChange={(e) => setSpeedSourceTime(e.target.value)}
+                      placeholder="08:45"
+                      className="w-full rounded border border-clay/30 bg-cream px-1.5 py-0.5 text-[11px] font-mono font-bold text-ink"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-mauve mb-1">2. Exit Camera</label>
+                  <select
+                    value={speedTargetCam}
+                    onChange={(e) => setSpeedTargetCam(e.target.value)}
+                    className="w-full rounded-lg border border-clay/35 bg-cream p-1.5 text-[11px] font-bold text-ink outline-none"
+                  >
+                    {CAMERAS.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} ({c.district})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-1 flex items-center gap-1">
+                    <span className="text-[10px] text-mauve">Time:</span>
+                    <input
+                      type="text"
+                      value={speedTargetTime}
+                      onChange={(e) => setSpeedTargetTime(e.target.value)}
+                      placeholder="08:47"
+                      className="w-full rounded border border-clay/30 bg-cream px-1.5 py-0.5 text-[11px] font-mono font-bold text-ink"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Speed Limit Selector */}
+              <div className="mt-2.5 flex items-center justify-between rounded-lg bg-cream/80 p-2 border border-clay/20 text-[11px]">
+                <span className="font-bold text-ink">Corridor Speed Limit:</span>
+                <div className="flex items-center gap-1">
+                  {[30, 50, 60].map((lim) => (
+                    <button
+                      key={lim}
+                      onClick={() => setSpeedLimit(lim)}
+                      className={cx(
+                        'rounded px-2 py-0.5 text-[10.5px] font-bold transition',
+                        speedLimit === lim ? 'bg-dusk text-cream' : 'border border-clay/30 bg-cream text-mauve'
+                      )}
+                    >
+                      {lim} km/h
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Calculated Speed Trap Results */}
+              {speedResult && (
+                <div className="mt-3 rounded-xl border border-clay/30 bg-cream p-3 shadow-inner">
+                  <div className="grid grid-cols-3 gap-2 text-center text-[10.5px]">
+                    <div className="rounded-lg bg-sand/35 p-1.5">
+                      <div className="text-mauve text-[9.5px]">Shortest Road Dist</div>
+                      <div className="font-bold text-[13px] text-ink">{speedResult.shortestRoadDistanceKm} km</div>
                     </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-clay/20">
-                      <div className="h-full rounded-full bg-dusk transition-all duration-500" style={{ width: `${lv * 25}%` }} />
+                    <div className="rounded-lg bg-sand/35 p-1.5">
+                      <div className="text-mauve text-[9.5px]">Transit Duration</div>
+                      <div className="font-bold text-[13px] text-ink">{speedResult.elapsedDurationStr}</div>
                     </div>
-                  </button>
-                );
-              })}
+                    <div
+                      className={cx(
+                        'rounded-lg p-1.5 text-white',
+                        speedResult.isViolation ? 'bg-red-600' : 'bg-emerald-600'
+                      )}
+                    >
+                      <div className="text-white/80 text-[9.5px]">Section Avg Speed</div>
+                      <div className="font-bold text-[13px]">{speedResult.calculatedSpeedKmh} km/h</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-[11px] text-slate-700 leading-snug">
+                    {speedResult.summary}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-3 flex items-center gap-2">
+              <Btn
+                size="sm"
+                variant="soft"
+                className="flex-1 text-[11.5px]"
+                icon="map"
+                onClick={() => {
+                  if (speedResult && mapInstanceRef.current) {
+                    const cA = speedResult.fromCam;
+                    const cB = speedResult.toCam;
+                    const b = L.latLngBounds([[cA.lat, cA.lng], [cB.lat, cB.lng]]);
+                    mapInstanceRef.current.fitBounds(b, { padding: [50, 50] });
+                    app.toast(`Inspecting corridor ${cA.code} ➔ ${cB.code} (${speedResult.shortestRoadDistanceKm} km)`);
+                  }
+                }}
+              >
+                Focus Corridor
+              </Btn>
+              <Btn
+                size="sm"
+                variant={speedResult?.isViolation ? 'danger' : 'solid'}
+                className="flex-1 text-[11.5px]"
+                icon="shield"
+                onClick={() => {
+                  if (speedResult) {
+                    app.toast(
+                      speedResult.isViolation
+                        ? `🚨 Automated E-Challan Dispatched for ${speedResult.plate} (${speedResult.calculatedSpeedKmh} km/h in ${speedResult.speedLimitKmh} km/h zone)`
+                        : `Verified compliant average speed for ${speedResult.plate}`
+                    );
+                  }
+                }}
+              >
+                {speedResult?.isViolation ? 'Issue E-Challan' : 'Verify Speed Log'}
+              </Btn>
             </div>
           </Card>
 
+          {/* Incident & Violation Live Queue */}
           <Card className="p-4">
             <div className="flex items-center justify-between">
-              <Kicker>Open Alerts in View</Kicker>
+              <Kicker>Active Incidents & Alerts</Kicker>
               <Badge tone="critical">{app.alerts.filter((a) => a.status === 'open').length}</Badge>
             </div>
             <div className="mt-2 flex flex-col">
