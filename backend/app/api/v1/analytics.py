@@ -39,11 +39,18 @@ def get_volume_trends(db: Session = Depends(get_db)):
     
     for i in range(12, -1, -1):
         slot_time = now - timedelta(hours=i * 2)
+        slot_start = slot_time - timedelta(hours=2)
         slot_label = slot_time.strftime("%H:00")
         
-        # Synthetic distribution for trend curve
-        base_count = 140 + int(60 * (1.0 + (i % 5)))
-        unique_count = int(base_count * 0.72)
+        base_count = db.query(Detection).filter(
+            Detection.timestamp >= slot_start,
+            Detection.timestamp < slot_time
+        ).count()
+        
+        unique_count = db.query(func.count(distinct(Detection.normalized_plate_text))).filter(
+            Detection.timestamp >= slot_start,
+            Detection.timestamp < slot_time
+        ).scalar() or 0
         
         trends.append(VolumeTrendPoint(
             timestamp_hour=slot_label,
@@ -59,13 +66,14 @@ def get_hotspot_intersections(db: Session = Depends(get_db)):
     hotspots = []
     
     for cam in cameras:
-        det_count = db.query(Detection).filter(Detection.camera_id == cam.id).count() or 42
+        det_count = db.query(Detection).filter(Detection.camera_id == cam.id).count()
+        congestion = round(min(0.95, det_count / 100.0), 2) if det_count > 0 else 0.0
         hotspots.append(HotspotIntersection(
             camera_id=cam.id,
             designation=cam.designation,
             location_address=cam.location_address,
             detection_count=det_count,
-            congestion_index=round(min(0.95, (det_count / 100.0) + 0.35), 2)
+            congestion_index=congestion
         ))
         
     return sorted(hotspots, key=lambda x: x.detection_count, reverse=True)

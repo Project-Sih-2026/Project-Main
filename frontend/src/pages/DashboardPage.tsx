@@ -376,30 +376,36 @@ export function OperationsPage() {
             </Btn>
           </div>
           <div className="mt-3 flex flex-col gap-2.5">
-            {HOTSPOTS.map((h) => (
-              <button
-                key={h.name}
-                onClick={() => app.nav({ page: 'map' })}
-                className="group rounded-xl border border-clay/25 bg-cream/80 px-3 py-2.5 text-left transition-all duration-150 hover:border-dusk/40 hover:bg-cream active:scale-[0.99]"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[13.5px] font-medium text-ink/90 transition-colors group-hover:text-ink">{h.name}</span>
-                  <Badge tone={h.level === 3 ? 'critical' : h.level === 2 ? 'medium' : 'good'}>
-                    {h.level === 3 ? 'Congested' : h.level === 2 ? 'Building' : 'Flowing'}
-                  </Badge>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2.5">
-                  <span className={cx('flex shrink-0', h.level === 3 ? '-space-x-2' : h.level === 2 ? '-space-x-1' : 'space-x-0.5')}>
-                    {Array.from({ length: h.level === 3 ? 10 : h.level === 2 ? 5 : 2 }).map((_, i) => (
-                      <Icon key={i} name="car" className={cx('h-3.5 w-3.5', h.level === 3 ? 'text-dusk' : h.level === 2 ? 'text-mauve' : 'text-clay')} />
-                    ))}
-                  </span>
-                  <span className="truncate text-[14px] font-semibold text-mauve/70">
-                    {h.veh.toLocaleString()} veh/hr · {h.note}
-                  </span>
-                </div>
-              </button>
-            ))}
+            {HOTSPOTS.length === 0 ? (
+              <div className="py-6 text-center text-[13px] font-semibold text-mauve/70">
+                No active traffic bottlenecks detected. Feeds flowing normally.
+              </div>
+            ) : (
+              HOTSPOTS.map((h) => (
+                <button
+                  key={h.name}
+                  onClick={() => app.nav({ page: 'map' })}
+                  className="group rounded-xl border border-clay/25 bg-cream/80 px-3 py-2.5 text-left transition-all duration-150 hover:border-dusk/40 hover:bg-cream active:scale-[0.99]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[13.5px] font-medium text-ink/90 transition-colors group-hover:text-ink">{h.name}</span>
+                    <Badge tone={h.level === 3 ? 'critical' : h.level === 2 ? 'medium' : 'good'}>
+                      {h.level === 3 ? 'Congested' : h.level === 2 ? 'Building' : 'Flowing'}
+                    </Badge>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2.5">
+                    <span className={cx('flex shrink-0', h.level === 3 ? '-space-x-2' : h.level === 2 ? '-space-x-1' : 'space-x-0.5')}>
+                      {Array.from({ length: h.level === 3 ? 10 : h.level === 2 ? 5 : 2 }).map((_, i) => (
+                        <Icon key={i} name="car" className={cx('h-3.5 w-3.5', h.level === 3 ? 'text-dusk' : h.level === 2 ? 'text-mauve' : 'text-clay')} />
+                      ))}
+                    </span>
+                    <span className="truncate text-[14px] font-semibold text-mauve/70">
+                      {h.veh.toLocaleString()} veh/hr · {h.note}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </Card>
       </div>

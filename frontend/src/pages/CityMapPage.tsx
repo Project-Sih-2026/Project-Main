@@ -25,80 +25,7 @@ export interface HotspotCorridor {
   bottleneckReason: string;
 }
 
-export const HOTSPOT_CORRIDORS: HotspotCorridor[] = [
-  {
-    id: 'cor-1',
-    name: 'Lal Quarter ↔ Vijay Chowk Radial',
-    fromCam: 'CAM-KN-01',
-    toCam: 'CAM-KN-02',
-    severity: 'critical',
-    congestionIndex: 88,
-    delayMins: 6.2,
-    avgSpeed: 14,
-    vehiclesPerHour: 1940,
-    bottleneckReason: 'High pedestrian conflict & retail vehicle loading choke'
-  },
-  {
-    id: 'cor-2',
-    name: 'Jheel Khurenja ↔ Gandhi Nagar Link',
-    fromCam: 'CAM-KN-04',
-    toCam: 'CAM-GN-01',
-    severity: 'critical',
-    congestionIndex: 84,
-    delayMins: 5.5,
-    avgSpeed: 16,
-    vehiclesPerHour: 1720,
-    bottleneckReason: 'Pushta road merge & wholesale textile logistics bottleneck'
-  },
-  {
-    id: 'cor-3',
-    name: 'Gandhi Nagar Core (Market ↔ Ashok Gali)',
-    fromCam: 'CAM-GN-01',
-    toCam: 'CAM-GN-06',
-    severity: 'high',
-    congestionIndex: 78,
-    delayMins: 4.1,
-    avgSpeed: 18,
-    vehiclesPerHour: 1450,
-    bottleneckReason: 'Narrow market lane obstruction & auto-rickshaw queue'
-  },
-  {
-    id: 'cor-4',
-    name: 'Shastri Park Pushta Highway Corridor',
-    fromCam: 'CAM-GN-04',
-    toCam: 'CAM-GN-08',
-    severity: 'high',
-    congestionIndex: 72,
-    delayMins: 3.8,
-    avgSpeed: 28,
-    vehiclesPerHour: 2480,
-    bottleneckReason: 'GT Road merge wave & inter-state freight surge'
-  },
-  {
-    id: 'cor-5',
-    name: 'Vikas Marg ↔ Swarn Cinema Arterial',
-    fromCam: 'CAM-KN-03',
-    toCam: 'CAM-KN-06',
-    severity: 'medium',
-    congestionIndex: 64,
-    delayMins: 2.5,
-    avgSpeed: 26,
-    vehiclesPerHour: 1890,
-    bottleneckReason: 'Metro station feeder traffic & bus stop deceleration'
-  },
-  {
-    id: 'cor-6',
-    name: 'Mahila Colony ↔ Geeta Colony Flyover Descent',
-    fromCam: 'CAM-GN-02',
-    toCam: 'CAM-GN-05',
-    severity: 'medium',
-    congestionIndex: 61,
-    delayMins: 2.2,
-    avgSpeed: 30,
-    vehiclesPerHour: 1620,
-    bottleneckReason: 'Flyover off-ramp deceleration & signal queue'
-  }
-];
+const HOTSPOT_CORRIDORS: HotspotCorridor[] = [];
 
 // Defined Sector Extents for Instant Sector Zoom
 interface SectorPreset {
@@ -114,43 +41,51 @@ interface SectorPreset {
 const SECTORS: SectorPreset[] = [
   {
     id: 'all',
-    name: 'Krishna Nagar & Gandhi Nagar Grid',
-    district: 'East Delhi Tactical Sector',
-    center: [28.6585, 77.2730],
-    zoom: 14.5,
+    name: 'All East Delhi Sectors',
+    district: 'East Delhi Surveillance Grid',
+    center: [28.6450, 77.2950],
+    zoom: 12.8,
     camCount: 20,
-    bounds: [[28.648, 77.255], [28.672, 77.292]]
+    bounds: [[28.590, 77.250], [28.690, 77.340]]
   },
   {
-    id: 'krishna-nagar',
-    name: 'Krishna Nagar Core & Lal Quarter',
-    district: 'Krishna Nagar',
-    center: [28.6570, 77.2800],
-    zoom: 15.5,
-    camCount: 10,
-  },
-  {
-    id: 'gandhi-nagar',
-    name: 'Gandhi Nagar Market & Subhash Mohalla',
-    district: 'Gandhi Nagar',
-    center: [28.6620, 77.2665],
-    zoom: 15.5,
-    camCount: 10,
-  },
-  {
-    id: 'pushta-corridor',
-    name: 'Pushta Highway & Shastri Park Link',
-    district: 'Gandhi Nagar',
-    center: [28.6680, 77.2630],
-    zoom: 15.2,
+    id: 'mayur-vihar',
+    name: 'Mayur Vihar & Akshardham (South)',
+    district: 'Mayur Vihar',
+    center: [28.6100, 77.2950],
+    zoom: 14.0,
     camCount: 4,
   },
   {
     id: 'vikas-marg',
-    name: 'Vikas Marg & Metro Station Entry',
-    district: 'Krishna Nagar',
-    center: [28.6525, 77.2760],
-    zoom: 15.2,
+    name: 'Vikas Marg (Laxmi Nagar & Preet Vihar)',
+    district: 'Vikas Marg Corridor',
+    center: [28.6360, 77.2860],
+    zoom: 14.5,
+    camCount: 3,
+  },
+  {
+    id: 'anand-vihar',
+    name: 'Anand Vihar, Karkardooma & Ghazipur',
+    district: 'East Border Corridor',
+    center: [28.6400, 77.3180],
+    zoom: 14.0,
+    camCount: 4,
+  },
+  {
+    id: 'shahdara-dilshad',
+    name: 'Shahdara, Vivek Vihar & Dilshad Garden',
+    district: 'North East Sector',
+    center: [28.6730, 77.3100],
+    zoom: 14.0,
+    camCount: 5,
+  },
+  {
+    id: 'yamuna-pushta',
+    name: 'Krishna Nagar, Gandhi Nagar & Pushta',
+    district: 'Central & Pushta',
+    center: [28.6620, 77.2680],
+    zoom: 14.5,
     camCount: 4,
   },
 ];
@@ -273,9 +208,9 @@ export function CityMapPage() {
     }
 
     const map = L.map(mapContainerRef.current, {
-      center: [28.6585, 77.2730],
-      zoom: 15,
-      minZoom: 11,
+      center: [28.6450, 77.2950],
+      zoom: 13,
+      minZoom: 10,
       maxZoom: 19,
       zoomControl: false,
       attributionControl: false,

@@ -56,18 +56,24 @@ export default function CityApp() {
         api.getDetections({ limit: 200 }).catch(() => []),
         api.getAlerts().catch(() => []),
       ]);
-      if (Array.isArray(dets) && dets.length > 0) {
-        const liveVehs = detectionsToVehicles(dets);
-        setLiveVehicles(liveVehs);
-        setVehicles(liveVehs);
+      if (Array.isArray(dets)) {
+        if (dets.length === 0) {
+          setLiveVehicles([]);
+          setVehicles([]);
+          setAlerts([]);
+        } else {
+          const liveVehs = detectionsToVehicles(dets);
+          setLiveVehicles(liveVehs);
+          setVehicles(liveVehs);
 
-        const liveAltsFromDets = detectionsToAlerts(dets);
-        const liveAltsFromBackend = Array.isArray(alts) ? backendAlertsToTrafficAlerts(alts, dets) : [];
+          const liveAltsFromDets = detectionsToAlerts(dets);
+          const liveAltsFromBackend = Array.isArray(alts) ? backendAlertsToTrafficAlerts(alts, dets) : [];
 
-        const alertMap = new Map<string, TrafficAlert>();
-        liveAltsFromDets.forEach((a) => alertMap.set(a.id, a));
-        liveAltsFromBackend.forEach((a) => alertMap.set(a.id, a));
-        setAlerts(Array.from(alertMap.values()));
+          const alertMap = new Map<string, TrafficAlert>();
+          liveAltsFromDets.forEach((a) => alertMap.set(a.id, a));
+          liveAltsFromBackend.forEach((a) => alertMap.set(a.id, a));
+          setAlerts(Array.from(alertMap.values()));
+        }
       }
     } catch (e) {
       console.warn('CityApp failed to fetch live database detections:', e);

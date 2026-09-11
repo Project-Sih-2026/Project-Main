@@ -82,7 +82,13 @@ export function AnalyticsPage() {
         <Card className="section-contrast p-4 sm:p-5">
           <Kicker>Violations · 30 days</Kicker>
           <div className="mt-4">
-            <Bars data={VIOLATIONS.map((v) => ({ label: v.type, value: v.count }))} onClick={(l) => app.toast(`${l}: ${VIOLATIONS.find((v) => v.type === l)?.count ?? 0} recorded events`)} />
+            {VIOLATIONS.length === 0 ? (
+              <div className="py-8 text-center text-[13px] font-semibold text-mauve/70">
+                No violation enforcement events logged.
+              </div>
+            ) : (
+              <Bars data={VIOLATIONS.map((v) => ({ label: v.type, value: v.count }))} onClick={(l) => app.toast(`${l}: ${VIOLATIONS.find((v) => v.type === l)?.count ?? 0} recorded events`)} />
+            )}
           </div>
           <div className="mt-4 border-t border-clay/25 pt-3 text-[14px] font-semibold text-mauve/75">
             Total enforcement events: <span className="font-bold text-mauve">{violTotal.toLocaleString()}</span>
@@ -92,15 +98,21 @@ export function AnalyticsPage() {
         <Card className="section-contrast p-4 sm:p-5">
           <Kicker>Peak windows</Kicker>
           <div className="mt-3 flex flex-col gap-3">
-            {peak.map((p) => (
-              <button key={p.window} onClick={() => app.toast(`${p.window} — ${p.vol.toLocaleString()} veh/hr`)} className="rounded-xl border border-clay/25 bg-sand/45 px-3.5 py-3 text-left transition-colors hover:border-dusk/35 hover:bg-cream">
-                <div className="flex items-center justify-between">
-                  <span className="text-[14px] font-bold text-ink/90">{p.window}</span>
-                  <span className="text-[14px] font-bold tabular-nums text-mauve">{p.vol.toLocaleString()}</span>
-                </div>
-                <div className="mt-0.5 text-[14px] font-semibold text-mauve/70">{p.note}</div>
-              </button>
-            ))}
+            {peak.length === 0 ? (
+              <div className="py-8 text-center text-[13px] font-semibold text-mauve/70">
+                No peak surge windows recorded.
+              </div>
+            ) : (
+              peak.map((p) => (
+                <button key={p.window} onClick={() => app.toast(`${p.window} — ${p.vol.toLocaleString()} veh/hr`)} className="rounded-xl border border-clay/25 bg-sand/45 px-3.5 py-3 text-left transition-colors hover:border-dusk/35 hover:bg-cream">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-bold text-ink/90">{p.window}</span>
+                    <span className="text-[14px] font-bold tabular-nums text-mauve">{p.vol.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-0.5 text-[14px] font-semibold text-mauve/70">{p.note}</div>
+                </button>
+              ))
+            )}
           </div>
         </Card>
       </div>
@@ -110,14 +122,22 @@ export function AnalyticsPage() {
           <Kicker>District congestion index</Kicker>
           <Btn size="sm" variant="ghost" icon="map" onClick={() => app.nav({ page: 'map' })}>View on map <Icon name="arrowRight" className="h-3.5 w-3.5" /></Btn>
         </div>
-        <div className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
-          {CONGESTION.map((c) => (
-            <button key={c.district} onClick={() => app.toast(`${c.district} — index ${c.index} (${c.delta === '0' ? 'stable' : `${c.delta} vs yesterday`})`)} className="group grid grid-cols-[130px_1fr_70px] items-center gap-3 text-left">
-              <span className="truncate text-[14px] font-semibold text-mauve/80 group-hover:text-ink">{c.district}</span>
-              <span className="h-2 overflow-hidden rounded-full bg-clay/20"><span className="block h-full rounded-full bg-dusk transition-all duration-500 group-hover:bg-mauve" style={{ width: `${c.index}%` }} /></span>
-              <span className="text-right text-[14px] font-semibold tabular-nums text-mauve/80">{c.index} <span className={c.delta.startsWith('+') ? 'text-mauve' : c.delta.startsWith('−') ? 'text-dusk' : 'text-mauve/55'}>{c.delta}</span></span>
-            </button>
-          ))}
+        <div className="mt-4">
+          {CONGESTION.length === 0 ? (
+            <div className="py-6 text-center text-[13px] font-semibold text-mauve/70">
+              No district congestion bottlenecks recorded. Feeds nominal.
+            </div>
+          ) : (
+            <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+              {CONGESTION.map((c) => (
+                <button key={c.district} onClick={() => app.toast(`${c.district} — index ${c.index} (${c.delta === '0' ? 'stable' : `${c.delta} vs yesterday`})`)} className="group grid grid-cols-[130px_1fr_70px] items-center gap-3 text-left">
+                  <span className="truncate text-[14px] font-semibold text-mauve/80 group-hover:text-ink">{c.district}</span>
+                  <span className="h-2 overflow-hidden rounded-full bg-clay/20"><span className="block h-full rounded-full bg-dusk transition-all duration-500 group-hover:bg-mauve" style={{ width: `${c.index}%` }} /></span>
+                  <span className="text-right text-[14px] font-semibold tabular-nums text-mauve/80">{c.index} <span className={c.delta.startsWith('+') ? 'text-mauve' : c.delta.startsWith('−') ? 'text-dusk' : 'text-mauve/55'}>{c.delta}</span></span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
@@ -128,11 +148,11 @@ export function AnalyticsPage() {
               <div className="mt-1 font-display text-[22px] font-bold text-cream">ANPR accuracy — last 12 cycles</div>
             </div>
             <span className="rounded-full border border-clay/35 bg-sand/45 px-3 py-1.5 text-[14px] font-bold uppercase tracking-[0.08em] text-mauve">
-              {OCR_TREND[OCR_TREND.length - 1].toFixed(1)}% current
+              {OCR_TREND.length > 0 ? `${OCR_TREND[OCR_TREND.length - 1].toFixed(1)}% current` : '0.0% current'}
             </span>
           </div>
           <div className="mt-4">
-            <AreaChart data={OCR_TREND} height={170} color="#C2CFDF" />
+            <AreaChart data={OCR_TREND.length > 0 ? OCR_TREND : [0, 0, 0, 0, 0, 0]} height={170} color="#C2CFDF" />
           </div>
           <div className="mt-2 flex justify-between text-[14px] font-semibold tabular-nums text-sand/80">
             <span>−11</span>

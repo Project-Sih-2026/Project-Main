@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // Dedicated Vite Server Configuration for AI Vehicle Detection Portal on Port 5174
 export default defineConfig({
+  cacheDir: 'node_modules/.vite-detection',
   plugins: [
     react(),
     tailwindcss(),

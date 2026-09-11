@@ -163,21 +163,29 @@ export function AlertsPage() {
           <Kicker>Hotspot zones under watch</Kicker>
           <Btn size="sm" variant="ghost" onClick={() => app.nav({ page: 'map' })}>City map</Btn>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {HOTSPOTS.map((h) => (
-            <div key={h.name} className="rounded-xl border border-clay/25 bg-cream/80 px-3.5 py-3 transition-colors hover:border-dusk/35">
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[13.5px] font-semibold text-ink/90">{h.name}</span>
-                <span className="flex shrink-0 gap-0.5" aria-label={`Congestion level ${h.level} of 3`}>
-                  {[1, 2, 3].map((i) => (
-                    <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: i <= h.level ? 'rgba(51,81,126,.9)' : 'rgba(194,207,223,.3)' }} />
-                  ))}
-                </span>
-              </div>
-              <div className="mt-1 text-[14px] font-semibold tabular-nums text-mauve/75">{h.veh.toLocaleString()} veh/hr</div>
-              <div className="mt-1.5 text-[14px] font-semibold leading-snug text-mauve/70">{h.note}</div>
+        <div className="mt-4">
+          {HOTSPOTS.length === 0 ? (
+            <div className="py-6 text-center text-[13px] font-semibold text-mauve/70">
+              No active hotspot incidents or watch zones. All sectors nominal.
             </div>
-          ))}
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {HOTSPOTS.map((h) => (
+                <div key={h.name} className="rounded-xl border border-clay/25 bg-cream/80 px-3.5 py-3 transition-colors hover:border-dusk/35">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-[13.5px] font-semibold text-ink/90">{h.name}</span>
+                    <span className="flex shrink-0 gap-0.5" aria-label={`Congestion level ${h.level} of 3`}>
+                      {[1, 2, 3].map((i) => (
+                        <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: i <= h.level ? 'rgba(51,81,126,.9)' : 'rgba(194,207,223,.3)' }} />
+                      ))}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[14px] font-semibold tabular-nums text-mauve/75">{h.veh.toLocaleString()} veh/hr</div>
+                  <div className="mt-1.5 text-[14px] font-semibold leading-snug text-mauve/70">{h.note}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
     </div>
