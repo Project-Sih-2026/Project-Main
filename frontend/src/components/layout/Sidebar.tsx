@@ -9,7 +9,7 @@ const NAV: { id: PageId; icon: IconName; label: string; externalUrl?: string }[]
   { id: 'map', icon: 'map', label: 'City Map' },
   { id: 'alerts', icon: 'bell', label: 'Alerts' },
   { id: 'analytics', icon: 'chart', label: 'Analytics' },
-  { id: 'detection_portal' as any, icon: 'upload', label: 'AI Detection Portal', externalUrl: 'http://localhost:5174' },
+  { id: 'upload', icon: 'upload', label: 'AI Detection Portal' },
 ];
 
 export function Sidebar() {

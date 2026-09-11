@@ -52,10 +52,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Configuration
+# CORS Configuration - permits all dev origins across LAN and multi-device networks
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permits dev origins
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

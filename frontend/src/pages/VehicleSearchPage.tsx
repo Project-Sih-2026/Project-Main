@@ -4,6 +4,7 @@ import { Icon } from '../components/Icons';
 import { Badge, Btn, Card, Empty, Input, Kicker, Select, cx } from '../components/ui';
 import { VEHICLES, camById, type Vehicle, type VehicleStatus } from '../data/mock';
 import { api, BACKEND_STATIC } from '../services/api';
+import { getDetectionPortalUrl } from '../utils/navigation';
 import type { Detection } from '../types';
 
 const TYPES = ['All types', 'Sedan', 'SUV', 'Truck', 'Bus', 'Two-wheeler', 'Van', 'Car'];
@@ -111,7 +112,7 @@ export function VehicleSearchPage() {
         </div>
 
         <a
-          href="http://localhost:5174"
+          href={getDetectionPortalUrl()}
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0"
@@ -243,7 +244,7 @@ export function VehicleSearchPage() {
                   Upload images on Port 5174 to see them instantly recorded in this database with their vehicle types and plates.
                 </p>
                 <a
-                  href="http://localhost:5174"
+                  href={getDetectionPortalUrl()}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
@@ -441,7 +442,7 @@ export function VehicleSearchPage() {
                     <span className="text-mauve">Use the edge detection portal on Port 5174 to upload and verify.</span>
                   </div>
                   <a
-                    href="http://localhost:5174"
+                    href={getDetectionPortalUrl()}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 shrink-0"

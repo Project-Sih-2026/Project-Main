@@ -13,7 +13,7 @@ const GOV_NAV: { id: PageId; icon: IconName; label: string; externalUrl?: string
   { id: 'map', icon: 'map', label: 'City Map' },
   { id: 'alerts', icon: 'bell', label: 'Alerts' },
   { id: 'analytics', icon: 'chart', label: 'Analytics' },
-  { id: 'dashboard' as PageId, icon: 'upload', label: 'AI Detection Portal (Port 5174)', externalUrl: 'http://localhost:5174' },
+  { id: 'upload', icon: 'upload', label: 'AI Detection Portal' },
 ];
 
 export function GovNav() {

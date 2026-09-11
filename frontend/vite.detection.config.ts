@@ -10,7 +10,7 @@ export default defineConfig({
     {
       name: 'rewrite-root-to-detection',
       configureServer(server) {
-        server.middlewares.use((req, res, next) => {
+        server.middlewares.use((req, _res, next) => {
           if (req.url === '/' || req.url === '/index.html') {
             req.url = '/detection.html';
           }
@@ -21,7 +21,8 @@ export default defineConfig({
   ],
   server: {
     port: 5174,
-    host: true,
+    host: '0.0.0.0',
+    cors: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

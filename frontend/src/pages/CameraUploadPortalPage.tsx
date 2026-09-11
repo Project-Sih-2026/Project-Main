@@ -345,36 +345,36 @@ export function CameraUploadPortalPage() {
       {/* Top Header & Stat Indicators */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-clay/25 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-mauve">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Edge CCTV Ingestion • YOLOv8 Custom Weights: <span className="font-mono font-bold text-blue-800 bg-blue-500/10 px-1.5 py-0.5 rounded">best.pt</span>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-200">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            Edge CCTV Ingestion • YOLOv8 Custom Weights: <span className="font-mono font-bold text-sky-300 bg-blue-900/60 border border-blue-400/30 px-1.5 py-0.5 rounded">best.pt</span>
           </div>
-          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+          <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-white sm:text-3xl drop-shadow-sm">
             Vehicle Detection & Dataset Management
           </h1>
-          <p className="mt-1 text-sm text-mauve/80 max-w-2xl">
+          <p className="mt-1 text-sm text-slate-200/90 max-w-2xl">
             Click any surveillance camera to open its fresh image upload portal, assign vehicle or owner names to be saved in the dataset, and manage records directly in the persistent database below.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <div className="rounded-xl border border-clay/30 bg-white/80 px-4 py-2.5 shadow-sm">
-            <span className="text-mauve block text-[10px] uppercase font-bold">Stored in Dataset</span>
-            <span className="font-mono text-lg font-extrabold text-ink">{storedDetections.length}</span>
+          <div className="rounded-xl border border-clay/30 bg-white/90 px-4 py-2.5 shadow-sm">
+            <span className="text-slate-500 block text-[10px] uppercase font-bold">Stored in Dataset</span>
+            <span className="font-mono text-lg font-extrabold text-slate-900">{storedDetections.length}</span>
           </div>
-          <div className="rounded-xl border border-clay/30 bg-white/80 px-4 py-2.5 shadow-sm">
-            <span className="text-mauve block text-[10px] uppercase font-bold">Unique Plates</span>
+          <div className="rounded-xl border border-clay/30 bg-white/90 px-4 py-2.5 shadow-sm">
+            <span className="text-slate-500 block text-[10px] uppercase font-bold">Unique Plates</span>
             <span className="font-mono text-lg font-extrabold text-blue-600">{uniquePlatesCount}</span>
           </div>
           <button
             onClick={() => setShowWatchlistDrawer(!showWatchlistDrawer)}
-            className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 shadow-sm hover:bg-rose-500/20 transition-all text-left"
+            className="flex items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-900/40 backdrop-blur px-4 py-2.5 shadow-sm hover:bg-rose-900/60 transition-all text-left"
           >
             <div>
-              <span className="text-rose-800 block text-[10px] uppercase font-bold">Watchlist Target Plates</span>
-              <span className="font-mono text-lg font-extrabold text-rose-700">{watchlistItems.length}</span>
+              <span className="text-rose-200 block text-[10px] uppercase font-bold">Watchlist Target Plates</span>
+              <span className="font-mono text-lg font-extrabold text-rose-100">{watchlistItems.length}</span>
             </div>
-            <Icon name="shield" className="h-4 w-4 text-rose-600 ml-1" />
+            <Icon name="shield" className="h-4 w-4 text-rose-300 ml-1" />
           </button>
         </div>
       </div>
@@ -504,11 +504,11 @@ export function CameraUploadPortalPage() {
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
-              <Icon name="camera" className="h-5 w-5 text-blue-600" />
+            <h2 className="font-display text-lg font-bold text-white flex items-center gap-2 drop-shadow-sm">
+              <Icon name="camera" className="h-5 w-5 text-blue-400" />
               1. CCTV Camera Network (Click Any Camera for Fresh Upload)
             </h2>
-            <p className="text-xs text-mauve mt-0.5">
+            <p className="text-xs text-slate-200/90 mt-0.5">
               Clicking any camera resets the upload form with a clean slate for that specific CCTV location.
             </p>
           </div>
@@ -939,15 +939,15 @@ export function CameraUploadPortalPage() {
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700">
-              <Icon name="layers" className="h-4 w-4" />
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-300">
+              <Icon name="layers" className="h-4 w-4 text-blue-400" />
               <span>Persistent SQLite Dataset</span>
             </div>
-            <h2 className="font-display text-xl font-bold text-ink mt-0.5">
+            <h2 className="font-display text-xl font-bold text-white mt-0.5 drop-shadow-sm">
               2. Stored Vehicle Plates & Names Dataset ({storedDetections.length} Records)
             </h2>
-            <p className="text-xs text-mauve mt-0.5">
-              Live records stored in the SQLite database (<code className="font-mono text-ink">traffic_analytics.db</code>). You can edit vehicle names directly in the table below.
+            <p className="text-xs text-slate-200/90 mt-0.5">
+              Live records stored in the SQLite database (<code className="font-mono text-white bg-white/10 px-1 py-0.5 rounded">traffic_analytics.db</code>). You can edit vehicle names directly in the table below.
             </p>
           </div>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Icon, type IconName } from '../Icons';
 import { cx, useClock } from '../ui';
 import { useApp } from '../../state/appContext';
+import { getDetectionPortalUrl } from '../../utils/navigation';
 
 const TITLES: Record<string, { kicker: string; title: string }> = {
   dashboard: { kicker: '', title: 'Dashboard' },
@@ -11,6 +12,7 @@ const TITLES: Record<string, { kicker: string; title: string }> = {
   alerts: { kicker: 'Response', title: 'Alert Center' },
   analytics: { kicker: 'Insight', title: 'Traffic Analytics' },
   settings: { kicker: 'Console', title: 'Settings' },
+  upload: { kicker: 'Edge AI Ingestion', title: 'AI Vehicle Detection & Plate Registry' },
 };
 
 export function TopBar() {
@@ -55,7 +57,7 @@ export function TopBar() {
         </form>
 
         <a
-          href="http://localhost:5174"
+          href={getDetectionPortalUrl()}
           target="_blank"
           rel="noreferrer"
           className="hidden sm:flex items-center gap-1.5 rounded-xl border border-blue-600/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all shadow-sm"

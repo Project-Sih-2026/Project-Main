@@ -12,6 +12,7 @@ import { CityMapPage } from './pages/CityMapPage';
 import { AlertsPage } from './pages/AlertCenterPage';
 import { AnalyticsPage } from './pages/AnalyticsViewPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CameraUploadPortalPage } from './pages/CameraUploadPortalPage';
 import {
   ALERTS, DEFAULT_SETTINGS, VEHICLES, setLiveVehicles,
   type AlertStatus, type Settings, type User, type Vehicle, type TrafficAlert
@@ -23,8 +24,7 @@ export default function CityApp() {
   const getInitialPage = (): PageId => {
     const hash = window.location.hash.replace('#', '').toLowerCase();
     if (hash === 'upload' || hash === 'detection' || hash === 'anpr') {
-      window.location.href = 'http://localhost:5174';
-      return 'dashboard';
+      return 'upload';
     }
     if (hash === 'vehicles' || hash === 'search') return 'vehicles';
     if (hash === 'cameras') return 'cameras';
@@ -91,8 +91,8 @@ export default function CityApp() {
     const onHashChange = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
       if (hash === 'upload' || hash === 'detection' || hash === 'anpr') {
-        window.location.href = 'http://localhost:5174';
-      } else if (['dashboard', 'vehicles', 'cameras', 'map', 'alerts', 'analytics', 'settings'].includes(hash)) {
+        setPage('upload');
+      } else if (['dashboard', 'vehicles', 'cameras', 'map', 'alerts', 'analytics', 'settings', 'upload'].includes(hash)) {
         setPage(hash as PageId);
       }
     };
@@ -175,6 +175,7 @@ export default function CityApp() {
       case 'alerts': return <AlertsPage />;
       case 'analytics': return <AnalyticsPage />;
       case 'settings': return <SettingsPage />;
+      case 'upload': return <CameraUploadPortalPage />;
       default: return <DashboardPage />;
     }
   };

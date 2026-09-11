@@ -6,11 +6,23 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss()
+    tailwindcss(),
+    {
+      name: 'rewrite-detection-portal',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url === '/detection' || req.url === '/detection/') {
+            req.url = '/detection.html';
+          }
+          next();
+        });
+      }
+    }
   ],
   server: {
     port: 5173,
-    host: true,
+    host: '0.0.0.0',
+    cors: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

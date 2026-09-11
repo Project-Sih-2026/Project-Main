@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../state/appContext';
 import { CameraFeed } from '../components/CameraFeed';
 import { Icon } from '../components/Icons';
+import { getDetectionPortalUrl } from '../utils/navigation';
 import { Badge, Btn, Card, Empty, Kicker, Tabs, cx } from '../components/ui';
 import { CAMERAS, CAMERA_GROUPS, UPTIME, VEHICLES, camById, type CameraStatus } from '../data/mock';
 
@@ -129,7 +130,7 @@ export function CamerasPage() {
                 <Kicker>Plates captured — {cam.code}</Kicker>
                 <div className="flex items-center gap-2">
                   <a
-                    href="http://localhost:5174"
+                    href={getDetectionPortalUrl()}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1.5 rounded-lg border border-blue-600/30 bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all"

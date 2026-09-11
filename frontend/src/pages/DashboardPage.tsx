@@ -6,6 +6,7 @@ import { Icon, type IconName } from '../components/Icons';
 import { Badge, Btn, Card, Kicker, Select, Tabs, cx, useClock } from '../components/ui';
 import { CAMERAS, HOTSPOTS, RANGES, timeAgo, type RangeKey } from '../data/mock';
 import { api, BACKEND_STATIC } from '../services/api';
+import { getDetectionPortalUrl } from '../utils/navigation';
 import type { Detection } from '../types';
 
 const KPIS = (rk: RangeKey, openAlerts: number, vehicleCount: number) => {
@@ -124,7 +125,7 @@ export function OperationsPage() {
         </div>
 
         <a
-          href="http://localhost:5174"
+          href={getDetectionPortalUrl()}
           target="_blank"
           rel="noreferrer"
           className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0"
@@ -261,7 +262,7 @@ export function OperationsPage() {
               View in Vehicle Search <Icon name="arrowRight" className="h-3.5 w-3.5" />
             </Btn>
             <a
-              href="http://localhost:5174"
+              href={getDetectionPortalUrl()}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-blue-600/10 hover:bg-blue-600/20 px-3 py-1.5 text-xs font-bold text-blue-800 transition-colors"
@@ -310,7 +311,7 @@ export function OperationsPage() {
           <div className="py-8 text-center text-xs text-mauve">
             <p className="font-semibold text-ink">No vehicle frames ingested in the database yet</p>
             <p className="mt-1 text-mauve/75">
-              Upload a vehicle image on <a href="http://localhost:5174" target="_blank" rel="noreferrer" className="text-blue-700 underline font-bold">Port 5174</a> to see live ANPR recognition here.
+              Upload a vehicle image on <a href={getDetectionPortalUrl()} target="_blank" rel="noreferrer" className="text-blue-700 underline font-bold">Port 5174</a> to see live ANPR recognition here.
             </p>
           </div>
         )}

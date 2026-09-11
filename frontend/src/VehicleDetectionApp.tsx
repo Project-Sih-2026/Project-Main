@@ -3,6 +3,7 @@ import { AppContext, type Nav, type PageId, type Toast } from './state/appContex
 import { CameraUploadPortalPage } from './pages/CameraUploadPortalPage';
 import { Toasts } from './components/ui';
 import { Icon } from './components/Icons';
+import { getOperationsPortalUrl } from './utils/navigation';
 import { PageBackground } from './components/layout/PageBackground';
 import {
   ALERTS, DEFAULT_SETTINGS, VEHICLES,
@@ -32,9 +33,9 @@ export default function VehicleDetectionApp() {
     setNavSeq((s) => s + 1);
     setTarget(n);
     if (n.page === 'vehicles' && n.query) {
-      window.open(`http://localhost:5173/#vehicles`, '_blank');
+      window.open(getOperationsPortalUrl('vehicles'), '_blank');
     } else if (n.page === 'map') {
-      window.open(`http://localhost:5173/#map`, '_blank');
+      window.open(getOperationsPortalUrl('map'), '_blank');
     }
   }, []);
 
@@ -101,7 +102,7 @@ export default function VehicleDetectionApp() {
               </div>
 
               <a
-                href="http://localhost:5173"
+                href={getOperationsPortalUrl()}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 rounded-xl border border-clay/35 bg-ink px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-ink/90 transition-all"
