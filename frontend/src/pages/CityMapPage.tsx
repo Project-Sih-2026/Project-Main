@@ -1448,7 +1448,7 @@ export function CityMapPage() {
                     focusVeh.status === 'flagged'
                       ? 'bg-red-500/10 border-red-500/30 text-red-900'
                       : focusVeh.status === 'watchlist'
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-900'
+                      ? 'bg-blue-500/10 border-blue-500/30 text-blue-900'
                       : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900'
                   )}
                 >
@@ -1485,7 +1485,7 @@ export function CityMapPage() {
                           </div>
                           {idx < focusVeh.journey.length - 1 && (
                             <div className="mt-1 rounded bg-cream/80 p-1 text-[10px] text-ink/90 border border-clay/20">
-                              <span className="font-bold text-amber-700">➜ AI Primary Path:</span> Road Corridor to {focusVeh.journey[idx + 1].cam}
+                              <span className="font-bold text-blue-700">➜ AI Primary Path:</span> Road Corridor to {focusVeh.journey[idx + 1].cam}
                               <br />
                               <span className="font-bold text-purple-700">⤹ Feasible Branch:</span> Parallel Radial Route
                             </div>

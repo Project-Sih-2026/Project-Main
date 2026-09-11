@@ -15,8 +15,8 @@ export const KPICardsRow: React.FC<KPIRowProps> = ({ kpis, onCardClick }) => {
       value: kpis?.total_detection_events ?? 248,
       subtext: 'Across all active city cameras',
       icon: Activity,
-      color: 'text-[#28142E]',
-      badgeBg: 'bg-[#F3B6CA]/30 text-[#28142E]'
+      color: 'text-[#0B2545]',
+      badgeBg: 'bg-[#8FBCE6]/30 text-[#0B2545]'
     },
     {
       id: 'unique_plates',
@@ -24,8 +24,8 @@ export const KPICardsRow: React.FC<KPIRowProps> = ({ kpis, onCardClick }) => {
       value: kpis?.unique_normalized_plates ?? 184,
       subtext: 'Distinct vehicles observed',
       icon: Car,
-      color: 'text-[#28142E]',
-      badgeBg: 'bg-[#E8A8BF]/30 text-[#28142E]'
+      color: 'text-[#0B2545]',
+      badgeBg: 'bg-[#6FA8DC]/30 text-[#0B2545]'
     },
     {
       id: 'cameras',
@@ -33,8 +33,8 @@ export const KPICardsRow: React.FC<KPIRowProps> = ({ kpis, onCardClick }) => {
       value: `${kpis?.active_cameras_count ?? 6} / 6`,
       subtext: 'Operational CCTV feeds',
       icon: Camera,
-      color: 'text-[#28142E]',
-      badgeBg: 'bg-[#DCD3C4] text-[#28142E]'
+      color: 'text-[#0B2545]',
+      badgeBg: 'bg-[#D2DEEC] text-[#0B2545]'
     },
     {
       id: 'review_required',
@@ -55,10 +55,10 @@ export const KPICardsRow: React.FC<KPIRowProps> = ({ kpis, onCardClick }) => {
           <div
             key={card.id}
             onClick={() => onCardClick && onCardClick(card.id)}
-            className="p-4 rounded-2xl bg-white border border-[#E8E0D2] shadow-md hover:shadow-lg hover:border-[#32193A] transition duration-150 cursor-pointer"
+            className="p-4 rounded-2xl bg-white border border-[#E3EAF3] shadow-md hover:shadow-lg hover:border-[#32193A] transition duration-150 cursor-pointer"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#786C7C]">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5B6E8C]">
                 {card.label}
               </span>
               <div className={`p-2 rounded-xl ${card.badgeBg}`}>
@@ -67,12 +67,12 @@ export const KPICardsRow: React.FC<KPIRowProps> = ({ kpis, onCardClick }) => {
             </div>
 
             <div className="flex items-baseline gap-2">
-              <span className="font-mono text-2xl font-black tracking-tight text-[#221526]">
+              <span className="font-mono text-2xl font-black tracking-tight text-[#081A33]">
                 {card.value}
               </span>
             </div>
 
-            <p className="text-[11px] text-[#786C7C] mt-1">
+            <p className="text-[11px] text-[#5B6E8C] mt-1">
               {card.subtext}
             </p>
           </div>

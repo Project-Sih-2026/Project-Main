@@ -4,7 +4,7 @@ import { useState } from 'react';
 export function AreaChart({
   data,
   height = 200,
-  color = '#E8D2C4',
+  color = '#D9E4F2',
 }: {
   data: number[];
   height?: number;
@@ -41,7 +41,7 @@ export function AreaChart({
           </linearGradient>
         </defs>
         {[0.3, 0.6, 0.9].map((g) => (
-          <line key={g} x1={0} x2={W} y1={H * g} y2={H * g} stroke="rgba(199,169,163,.26)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          <line key={g} x1={0} x2={W} y1={H * g} y2={H * g} stroke="rgba(194,207,223,.26)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
         ))}
         <path d={area} fill="url(#areaFill)" />
         <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />

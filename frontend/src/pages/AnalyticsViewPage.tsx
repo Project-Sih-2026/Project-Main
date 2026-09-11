@@ -66,7 +66,7 @@ export function AnalyticsPage() {
             </div>
             <Badge tone="good">{r.kpis.d[1]} vs prev</Badge>
           </div>
-          <div className="mt-4"><AreaChart data={r.speed.map((sp) => (app.settings.units === 'mph' ? Math.round(sp * 0.621) : sp))} height={190} color="#C7A9A3" /></div>
+          <div className="mt-4"><AreaChart data={r.speed.map((sp) => (app.settings.units === 'mph' ? Math.round(sp * 0.621) : sp))} height={190} color="#C2CFDF" /></div>
         </Card>
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
@@ -132,7 +132,7 @@ export function AnalyticsPage() {
             </span>
           </div>
           <div className="mt-4">
-            <AreaChart data={OCR_TREND} height={170} color="#C7A9A3" />
+            <AreaChart data={OCR_TREND} height={170} color="#C2CFDF" />
           </div>
           <div className="mt-2 flex justify-between text-[14px] font-semibold tabular-nums text-sand/80">
             <span>−11</span>
@@ -153,7 +153,7 @@ export function AnalyticsPage() {
                 <span className="h-1.5 overflow-hidden rounded-full bg-clay/20">
                   <span
                     className="block h-full rounded-full transition-all duration-500 group-hover:opacity-80"
-                    style={{ width: `${UPTIME[c.id] ?? 0}%`, background: (UPTIME[c.id] ?? 0) > 97 ? 'rgba(199,169,163,.85)' : (UPTIME[c.id] ?? 0) > 90 ? 'rgba(158,129,137,.7)' : 'rgba(158,129,137,.45)' }}
+                    style={{ width: `${UPTIME[c.id] ?? 0}%`, background: (UPTIME[c.id] ?? 0) > 97 ? 'rgba(194,207,223,.85)' : (UPTIME[c.id] ?? 0) > 90 ? 'rgba(61,110,165,.7)' : 'rgba(61,110,165,.45)' }}
                   />
                 </span>
                 <span className="text-right text-[14px] font-semibold tabular-nums text-mauve/80">{(UPTIME[c.id] ?? 0).toFixed(1)}%</span>

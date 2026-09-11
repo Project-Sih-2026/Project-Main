@@ -45,13 +45,13 @@ export const OCRCorrectionDialog: React.FC<OCRCorrectionDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 select-none">
-      <div className="bg-white border border-[#E8E0D2] rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-[#E8E0D2] pb-3">
-          <h3 className="text-sm font-black text-[#221526] flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#28142E]" />
+      <div className="bg-white border border-[#E3EAF3] rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-[#E3EAF3] pb-3">
+          <h3 className="text-sm font-black text-[#081A33] flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0B2545]" />
             Human OCR Plate Correction
           </h3>
-          <button onClick={onClose} className="text-[#786C7C] hover:text-[#221526]">
+          <button onClick={onClose} className="text-[#5B6E8C] hover:text-[#081A33]">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -65,32 +65,32 @@ export const OCRCorrectionDialog: React.FC<OCRCorrectionDialogProps> = ({
           )}
 
           <div>
-            <label className="block text-[#786C7C] mb-1 font-bold">Original Raw OCR (Immutable):</label>
-            <div className="font-mono bg-[#FAF7F2] border border-[#DED3C4] p-2.5 rounded-xl text-[#221526] text-sm font-black">
+            <label className="block text-[#5B6E8C] mb-1 font-bold">Original Raw OCR (Immutable):</label>
+            <div className="font-mono bg-[#F6F8FB] border border-[#D2DEEC] p-2.5 rounded-xl text-[#081A33] text-sm font-black">
               {detection.raw_plate_text}
             </div>
           </div>
 
           <div>
-            <label className="block text-[#786C7C] mb-1 font-bold">Corrected Plate Reading:</label>
+            <label className="block text-[#5B6E8C] mb-1 font-bold">Corrected Plate Reading:</label>
             <input
               type="text"
               value={correctedPlate}
               onChange={(e) => setCorrectedPlate(e.target.value.toUpperCase())}
               placeholder="e.g. DL01AB1234"
-              className="w-full font-mono bg-[#FAF7F2] border border-[#DED3C4] focus:border-[#28142E] rounded-xl p-2.5 text-sm text-[#28142E] font-black focus:outline-none uppercase shadow-inner"
+              className="w-full font-mono bg-[#F6F8FB] border border-[#D2DEEC] focus:border-[#0B2545] rounded-xl p-2.5 text-sm text-[#0B2545] font-black focus:outline-none uppercase shadow-inner"
               required
             />
           </div>
 
           <div>
-            <label className="block text-[#786C7C] mb-1 font-bold">
+            <label className="block text-[#5B6E8C] mb-1 font-bold">
               Mandatory Correction Reason (PRD REQ-OCR-REV-02):
             </label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full bg-[#FAF7F2] border border-[#DED3C4] rounded-xl p-2.5 text-[#221526] font-semibold focus:outline-none focus:border-[#28142E] cursor-pointer"
+              className="w-full bg-[#F6F8FB] border border-[#D2DEEC] rounded-xl p-2.5 text-[#081A33] font-semibold focus:outline-none focus:border-[#0B2545] cursor-pointer"
             >
               <option value="MISREAD_CHARACTER">Misread Character (e.g. 0 vs O, 1 vs I)</option>
               <option value="PARTIAL_OBSCURATION">Partial Plate Obscuration / Dirt</option>
@@ -102,12 +102,12 @@ export const OCRCorrectionDialog: React.FC<OCRCorrectionDialogProps> = ({
           </div>
 
           <div>
-            <label className="block text-[#786C7C] mb-1 font-bold">Reviewer Notes (Optional):</label>
+            <label className="block text-[#5B6E8C] mb-1 font-bold">Reviewer Notes (Optional):</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Provide context or explanation for audit record..."
-              className="w-full bg-[#FAF7F2] border border-[#DED3C4] rounded-xl p-2.5 text-[#221526] focus:outline-none focus:border-[#28142E] h-20 resize-none font-medium"
+              className="w-full bg-[#F6F8FB] border border-[#D2DEEC] rounded-xl p-2.5 text-[#081A33] focus:outline-none focus:border-[#0B2545] h-20 resize-none font-medium"
             />
           </div>
 
@@ -115,14 +115,14 @@ export const OCRCorrectionDialog: React.FC<OCRCorrectionDialogProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#56495A] hover:bg-[#EFE7DC] font-bold"
+              className="px-4 py-2 rounded-xl bg-[#F6F8FB] text-[#334E73] hover:bg-[#E8EEF6] font-bold"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl bg-[#28142E] text-white font-black hover:bg-[#3D1E47] transition disabled:opacity-50 shadow-md"
+              className="px-4 py-2 rounded-xl bg-[#0B2545] text-white font-black hover:bg-[#12335C] transition disabled:opacity-50 shadow-md"
             >
               {isSubmitting ? 'Recording Audit...' : 'Submit Verified Revision'}
             </button>

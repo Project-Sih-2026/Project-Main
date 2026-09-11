@@ -58,18 +58,18 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="p-4 pl-0 select-none">
       {/* Deep Plum Rounded Top Nav Container matching reference */}
-      <div className="h-14 bg-[#28142E] rounded-xl px-5 flex items-center justify-between shadow-lg">
+      <div className="h-14 bg-[#0B2545] rounded-xl px-5 flex items-center justify-between shadow-lg">
         {/* Left Selectors */}
         <div className="flex items-center gap-2.5">
           {/* District */}
           <div className="relative">
-            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#3D1F44] text-xs font-semibold text-[#F8F5EE] border border-[#4F2B57] cursor-pointer">
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#12335C] text-xs font-semibold text-[#F4F7FB] border border-[#4F2B57] cursor-pointer">
               <span>Central District</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#D8C8DC]" />
+              <ChevronDown className="w-3.5 h-3.5 text-[#C2D3E8]" />
             </div>
           </div>
 
-          <span className="text-[#88708C] text-xs">•</span>
+          <span className="text-[#7C92B4] text-xs">•</span>
 
           {/* Sector */}
           <div className="relative">
@@ -77,14 +77,14 @@ export const Header: React.FC<HeaderProps> = ({
               value={selectedSector}
               onChange={(e) => onSelectSector(e.target.value)}
               aria-label="Filter by Sector"
-              className="appearance-none bg-[#3D1F44] text-xs font-semibold text-[#F8F5EE] border border-[#4F2B57] rounded-lg px-3.5 py-1.5 pr-8 hover:border-[#E8A8BF] focus:outline-none cursor-pointer"
+              className="appearance-none bg-[#12335C] text-xs font-semibold text-[#F4F7FB] border border-[#4F2B57] rounded-lg px-3.5 py-1.5 pr-8 hover:border-[#6FA8DC] focus:outline-none cursor-pointer"
             >
               <option value="Sector 7">Sector 7 (12 Active)</option>
               <option value="Sector 8">Sector 8 (8 Active)</option>
               <option value="Sector 4">Sector 4 (6 Active)</option>
               <option value="All Sectors">All Sectors (26 Active)</option>
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#D8C8DC] absolute right-2.5 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-[#C2D3E8] absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
 
           {/* Camera Quick Dropdown */}
@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
                 if (cam) onSelectCamera(cam);
               }}
               aria-label="Select Camera Node"
-              className="appearance-none bg-[#3D1F44] text-xs font-bold text-[#F8F5EE] border border-[#4F2B57] rounded-lg px-3.5 py-1.5 pr-8 hover:border-[#E8A8BF] focus:outline-none cursor-pointer"
+              className="appearance-none bg-[#12335C] text-xs font-bold text-[#F4F7FB] border border-[#4F2B57] rounded-lg px-3.5 py-1.5 pr-8 hover:border-[#6FA8DC] focus:outline-none cursor-pointer"
             >
               {cameras.map(c => (
                 <option key={c.id} value={c.id}>
@@ -104,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-[#D8C8DC] absolute right-2.5 top-2.5 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-[#C2D3E8] absolute right-2.5 top-2.5 pointer-events-none" />
           </div>
 
           {/* Locate Button matching reference */}
@@ -115,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
                 setTimeout(() => setScanMessage(null), 3000);
               }
             }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#E8A8BF] hover:bg-[#F0B8CD] text-[#28142E] text-xs font-bold transition shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#6FA8DC] hover:bg-[#F0B8CD] text-[#0B2545] text-xs font-bold transition shadow-sm"
           >
-            <Compass className="w-3.5 h-3.5 text-[#28142E]" />
+            <Compass className="w-3.5 h-3.5 text-[#0B2545]" />
             <span>Locate</span>
           </button>
 
@@ -125,18 +125,18 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={handleScanNetwork}
             disabled={isScanning}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#F3B6CA] hover:bg-[#F8C6D6] text-[#28142E] text-xs font-bold transition shadow-sm disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#8FBCE6] hover:bg-[#A9CDF0] text-[#0B2545] text-xs font-bold transition shadow-sm disabled:opacity-50"
           >
             {isScanning ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Radio className="w-3.5 h-3.5 text-[#28142E]" />
+              <Radio className="w-3.5 h-3.5 text-[#0B2545]" />
             )}
             <span>{isScanning ? 'Scanning...' : 'Scan Network'}</span>
           </button>
 
           {scanMessage && (
-            <span className="text-[11px] font-mono text-[#F3B6CA] bg-[#3D1F44] px-2 py-1 rounded">
+            <span className="text-[11px] font-mono text-[#8FBCE6] bg-[#12335C] px-2 py-1 rounded">
               {scanMessage}
             </span>
           )}
@@ -150,13 +150,13 @@ export const Header: React.FC<HeaderProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search plate (e.g. DL-01-AB-1234)..."
-              className="w-64 bg-[#3D1F44] border border-[#4F2B57] rounded-lg pl-8 pr-3 py-1.5 text-xs text-[#F8F5EE] placeholder:text-[#9A849E] focus:outline-none focus:border-[#E8A8BF] font-mono"
+              className="w-64 bg-[#12335C] border border-[#4F2B57] rounded-lg pl-8 pr-3 py-1.5 text-xs text-[#F4F7FB] placeholder:text-[#8AA2C2] focus:outline-none focus:border-[#6FA8DC] font-mono"
             />
-            <Search className="w-3.5 h-3.5 text-[#9A849E] absolute left-2.5 top-2.5" />
+            <Search className="w-3.5 h-3.5 text-[#8AA2C2] absolute left-2.5 top-2.5" />
           </form>
 
           {/* Bell Icon */}
-          <div className="relative cursor-pointer text-[#F8F5EE] hover:text-[#F3B6CA] transition">
+          <div className="relative cursor-pointer text-[#F4F7FB] hover:text-[#8FBCE6] transition">
             <Bell className="w-4 h-4" />
             {alertCount > 0 && (
               <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#E86A67] text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
@@ -166,7 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Settings Icon */}
-          <div className="cursor-pointer text-[#F8F5EE] hover:text-[#F3B6CA] transition">
+          <div className="cursor-pointer text-[#F4F7FB] hover:text-[#8FBCE6] transition">
             <SettingsIcon className="w-4 h-4" />
           </div>
         </div>

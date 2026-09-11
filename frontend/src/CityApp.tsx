@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppContext, type Nav, type PageId, type Toast } from './state/appContext';
-import { Sidebar } from './components/layout/Sidebar';
+import { GovNav } from './components/layout/GovNav';
 import { TopBar } from './components/layout/TopBar';
 import { Toasts, cx } from './components/ui';
+import { PageBackground } from './components/layout/PageBackground';
 import { LoginPage } from './pages/LoginPage';
 import { OperationsPage as DashboardPage } from './pages/DashboardPage';
 import { VehicleSearchPage } from './pages/VehicleSearchPage';
@@ -37,7 +38,6 @@ export default function CityApp() {
   const [page, setPage] = useState<PageId>(getInitialPage);
   const [target, setTarget] = useState<Nav>({});
   const [navSeq, setNavSeq] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('civic_user');
     if (saved) {
@@ -110,7 +110,6 @@ export default function CityApp() {
     setNavSeq((s) => s + 1);
     setTarget(n);
     if (n.page) setPage(n.page);
-    setMenuOpen(false);
   }, []);
 
   const login = useCallback((email: string, pass: string) => {
@@ -182,16 +181,12 @@ export default function CityApp() {
 
   return (
     <AppContext.Provider value={value}>
-      <div className={cx('min-h-screen bg-cream text-ink', settings.compact && 'compact', settings.reduceMotion && 'no-motion')}>
-        <div className={cx(menuOpen ? 'block' : 'hidden', 'lg:block')}>
-          <Sidebar />
-        </div>
-        {menuOpen && (
-          <button aria-label="Close menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-30 bg-mauve/35 backdrop-blur-sm lg:hidden" />
-        )}
-        <div className="lg:pl-16">
-          <TopBar onMenu={() => setMenuOpen(true)} />
-          <main key={navSeq} className="min-h-[calc(100vh-58px)]">
+      <div className={cx('relative isolate min-h-screen bg-cream text-ink', settings.compact && 'compact', settings.reduceMotion && 'no-motion')}>
+        <PageBackground variant="faded" />
+        <div>
+          <TopBar />
+          <GovNav />
+          <main key={navSeq} className="min-h-[calc(100vh-116px)]">
             {renderPage()}
           </main>
         </div>

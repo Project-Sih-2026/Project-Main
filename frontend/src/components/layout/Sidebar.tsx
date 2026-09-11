@@ -52,7 +52,7 @@ export function Sidebar() {
       <button
         onClick={() => app.nav({ page: 'dashboard' })}
         aria-label="Home"
-        className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream text-ink shadow-[0_2px_16px_rgba(232,210,196,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95"
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream text-ink shadow-[0_2px_16px_rgba(217,228,242,0.25)] transition-transform duration-150 hover:scale-105 active:scale-95"
       >
         <span className="font-display text-[22px] leading-none">C</span>
       </button>

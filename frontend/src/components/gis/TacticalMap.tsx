@@ -99,16 +99,16 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         const marker = L.marker([lat, lng], { icon: clickIcon }).addTo(map);
         marker.bindPopup(`
           <div style="padding: 4px; font-family: sans-serif; min-width: 200px;">
-            <div style="font-weight: 800; color: #28142E; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-weight: 800; color: #0B2545; font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
               <span>📍 Inspected Coordinate</span>
-              <span style="font-size: 10px; color: #786C7C;">${timeStr}</span>
+              <span style="font-size: 10px; color: #5B6E8C;">${timeStr}</span>
             </div>
-            <div style="font-family: monospace; font-size: 11px; background: #FAF7F2; padding: 4px 6px; border-radius: 6px; border: 1px solid #E8E0D2; color: #28142E; font-weight: bold; margin-bottom: 4px;">
+            <div style="font-family: monospace; font-size: 11px; background: #F6F8FB; padding: 4px 6px; border-radius: 6px; border: 1px solid #E3EAF3; color: #0B2545; font-weight: bold; margin-bottom: 4px;">
               ${lat.toFixed(5)}° N, ${lng.toFixed(5)}° E
             </div>
             ${nearest ? `
-              <div style="font-size: 11px; color: #56495A;">
-                <span style="color: #786C7C;">Nearest Sensor:</span><br/>
+              <div style="font-size: 11px; color: #334E73;">
+                <span style="color: #5B6E8C;">Nearest Sensor:</span><br/>
                 <strong>${(nearest as any).designation || (nearest as any).name}</strong> (~${Math.round(minDist)}m away)
               </div>
             ` : ''}
@@ -140,10 +140,10 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: ${isSelected ? '#28142E' : '#FFFFFF'};
-            border: 2px solid #28142E;
-            box-shadow: 0 2px 10px rgba(40,20,46,0.3);
-            color: ${isSelected ? '#F8F5EE' : '#28142E'};
+            background: ${isSelected ? '#0B2545' : '#FFFFFF'};
+            border: 2px solid #0B2545;
+            box-shadow: 0 2px 10px rgba(10,36,68,0.3);
+            color: ${isSelected ? '#F4F7FB' : '#0B2545'};
             font-family: monospace;
             font-size: 11px;
             font-weight: 800;
@@ -164,12 +164,12 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       marker.bindPopup(`
         <div style="padding: 4px; font-family: sans-serif;">
-          <div style="font-weight: bold; color: #28142E; font-size: 12px; margin-bottom: 2px;">
+          <div style="font-weight: bold; color: #0B2545; font-size: 12px; margin-bottom: 2px;">
             ${cam.id} — ${cam.designation}
           </div>
-          <div style="color: #56495A; font-size: 11px;">
+          <div style="color: #334E73; font-size: 11px;">
             Location: ${cam.location_address}<br/>
-            Status: <strong style="color: #28142E;">${cam.status.toUpperCase()}</strong> | Throughput: ${cam.throughput_mbps} Mbps
+            Status: <strong style="color: #0B2545;">${cam.status.toUpperCase()}</strong> | Throughput: ${cam.throughput_mbps} Mbps
           </div>
         </div>
       `);
@@ -204,10 +204,10 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
                 width: 28px;
                 height: 28px;
                 border-radius: 50%;
-                background: #F3B6CA;
-                border: 2px solid #28142E;
-                box-shadow: 0 2px 8px rgba(40, 20, 46, 0.4);
-                color: #28142E;
+                background: #8FBCE6;
+                border: 2px solid #0B2545;
+                box-shadow: 0 2px 8px rgba(10, 36, 68, 0.4);
+                color: #0B2545;
                 font-family: monospace;
                 font-size: 12px;
                 font-weight: 900;
@@ -218,8 +218,8 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
                 ${stop.stop_number}
               </div>
               <div style="
-                background: #28142E;
-                color: #F8F5EE;
+                background: #0B2545;
+                color: #F4F7FB;
                 font-size: 9px;
                 font-family: monospace;
                 padding: 1px 4px;
@@ -238,10 +238,10 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         const stopMarker = L.marker(pt, { icon: stopIcon });
         stopMarker.bindPopup(`
           <div style="padding: 4px;">
-            <div style="color: #28142E; font-weight: bold; font-size: 12px;">
+            <div style="color: #0B2545; font-weight: bold; font-size: 12px;">
               Stop #${stop.stop_number} — ${stop.camera_id}
             </div>
-            <div style="color: #56495A; font-size: 11px; margin-top: 2px;">
+            <div style="color: #334E73; font-size: 11px; margin-top: 2px;">
               Observed Plate: <strong>${stop.raw_plate_text}</strong><br/>
               Confidence: ${(stop.confidence_score * 100).toFixed(1)}%<br/>
               Timestamp: ${new Date(stop.timestamp).toLocaleString()}
@@ -253,7 +253,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
       });
 
       const polyline = L.polyline(latlngs, {
-        color: '#28142E',
+        color: '#0B2545',
         weight: 3.5,
         dashArray: '6, 6',
         opacity: 0.9
@@ -272,15 +272,15 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
             className: 'custom-hop-midpoint',
             html: `
               <div style="
-                background: #28142E;
-                color: #FAF7F2;
+                background: #0B2545;
+                color: #F6F8FB;
                 font-family: monospace;
                 font-size: 9px;
                 font-weight: 800;
                 padding: 2px 6px;
                 border-radius: 9999px;
                 border: 1.5px solid #FFFFFF;
-                box-shadow: 0 2px 6px rgba(40, 20, 46, 0.4);
+                box-shadow: 0 2px 6px rgba(10, 36, 68, 0.4);
                 white-space: nowrap;
                 display: flex;
                 align-items: center;
@@ -307,34 +307,34 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
   }, [journey]);
 
   return (
-    <div className="relative w-full h-full rounded-2xl overflow-hidden border border-[#E8E0D2] shadow-xl bg-white">
+    <div className="relative w-full h-full rounded-2xl overflow-hidden border border-[#E3EAF3] shadow-xl bg-white">
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Epistemic Restraint Mandatory Disclaimer Banner */}
-      <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#DED3C4] text-xs text-[#221526] flex items-center gap-2.5 shadow-md max-w-md">
-        <Info className="w-4 h-4 text-[#28142E] shrink-0" />
-        <span className="text-[11px] text-[#56495A] leading-snug">
-          <strong className="text-[#28142E]">Civic Observation Sequence:</strong> Numbered camera stops represent discrete observations, not continuous GPS tracking.
+      <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#D2DEEC] text-xs text-[#081A33] flex items-center gap-2.5 shadow-md max-w-md">
+        <Info className="w-4 h-4 text-[#0B2545] shrink-0" />
+        <span className="text-[11px] text-[#334E73] leading-snug">
+          <strong className="text-[#0B2545]">Civic Observation Sequence:</strong> Numbered camera stops represent discrete observations, not continuous GPS tracking.
         </span>
       </div>
 
       {/* Map Compass Indicator */}
-      <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#DED3C4] text-xs font-mono font-bold text-[#28142E] flex items-center gap-1.5 shadow-sm">
-        <Compass className="w-3.5 h-3.5 text-[#28142E]" />
+      <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#D2DEEC] text-xs font-mono font-bold text-[#0B2545] flex items-center gap-1.5 shadow-sm">
+        <Compass className="w-3.5 h-3.5 text-[#0B2545]" />
         <span>KRISHNA / GANDHI NAGAR GIS</span>
       </div>
 
       {/* Floating Active Inspected Coordinates HUD */}
       {inspectedLocation && (
-        <div className="absolute bottom-3 left-3 z-[1000] bg-[#28142E]/95 text-white backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20 shadow-2xl flex items-center gap-3 font-mono text-xs max-w-md">
+        <div className="absolute bottom-3 left-3 z-[1000] bg-[#0B2545]/95 text-white backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20 shadow-2xl flex items-center gap-3 font-mono text-xs max-w-md">
           <div className="w-2.5 h-2.5 rounded-full bg-[#E86A67] shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="font-bold text-[#F8F5EE] flex items-center gap-2">
+            <div className="font-bold text-[#F4F7FB] flex items-center gap-2">
               <span>{inspectedLocation.lat.toFixed(5)}° N, {inspectedLocation.lng.toFixed(5)}° E</span>
-              <span className="text-[10px] text-[#C7A9A3]">({inspectedLocation.time})</span>
+              <span className="text-[10px] text-[#C2CFDF]">({inspectedLocation.time})</span>
             </div>
             {inspectedLocation.nearestCam && (
-              <div className="text-[10.5px] text-[#E8D2C4] truncate">
+              <div className="text-[10.5px] text-[#D9E4F2] truncate">
                 Near: {inspectedLocation.nearestCam} (~{inspectedLocation.distanceMeters}m away)
               </div>
             )}
@@ -343,7 +343,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
             onClick={() => {
               navigator.clipboard?.writeText(`${inspectedLocation.lat.toFixed(5)}, ${inspectedLocation.lng.toFixed(5)}`);
             }}
-            className="px-2.5 py-1 rounded bg-white/15 hover:bg-white/25 text-[10px] text-[#F8F5EE] uppercase tracking-wider font-bold transition shrink-0"
+            className="px-2.5 py-1 rounded bg-white/15 hover:bg-white/25 text-[10px] text-[#F4F7FB] uppercase tracking-wider font-bold transition shrink-0"
             title="Copy Coordinates"
           >
             Copy

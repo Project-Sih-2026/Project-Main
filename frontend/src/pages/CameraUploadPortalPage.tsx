@@ -347,7 +347,7 @@ export function CameraUploadPortalPage() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-mauve">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Edge CCTV Ingestion • YOLOv8 Custom Weights: <span className="font-mono font-bold text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded">best.pt</span>
+            Edge CCTV Ingestion • YOLOv8 Custom Weights: <span className="font-mono font-bold text-blue-800 bg-blue-500/10 px-1.5 py-0.5 rounded">best.pt</span>
           </div>
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
             Vehicle Detection & Dataset Management
@@ -364,7 +364,7 @@ export function CameraUploadPortalPage() {
           </div>
           <div className="rounded-xl border border-clay/30 bg-white/80 px-4 py-2.5 shadow-sm">
             <span className="text-mauve block text-[10px] uppercase font-bold">Unique Plates</span>
-            <span className="font-mono text-lg font-extrabold text-amber-600">{uniquePlatesCount}</span>
+            <span className="font-mono text-lg font-extrabold text-blue-600">{uniquePlatesCount}</span>
           </div>
           <button
             onClick={() => setShowWatchlistDrawer(!showWatchlistDrawer)}
@@ -505,7 +505,7 @@ export function CameraUploadPortalPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-ink flex items-center gap-2">
-              <Icon name="camera" className="h-5 w-5 text-amber-600" />
+              <Icon name="camera" className="h-5 w-5 text-blue-600" />
               1. CCTV Camera Network (Click Any Camera for Fresh Upload)
             </h2>
             <p className="text-xs text-mauve mt-0.5">
@@ -522,7 +522,7 @@ export function CameraUploadPortalPage() {
                   onClick={() => setCameraFilter(dist)}
                   className={`rounded-lg px-3 py-1.5 font-bold transition-all ${
                     cameraFilter === dist
-                      ? 'bg-amber-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-mauve hover:text-ink hover:bg-sand/40'
                   }`}
                 >
@@ -538,7 +538,7 @@ export function CameraUploadPortalPage() {
                 value={cameraSearch}
                 onChange={(e) => setCameraSearch(e.target.value)}
                 placeholder="Search camera..."
-                className="w-44 rounded-xl border border-clay/30 bg-white/70 pl-8 pr-3 py-1.5 text-xs text-ink focus:border-amber-500 focus:outline-none"
+                className="w-44 rounded-xl border border-clay/30 bg-white/70 pl-8 pr-3 py-1.5 text-xs text-ink focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
@@ -554,19 +554,19 @@ export function CameraUploadPortalPage() {
                 onClick={() => handleSelectCamera(cam.id, false)}
                 className={`group cursor-pointer rounded-2xl border p-4 transition-all relative overflow-hidden flex flex-col justify-between ${
                   isSelected
-                    ? 'border-amber-600 bg-amber-500/10 shadow-md ring-2 ring-amber-500/40'
-                    : 'border-clay/25 bg-white/85 hover:border-amber-500/60 hover:bg-sand/30 hover:shadow-sm'
+                    ? 'border-blue-600 bg-blue-500/10 shadow-md ring-2 ring-blue-500/40'
+                    : 'border-clay/25 bg-white/85 hover:border-blue-500/60 hover:bg-sand/30 hover:shadow-sm'
                 }`}
               >
                 {isSelected && (
-                  <span className="absolute top-0 right-0 rounded-bl-xl bg-amber-600 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                  <span className="absolute top-0 right-0 rounded-bl-xl bg-blue-600 px-2.5 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
                     Active Target
                   </span>
                 )}
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-xs font-black text-amber-800 bg-amber-500/15 px-2 py-0.5 rounded-md">
+                    <span className="font-mono text-xs font-black text-blue-800 bg-blue-500/15 px-2 py-0.5 rounded-md">
                       {cam.id}
                     </span>
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
@@ -575,7 +575,7 @@ export function CameraUploadPortalPage() {
                     </div>
                   </div>
 
-                  <h3 className="font-display text-sm font-bold text-ink group-hover:text-amber-700 transition-colors truncate">
+                  <h3 className="font-display text-sm font-bold text-ink group-hover:text-blue-700 transition-colors truncate">
                     {cam.designation}
                   </h3>
                   <p className="text-[11px] text-mauve line-clamp-1 mt-0.5">
@@ -597,8 +597,8 @@ export function CameraUploadPortalPage() {
                     }}
                     className={`w-full flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all ${
                       isSelected
-                        ? 'bg-amber-600 text-white shadow-sm hover:bg-amber-700'
-                        : 'bg-cream/70 text-ink border border-clay/30 group-hover:bg-amber-600 group-hover:text-white'
+                        ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-700'
+                        : 'bg-cream/70 text-ink border border-clay/30 group-hover:bg-blue-600 group-hover:text-white'
                     }`}
                   >
                     <Icon name="upload" className="h-3.5 w-3.5" />
@@ -615,7 +615,7 @@ export function CameraUploadPortalPage() {
       <section ref={uploadSectionRef} className="rounded-3xl border border-clay/25 bg-white/95 p-6 shadow-sm">
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-clay/20 pb-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700">
               <Icon name="camera" className="h-4 w-4" />
               <span>Active Target Camera Portal</span>
             </div>
@@ -632,7 +632,7 @@ export function CameraUploadPortalPage() {
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 rounded-xl border border-clay/30 bg-cream/70 px-4 py-2.5 text-xs font-bold text-ink hover:bg-sand/40 transition-all shadow-sm"
             >
-              <Icon name="upload" className="h-4 w-4 text-amber-600" />
+              <Icon name="upload" className="h-4 w-4 text-blue-600" />
               <span>Browse Image</span>
             </button>
 
@@ -656,8 +656,8 @@ export function CameraUploadPortalPage() {
               onClick={() => fileInputRef.current?.click()}
               className={`group cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
                 previewUrl
-                  ? 'border-amber-500/60 bg-amber-500/5'
-                  : 'border-clay/40 bg-cream/30 hover:border-amber-500/60 hover:bg-sand/30'
+                  ? 'border-blue-500/60 bg-blue-500/5'
+                  : 'border-clay/40 bg-cream/30 hover:border-blue-500/60 hover:bg-sand/30'
               }`}
             >
               <input
@@ -679,19 +679,19 @@ export function CameraUploadPortalPage() {
                     <span className="font-mono text-xs font-bold text-ink truncate max-w-xs">
                       {file?.name || 'CCTV frame ready'}
                     </span>
-                    <span className="rounded-md bg-amber-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                    <span className="rounded-md bg-blue-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
                       Change
                     </span>
                   </div>
                 </div>
               ) : (
                 <div className="py-8 space-y-3">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 group-hover:scale-110 transition-transform">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 group-hover:scale-110 transition-transform">
                     <Icon name="upload" className="h-7 w-7" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-ink">
-                      Drag & Drop Vehicle Image for <span className="text-amber-700">{selectedCam.id}</span>
+                      Drag & Drop Vehicle Image for <span className="text-blue-700">{selectedCam.id}</span>
                     </p>
                     <p className="text-xs text-mauve/80 mt-1 max-w-xs mx-auto">
                       Supports JPG, PNG, WEBP camera frames. Click to browse.
@@ -705,14 +705,14 @@ export function CameraUploadPortalPage() {
             <div>
               <label className="text-[11px] font-bold uppercase text-ink flex items-center justify-between">
                 <span>Vehicle / Owner Name (Stored in Dataset)</span>
-                <span className="text-[10px] text-amber-700 font-semibold bg-amber-500/10 px-1.5 py-0.2 rounded">Dataset Field</span>
+                <span className="text-[10px] text-blue-700 font-semibold bg-blue-500/10 px-1.5 py-0.2 rounded">Dataset Field</span>
               </label>
               <input
                 type="text"
                 value={ownerNameInput}
                 onChange={(e) => setOwnerNameInput(e.target.value)}
                 placeholder="e.g. Rajesh Kumar (White Swift) or Police Patrol Unit #4"
-                className="mt-1 w-full rounded-xl border border-clay/30 bg-cream/40 px-3.5 py-2.5 text-xs text-ink focus:border-amber-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-clay/30 bg-cream/40 px-3.5 py-2.5 text-xs text-ink focus:border-blue-500 focus:outline-none"
               />
               <p className="text-[10px] text-mauve mt-0.5">
                 This name will be saved in the database dataset and can be updated anytime below.
@@ -729,14 +729,14 @@ export function CameraUploadPortalPage() {
                 value={customPlateInput}
                 onChange={(e) => setCustomPlateInput(e.target.value.toUpperCase())}
                 placeholder="Leave blank for automatic YOLOv8 + OCR detection"
-                className="mt-1 w-full rounded-xl border border-clay/30 bg-cream/40 px-3.5 py-2 text-xs font-mono text-ink focus:border-amber-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-clay/30 bg-cream/40 px-3.5 py-2 text-xs font-mono text-ink focus:border-blue-500 focus:outline-none"
               />
             </div>
 
             <button
               onClick={handleUploadAndRunAI}
               disabled={isProcessing}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-3.5 text-sm font-bold text-white shadow-md hover:bg-amber-700 disabled:opacity-50 transition-all active:scale-[0.99]"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-50 transition-all active:scale-[0.99]"
             >
               {isProcessing ? (
                 <>
@@ -762,8 +762,8 @@ export function CameraUploadPortalPage() {
             )}
 
             {isProcessing && (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/5 p-12 text-center min-h-[320px]">
-                <div className="h-12 w-12 rounded-full border-4 border-amber-500 border-t-transparent animate-spin mb-4" />
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/5 p-12 text-center min-h-[320px]">
+                <div className="h-12 w-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4" />
                 <h3 className="text-base font-bold text-ink">YOLOv8 ANPR Inference Active</h3>
                 <p className="text-xs text-mauve mt-1 max-w-md">
                   Analyzing vehicle geometry at {selectedCam.id}, locating license plate box, executing OCR with Indian syntax rectification...
@@ -784,13 +784,13 @@ export function CameraUploadPortalPage() {
             {!isProcessing && resultDetection && (
               <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 shadow-sm space-y-4">
                 {resultEntries.length > 1 && (
-                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 space-y-2.5">
+                  <div className="rounded-xl border border-blue-500/40 bg-blue-500/10 p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                        <Icon name="camera" className="h-4 w-4 text-amber-700" />
+                      <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                        <Icon name="camera" className="h-4 w-4 text-blue-700" />
                         Multiple Vehicles Detected in this Frame ({resultEntries.length} Total):
                       </span>
-                      <span className="text-[11px] text-amber-800 font-semibold bg-amber-200/60 px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] text-blue-800 font-semibold bg-blue-200/60 px-2 py-0.5 rounded-full">
                         Showing #{selectedEntryIdx + 1} of {resultEntries.length}
                       </span>
                     </div>
@@ -808,11 +808,11 @@ export function CameraUploadPortalPage() {
                             }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
                               isSel
-                                ? 'bg-amber-600 text-white shadow-md ring-2 ring-amber-400 scale-[1.02]'
-                                : 'bg-white text-ink border border-clay/30 hover:border-amber-500 hover:bg-amber-50'
+                                ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400 scale-[1.02]'
+                                : 'bg-white text-ink border border-clay/30 hover:border-blue-500 hover:bg-blue-50'
                             }`}
                           >
-                            <span className={`px-1.5 py-0.2 rounded text-[10px] ${isSel ? 'bg-amber-700 text-amber-100' : 'bg-sand text-mauve'}`}>
+                            <span className={`px-1.5 py-0.2 rounded text-[10px] ${isSel ? 'bg-blue-700 text-blue-100' : 'bg-sand text-mauve'}`}>
                               #{idx + 1}
                             </span>
                             <span>{entry.detection.normalized_plate_text}</span>
@@ -898,7 +898,7 @@ export function CameraUploadPortalPage() {
                   </div>
                   <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
                     <span className="text-[10px] font-bold uppercase text-mauve block">Camera ID</span>
-                    <span className="font-mono text-xs font-bold text-amber-700">{resultDetection.camera_id}</span>
+                    <span className="font-mono text-xs font-bold text-blue-700">{resultDetection.camera_id}</span>
                   </div>
                 </div>
 
@@ -914,9 +914,9 @@ export function CameraUploadPortalPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleResetUpload}
-                      className="flex items-center gap-1.5 text-xs font-bold text-ink hover:text-amber-700 bg-white border border-clay/30 px-3 py-1.5 rounded-lg transition-colors"
+                      className="flex items-center gap-1.5 text-xs font-bold text-ink hover:text-blue-700 bg-white border border-clay/30 px-3 py-1.5 rounded-lg transition-colors"
                     >
-                      <Icon name="upload" className="h-3.5 w-3.5 text-amber-600" />
+                      <Icon name="upload" className="h-3.5 w-3.5 text-blue-600" />
                       <span>Upload Another Image</span>
                     </button>
 
@@ -939,7 +939,7 @@ export function CameraUploadPortalPage() {
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-700">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700">
               <Icon name="layers" className="h-4 w-4" />
               <span>Persistent SQLite Dataset</span>
             </div>
@@ -957,7 +957,7 @@ export function CameraUploadPortalPage() {
               disabled={isLoadingRegistry}
               className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-white px-3.5 py-2 text-xs font-bold text-ink shadow-sm hover:bg-sand/30 transition-colors"
             >
-              <Icon name="refresh" className={`h-4 w-4 ${isLoadingRegistry ? 'animate-spin text-amber-600' : ''}`} />
+              <Icon name="refresh" className={`h-4 w-4 ${isLoadingRegistry ? 'animate-spin text-blue-600' : ''}`} />
               <span>Refresh Dataset</span>
             </button>
 
@@ -983,7 +983,7 @@ export function CameraUploadPortalPage() {
               value={registrySearch}
               onChange={(e) => setRegistrySearch(e.target.value)}
               placeholder="Search plates, owner names, camera IDs..."
-              className="w-full rounded-xl border border-clay/30 bg-cream/40 pl-10 pr-4 py-2 text-xs font-medium text-ink focus:border-amber-500 focus:outline-none"
+              className="w-full rounded-xl border border-clay/30 bg-cream/40 pl-10 pr-4 py-2 text-xs font-medium text-ink focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -991,7 +991,7 @@ export function CameraUploadPortalPage() {
             <select
               value={registryTypeFilter}
               onChange={(e) => setRegistryTypeFilter(e.target.value)}
-              className="rounded-xl border border-clay/30 bg-cream/40 px-3 py-2 text-xs font-medium text-ink focus:border-amber-500 focus:outline-none w-full sm:w-auto"
+              className="rounded-xl border border-clay/30 bg-cream/40 px-3 py-2 text-xs font-medium text-ink focus:border-blue-500 focus:outline-none w-full sm:w-auto"
             >
               <option value="All">All Vehicle Types</option>
               <option value="Car">Cars</option>
@@ -1061,13 +1061,13 @@ export function CameraUploadPortalPage() {
                               value={editOwnerName}
                               onChange={(e) => setEditOwnerName(e.target.value)}
                               placeholder="Enter name..."
-                              className="rounded-lg border border-amber-500 bg-white px-2 py-1 text-xs text-ink focus:outline-none w-36 font-medium"
+                              className="rounded-lg border border-blue-500 bg-white px-2 py-1 text-xs text-ink focus:outline-none w-36 font-medium"
                               autoFocus
                             />
                             <button
                               onClick={() => handleSaveUpdatedName(d.id)}
                               disabled={isSavingName}
-                              className="rounded-md bg-amber-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-amber-700 transition-colors"
+                              className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-blue-700 transition-colors"
                               title="Save name in dataset"
                             >
                               ✓
@@ -1089,7 +1089,7 @@ export function CameraUploadPortalPage() {
                             )}
                             <button
                               onClick={() => handleStartEditName(d)}
-                              className="text-mauve hover:text-amber-700 p-1 transition-colors rounded hover:bg-sand/40"
+                              className="text-mauve hover:text-blue-700 p-1 transition-colors rounded hover:bg-sand/40"
                               title="Update name in dataset"
                             >
                               <Icon name="edit" className="h-3.5 w-3.5" />
@@ -1102,7 +1102,7 @@ export function CameraUploadPortalPage() {
                         {d.vehicle_type || 'Vehicle'}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded">
+                        <span className="font-mono font-bold text-blue-800 bg-blue-500/10 px-2 py-0.5 rounded">
                           {d.camera_id}
                         </span>
                       </td>
@@ -1170,7 +1170,7 @@ export function CameraUploadPortalPage() {
           <div className="rounded-2xl border border-clay/20 bg-white/95 p-6 shadow-md space-y-4">
             <div className="flex items-center justify-between border-b border-clay/20 pb-3">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
                   Multi-Camera Route Analysis
                 </span>
                 <h3 className="font-display text-lg font-bold text-ink">
@@ -1191,7 +1191,7 @@ export function CameraUploadPortalPage() {
                   key={stop.stop_number}
                   className="flex items-start gap-3 rounded-xl border border-clay/20 bg-cream/40 p-3 text-xs"
                 >
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-600 text-white font-bold text-xs">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-xs">
                     {stop.stop_number}
                   </div>
                   <div className="flex-1">
@@ -1203,7 +1203,7 @@ export function CameraUploadPortalPage() {
                     </div>
                     <p className="text-[11px] text-mauve mt-0.5">{stop.location_address}</p>
                     {stop.distance_from_prev_km !== null && (
-                      <div className="mt-1 flex items-center gap-2 text-[11px] text-amber-800 font-medium">
+                      <div className="mt-1 flex items-center gap-2 text-[11px] text-blue-800 font-medium">
                         <span>+{stop.distance_from_prev_km} km</span>
                         <span>•</span>
                         <span>{stop.duration_mins_from_prev} mins</span>

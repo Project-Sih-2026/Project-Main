@@ -14,7 +14,7 @@ export function useClock(ms = 1000) {
 
 type BtnVariant = 'solid' | 'soft' | 'ghost' | 'outline' | 'danger';
 const V_CLASS: Record<BtnVariant, string> = {
-  solid: 'bg-cream text-ink hover:bg-sand shadow-[0_2px_14px_rgba(232,210,196,0.18)]',
+  solid: 'bg-cream text-ink hover:bg-sand shadow-[0_2px_14px_rgba(217,228,242,0.18)]',
   soft: 'bg-cream/80 text-ink border border-clay/35 hover:bg-sand/80 hover:border-mauve/35',
   ghost: 'text-mauve hover:text-ink hover:bg-sand/45',
   outline: 'border border-clay/60 text-mauve hover:text-ink hover:border-mauve bg-transparent',
@@ -51,7 +51,7 @@ export function Card({ className, children, onClick, hover, tone = 'line' }: { c
       onClick={onClick}
       className={cx(
         'rounded-2xl transition-colors duration-200',
-        tone === 'strong' && 'border border-clay/40 bg-cream/90 shadow-[0_18px_50px_-30px_rgba(62,50,57,0.25)]',
+        tone === 'strong' && 'border border-clay/40 bg-cream/90 shadow-[0_18px_50px_-30px_rgba(11,37,69,0.25)]',
         tone === 'line' && 'border border-clay/30 bg-cream/75',
         tone === 'quiet' && 'border border-transparent bg-sand/35',
         hover && onClick && 'cursor-pointer hover:border-mauve/35 hover:bg-cream',

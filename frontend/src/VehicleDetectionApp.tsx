@@ -3,6 +3,7 @@ import { AppContext, type Nav, type PageId, type Toast } from './state/appContex
 import { CameraUploadPortalPage } from './pages/CameraUploadPortalPage';
 import { Toasts } from './components/ui';
 import { Icon } from './components/Icons';
+import { PageBackground } from './components/layout/PageBackground';
 import {
   ALERTS, DEFAULT_SETTINGS, VEHICLES,
   type AlertStatus, type Settings, type User,
@@ -67,12 +68,13 @@ export default function VehicleDetectionApp() {
 
   return (
     <AppContext.Provider value={value}>
-      <div className="min-h-screen bg-cream text-ink flex flex-col">
+      <div className="relative isolate min-h-screen bg-cream text-ink flex flex-col">
+        <PageBackground variant="faded" />
         {/* Dedicated Standalone Top Bar for Port 5174 */}
         <header className="sticky top-0 z-50 border-b border-clay/20 bg-cream/95 backdrop-blur px-4 py-3 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-600 text-white font-bold shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
                 <Icon name="camera" className="h-5 w-5" />
               </div>
               <div>
@@ -80,7 +82,7 @@ export default function VehicleDetectionApp() {
                   <h2 className="font-display text-sm font-bold tracking-tight text-ink">
                     AI Vehicle Detection & Plate Registry
                   </h2>
-                  <span className="rounded-md bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.2 text-[10px] font-mono font-bold text-amber-800">
+                  <span className="rounded-md bg-blue-500/15 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-mono font-bold text-blue-800">
                     PORT 5174
                   </span>
                 </div>
@@ -104,7 +106,7 @@ export default function VehicleDetectionApp() {
               >
                 <span>City Operations Console</span>
                 <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.5 rounded">Port 5173</span>
-                <Icon name="arrowUpRight" className="h-3.5 w-3.5 text-amber-400" />
+                <Icon name="arrowUpRight" className="h-3.5 w-3.5 text-blue-400" />
               </a>
             </div>
           </div>

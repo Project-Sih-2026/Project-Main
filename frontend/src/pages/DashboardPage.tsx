@@ -107,15 +107,15 @@ export function OperationsPage() {
   return (
     <div className="page-shell fade-up">
       {/* Top Banner connecting to Port 5174 */}
-      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-sm">
+      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white font-bold shadow-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
             <Icon name="camera" className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-sm text-ink">Edge AI CCTV Detection & Ingestion Portal</span>
-              <span className="rounded bg-amber-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
             </div>
             <p className="text-xs text-mauve mt-0.5">
               Upload CCTV images, recognize license plates with YOLOv8, and view real-time database ingestions across both portals.
@@ -127,7 +127,7 @@ export function OperationsPage() {
           href="http://localhost:5174"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition-all shrink-0"
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0"
         >
           <span>Open Detection Portal</span>
           <Icon name="arrowUpRight" className="h-3.5 w-3.5" />
@@ -191,7 +191,7 @@ export function OperationsPage() {
             />
           </div>
           <div className="mt-4">
-            <AreaChart data={r.volume} height={210} color="#C7A9A3" />
+            <AreaChart data={r.volume} height={210} color="#C2CFDF" />
           </div>
           <div className="mt-2 flex justify-between text-[14px] font-semibold tabular-nums text-mauve/70">
             <span>{r.labels[0]}</span>
@@ -250,7 +250,7 @@ export function OperationsPage() {
           <div>
             <div className="flex items-center gap-2">
               <Kicker>Live Database Ingestions</Kicker>
-              <span className="rounded bg-amber-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
             </div>
             <div className="mt-1 font-display text-[20px] text-ink">
               Recent YOLOv8 Vehicle Detections ({liveDetections.length} Records)
@@ -264,10 +264,10 @@ export function OperationsPage() {
               href="http://localhost:5174"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-amber-600/10 hover:bg-amber-600/20 px-3 py-1.5 text-xs font-bold text-amber-800 transition-colors"
+              className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-blue-600/10 hover:bg-blue-600/20 px-3 py-1.5 text-xs font-bold text-blue-800 transition-colors"
             >
               <span>Ingest New Frame</span>
-              <Icon name="arrowUpRight" className="h-3 w-3 text-amber-700" />
+              <Icon name="arrowUpRight" className="h-3 w-3 text-blue-700" />
             </a>
           </div>
         </div>
@@ -278,7 +278,7 @@ export function OperationsPage() {
               <div
                 key={d.id}
                 onClick={() => app.nav({ page: 'vehicles', query: d.normalized_plate_text })}
-                className="group cursor-pointer rounded-xl border border-clay/25 bg-cream/70 hover:border-amber-500/50 hover:bg-amber-500/5 p-2.5 transition-all shadow-sm"
+                className="group cursor-pointer rounded-xl border border-clay/25 bg-cream/70 hover:border-blue-500/50 hover:bg-blue-500/5 p-2.5 transition-all shadow-sm"
               >
                 <div className="h-24 w-full rounded-lg bg-black/90 overflow-hidden flex items-center justify-center border border-clay/30 relative">
                   <img
@@ -287,14 +287,14 @@ export function OperationsPage() {
                     className="h-full w-full object-contain p-1"
                     onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                   />
-                  <span className="absolute bottom-1 right-1 font-mono text-[9px] bg-black/80 text-amber-400 font-bold px-1 rounded">
+                  <span className="absolute bottom-1 right-1 font-mono text-[9px] bg-black/80 text-blue-400 font-bold px-1 rounded">
                     {d.camera_id}
                   </span>
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
                   <span className="font-mono text-xs font-black text-ink">{d.normalized_plate_text}</span>
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                  <span className="text-[10px] font-bold text-blue-800 bg-blue-500/10 px-1.5 py-0.2 rounded">
                     {d.vehicle_type}
                   </span>
                 </div>
@@ -310,7 +310,7 @@ export function OperationsPage() {
           <div className="py-8 text-center text-xs text-mauve">
             <p className="font-semibold text-ink">No vehicle frames ingested in the database yet</p>
             <p className="mt-1 text-mauve/75">
-              Upload a vehicle image on <a href="http://localhost:5174" target="_blank" rel="noreferrer" className="text-amber-700 underline font-bold">Port 5174</a> to see live ANPR recognition here.
+              Upload a vehicle image on <a href="http://localhost:5174" target="_blank" rel="noreferrer" className="text-blue-700 underline font-bold">Port 5174</a> to see live ANPR recognition here.
             </p>
           </div>
         )}

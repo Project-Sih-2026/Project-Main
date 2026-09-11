@@ -49,55 +49,55 @@ export const AlertTriageModal: React.FC<AlertTriageModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm select-none">
-      <div className="bg-white border border-[#E8E0D2] rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4">
+      <div className="bg-white border border-[#E3EAF3] rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#E8E0D2] pb-3">
+        <div className="flex items-center justify-between border-b border-[#E3EAF3] pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#E86A67]/20 flex items-center justify-center text-[#E86A67]">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-[#221526] flex items-center gap-2">
+              <h3 className="text-sm font-black text-[#081A33] flex items-center gap-2">
                 Operational Alert Triage
                 <span className="font-mono text-xs text-[#E86A67] font-bold">[{alert.status}]</span>
               </h3>
-              <p className="text-[11px] text-[#786C7C]">Alert ID: {alert.id}</p>
+              <p className="text-[11px] text-[#5B6E8C]">Alert ID: {alert.id}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-[#786C7C] hover:text-[#221526]">
+          <button onClick={onClose} className="text-[#5B6E8C] hover:text-[#081A33]">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Alert Metadata Card */}
-        <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#E8E0D2] space-y-2.5 text-xs">
+        <div className="bg-[#F6F8FB] p-4 rounded-2xl border border-[#E3EAF3] space-y-2.5 text-xs">
           <div className="flex justify-between items-center">
-            <span className="text-[#786C7C]">Matched Plate:</span>
-            <span className="font-mono font-black text-sm text-[#28142E] bg-white px-2.5 py-0.5 rounded border border-[#DED3C4]">
+            <span className="text-[#5B6E8C]">Matched Plate:</span>
+            <span className="font-mono font-black text-sm text-[#0B2545] bg-white px-2.5 py-0.5 rounded border border-[#D2DEEC]">
               {alert.plate_matched}
             </span>
           </div>
 
           <div className="flex justify-between">
-            <span className="text-[#786C7C]">Advisory Category:</span>
-            <span className="font-bold text-[#221526]">{alert.category.replace(/_/g, ' ')}</span>
+            <span className="text-[#5B6E8C]">Advisory Category:</span>
+            <span className="font-bold text-[#081A33]">{alert.category.replace(/_/g, ' ')}</span>
           </div>
 
           <div className="flex justify-between">
-            <span className="text-[#786C7C]">Severity:</span>
-            <span className={`font-black ${alert.severity === 'CRITICAL' ? 'text-[#E86A67]' : 'text-[#28142E]'}`}>
+            <span className="text-[#5B6E8C]">Severity:</span>
+            <span className={`font-black ${alert.severity === 'CRITICAL' ? 'text-[#E86A67]' : 'text-[#0B2545]'}`}>
               {alert.severity}
             </span>
           </div>
 
           <div className="flex justify-between">
-            <span className="text-[#786C7C]">Camera Observation Node:</span>
-            <span className="font-mono font-bold text-[#221526]">{alert.camera_id}</span>
+            <span className="text-[#5B6E8C]">Camera Observation Node:</span>
+            <span className="font-mono font-bold text-[#081A33]">{alert.camera_id}</span>
           </div>
 
           <div className="flex justify-between">
-            <span className="text-[#786C7C]">Timestamp:</span>
-            <span className="text-[#56495A]">{new Date(alert.created_at).toLocaleString()}</span>
+            <span className="text-[#5B6E8C]">Timestamp:</span>
+            <span className="text-[#334E73]">{new Date(alert.created_at).toLocaleString()}</span>
           </div>
         </div>
 
@@ -111,11 +111,11 @@ export const AlertTriageModal: React.FC<AlertTriageModalProps> = ({
           )}
 
           <div>
-            <label className="block text-[#786C7C] mb-1 font-bold">Triage Action:</label>
+            <label className="block text-[#5B6E8C] mb-1 font-bold">Triage Action:</label>
             <select
               value={selectedAction}
               onChange={(e) => setSelectedAction(e.target.value)}
-              className="w-full bg-[#FAF7F2] border border-[#DED3C4] rounded-xl p-2.5 text-[#221526] font-bold focus:outline-none focus:border-[#28142E] cursor-pointer"
+              className="w-full bg-[#F6F8FB] border border-[#D2DEEC] rounded-xl p-2.5 text-[#081A33] font-bold focus:outline-none focus:border-[#0B2545] cursor-pointer"
             >
               <option value="ACKNOWLEDGE">Acknowledge Alert (Move to In-Review)</option>
               <option value="ASSIGN">Assign to Field Dispatcher</option>
@@ -128,13 +128,13 @@ export const AlertTriageModal: React.FC<AlertTriageModalProps> = ({
 
           {selectedAction === 'ASSIGN' && (
             <div>
-              <label className="block text-[#786C7C] mb-1 font-bold">Assign To Operator / Unit:</label>
+              <label className="block text-[#5B6E8C] mb-1 font-bold">Assign To Operator / Unit:</label>
               <input
                 type="text"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
                 placeholder="e.g. Unit 4 / Dispatcher Marcus"
-                className="w-full bg-[#FAF7F2] border border-[#DED3C4] rounded-xl p-2.5 text-[#221526] focus:outline-none focus:border-[#28142E] font-semibold"
+                className="w-full bg-[#F6F8FB] border border-[#D2DEEC] rounded-xl p-2.5 text-[#081A33] focus:outline-none focus:border-[#0B2545] font-semibold"
               />
             </div>
           )}
@@ -147,7 +147,7 @@ export const AlertTriageModal: React.FC<AlertTriageModalProps> = ({
               <select
                 value={dismissalReason}
                 onChange={(e) => setDismissalReason(e.target.value)}
-                className="w-full bg-[#FAF7F2] border border-[#E86A67] rounded-xl p-2.5 text-[#221526] font-bold focus:outline-none cursor-pointer"
+                className="w-full bg-[#F6F8FB] border border-[#E86A67] rounded-xl p-2.5 text-[#081A33] font-bold focus:outline-none cursor-pointer"
                 required
               >
                 <option value="FALSE_POSITIVE_OCR">False Positive OCR Reading</option>
@@ -160,12 +160,12 @@ export const AlertTriageModal: React.FC<AlertTriageModalProps> = ({
           )}
 
           <div>
-            <label className="block text-[#786C7C] mb-1 font-bold">Operational Notes / Reason:</label>
+            <label className="block text-[#5B6E8C] mb-1 font-bold">Operational Notes / Reason:</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Enter dispatcher notes or justification..."
-              className="w-full bg-[#FAF7F2] border border-[#DED3C4] rounded-xl p-2.5 text-[#221526] focus:outline-none focus:border-[#28142E] h-20 resize-none font-medium"
+              className="w-full bg-[#F6F8FB] border border-[#D2DEEC] rounded-xl p-2.5 text-[#081A33] focus:outline-none focus:border-[#0B2545] h-20 resize-none font-medium"
             />
           </div>
 
@@ -173,14 +173,14 @@ export const AlertTriageModal: React.FC<AlertTriageModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-[#FAF7F2] text-[#56495A] hover:bg-[#EFE7DC] font-bold"
+              className="px-4 py-2 rounded-xl bg-[#F6F8FB] text-[#334E73] hover:bg-[#E8EEF6] font-bold"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl bg-[#28142E] text-white font-black hover:bg-[#3D1E47] transition disabled:opacity-50 shadow-md"
+              className="px-4 py-2 rounded-xl bg-[#0B2545] text-white font-black hover:bg-[#12335C] transition disabled:opacity-50 shadow-md"
             >
               {isSubmitting ? 'Processing...' : 'Execute Triage Action'}
             </button>

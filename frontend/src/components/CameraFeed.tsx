@@ -207,7 +207,7 @@ export function CameraFeed({
           )}
 
           {/* CRT Scanline Texture Effect */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-40" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(10,20,34,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px] opacity-40" />
 
           {/* TOP OSD BAR: Live REC Indicator & Camera Code */}
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-2.5 sm:p-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
@@ -215,7 +215,7 @@ export function CameraFeed({
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/60 border border-white/10 backdrop-blur-sm">
                 <span className={cx(
                   'h-2 w-2 rounded-full',
-                  cam.status === 'online' ? 'bg-red-500 animate-pulse' : 'bg-amber-400'
+                  cam.status === 'online' ? 'bg-red-500 animate-pulse' : 'bg-blue-400'
                 )} />
                 <span className="font-mono text-[11px] font-extrabold tracking-widest text-red-400">REC</span>
               </div>
@@ -238,7 +238,7 @@ export function CameraFeed({
           {/* BOTTOM OSD BAR: Telemetry & Optical Specifications */}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-between p-2.5 sm:p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent text-[10.5px] font-mono text-slate-300">
             <div className="flex items-center gap-3">
-              <span className="text-amber-300">GPS: {cam.lat.toFixed(4)}°N, {cam.lng.toFixed(4)}°E</span>
+              <span className="text-blue-300">GPS: {cam.lat.toFixed(4)}°N, {cam.lng.toFixed(4)}°E</span>
               <span className="hidden sm:inline text-slate-400">DIR: {cam.heading}</span>
             </div>
             <div className="flex items-center gap-3 tabular-nums">
@@ -251,7 +251,7 @@ export function CameraFeed({
           {/* Paused Overlay */}
           {!playing && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[2px]">
-              <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-black/80 px-4 py-2 font-mono text-[13px] font-bold tracking-widest text-amber-300">
+              <div className="flex items-center gap-2 rounded-lg border border-blue-500/40 bg-black/80 px-4 py-2 font-mono text-[13px] font-bold tracking-widest text-blue-300">
                 <Icon name="pause" className="h-4 w-4" /> FEED PAUSED (KEYFRAME HOLD)
               </div>
             </div>

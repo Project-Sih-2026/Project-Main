@@ -29,10 +29,7 @@ export function AlertsPage() {
   const [type, setType] = useState('All types');
   const [selId, setSelId] = useState<string | null>(null);
 
-  const types = useMemo(() => {
-    const unique = new Set(app.alerts.map((a) => a.type));
-    return ['All types', ...Array.from(unique).sort()];
-  }, [app.alerts]);
+  const types = useMemo(() => ['All types', ...Array.from(new Set(app.alerts.map((a) => a.type)))], [app.alerts]);
 
   useEffect(() => {
     const t = app.target;
@@ -173,7 +170,7 @@ export function AlertsPage() {
                 <span className="truncate text-[13.5px] font-semibold text-ink/90">{h.name}</span>
                 <span className="flex shrink-0 gap-0.5" aria-label={`Congestion level ${h.level} of 3`}>
                   {[1, 2, 3].map((i) => (
-                    <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: i <= h.level ? 'rgba(107,85,96,.9)' : 'rgba(199,169,163,.3)' }} />
+                    <span key={i} className="h-1.5 w-1.5 rounded-full" style={{ background: i <= h.level ? 'rgba(51,81,126,.9)' : 'rgba(194,207,223,.3)' }} />
                   ))}
                 </span>
               </div>

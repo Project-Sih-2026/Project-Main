@@ -94,15 +94,15 @@ export function VehicleSearchPage() {
   return (
     <div className="page-shell fade-up">
       {/* Top Banner connecting to Port 5174 */}
-      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-sm">
+      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white font-bold shadow-sm">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
             <Icon name="camera" className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-sm text-ink">Edge CCTV Vehicle Detection & Ingestion Portal</span>
-              <span className="rounded bg-amber-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
             </div>
             <p className="text-xs text-mauve mt-0.5">
               Upload new CCTV image frames, recognize number plates, and associate vehicle/owner names into the database.
@@ -114,7 +114,7 @@ export function VehicleSearchPage() {
           href="http://localhost:5174"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-amber-700 transition-all shrink-0"
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0"
         >
           <span>Open Detection Portal</span>
           <Icon name="arrowUpRight" className="h-3.5 w-3.5" />
@@ -182,7 +182,7 @@ export function VehicleSearchPage() {
             <button
               onClick={loadLiveDetections}
               disabled={isLoadingLive}
-              className="flex items-center gap-1 text-[11px] font-bold text-amber-700 hover:text-amber-800 bg-amber-500/10 px-2.5 py-1 rounded-md"
+              className="flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-800 bg-blue-500/10 px-2.5 py-1 rounded-md"
             >
               <Icon name="refresh" className={`h-3 w-3 ${isLoadingLive ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -199,7 +199,7 @@ export function VehicleSearchPage() {
                     onClick={() => setSelectedDetId(d.id)}
                     className={cx(
                       'group w-full rounded-xl border p-3 text-left transition-all duration-150 active:scale-[0.99] flex items-center gap-3',
-                      active ? 'border-amber-600/50 bg-amber-500/10 shadow-sm' : 'border-clay/20 hover:border-amber-500/40 hover:bg-cream/80'
+                      active ? 'border-blue-600/50 bg-blue-500/10 shadow-sm' : 'border-clay/20 hover:border-blue-500/40 hover:bg-cream/80'
                     )}
                   >
                     {/* Evidence Image Thumbnail */}
@@ -227,7 +227,7 @@ export function VehicleSearchPage() {
                           <span className="italic text-mauve/60">No name</span>
                         )}
                         <span>·</span>
-                        <span className="font-medium text-amber-800">{d.vehicle_type}</span>
+                        <span className="font-medium text-blue-800">{d.vehicle_type}</span>
                         <span>·</span>
                         <span className="font-mono text-[11px] text-mauve">{d.camera_id}</span>
                       </div>
@@ -246,7 +246,7 @@ export function VehicleSearchPage() {
                   href="http://localhost:5174"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-amber-700"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
                 >
                   <span>Upload Image on Port 5174</span>
                   <Icon name="arrowUpRight" className="h-3 w-3" />
@@ -274,7 +274,7 @@ export function VehicleSearchPage() {
                       </div>
 
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="font-bold text-amber-800 bg-amber-500/10 px-2 py-0.5 rounded">
+                        <span className="font-bold text-blue-800 bg-blue-500/10 px-2 py-0.5 rounded">
                           {selLive.vehicle_type}
                         </span>
                         {selLive.owner_name && (
@@ -310,13 +310,13 @@ export function VehicleSearchPage() {
 
                   {/* Multi-Vehicle Frame Siblings Selector */}
                   {frameSiblings.length > 1 && (
-                    <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+                    <div className="rounded-xl border border-blue-500/40 bg-blue-500/10 p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                          <Icon name="camera" className="h-4 w-4 text-amber-700" />
+                        <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                          <Icon name="camera" className="h-4 w-4 text-blue-700" />
                           Same CCTV Frame Contains {frameSiblings.length} Vehicles:
                         </span>
-                        <span className="text-[11px] text-amber-800 font-semibold bg-amber-200/60 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] text-blue-800 font-semibold bg-blue-200/60 px-2 py-0.5 rounded-full">
                           Select to inspect
                         </span>
                       </div>
@@ -330,11 +330,11 @@ export function VehicleSearchPage() {
                               onClick={() => setSelectedDetId(sib.id)}
                               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all ${
                                 isCurrent
-                                  ? 'bg-amber-600 text-white shadow ring-2 ring-amber-400 scale-[1.02]'
-                                  : 'bg-white text-ink border border-clay/30 hover:border-amber-500 hover:bg-amber-50'
+                                  ? 'bg-blue-600 text-white shadow ring-2 ring-blue-400 scale-[1.02]'
+                                  : 'bg-white text-ink border border-clay/30 hover:border-blue-500 hover:bg-blue-50'
                               }`}
                             >
-                              <span className={`px-1.5 py-0.2 rounded text-[10px] ${isCurrent ? 'bg-amber-700 text-amber-100' : 'bg-sand text-mauve'}`}>
+                              <span className={`px-1.5 py-0.2 rounded text-[10px] ${isCurrent ? 'bg-blue-700 text-blue-100' : 'bg-sand text-mauve'}`}>
                                 #{sIdx + 1}
                               </span>
                               <span>{sib.normalized_plate_text}</span>
@@ -404,7 +404,7 @@ export function VehicleSearchPage() {
                   </div>
                   <div className="rounded-lg bg-cream/70 p-2 border border-clay/20">
                     <span className="text-mauve font-semibold block text-[10px]">INSPECTION SOURCE</span>
-                    <span className="font-semibold text-amber-800">Port 5174 Feed</span>
+                    <span className="font-semibold text-blue-800">Port 5174 Feed</span>
                   </div>
                 </div>
 
@@ -422,7 +422,7 @@ export function VehicleSearchPage() {
                         {matchingVeh.journey.map((j, idx) => (
                           <div key={idx} className="flex items-center justify-between rounded-lg bg-cream/50 px-2.5 py-1.5 text-xs border border-clay/20">
                             <div className="flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-amber-600" />
+                              <span className="h-2 w-2 rounded-full bg-blue-600" />
                               <span className="font-bold text-ink">{j.cam}</span>
                               <span className="text-mauve">{j.loc}</span>
                             </div>
@@ -435,7 +435,7 @@ export function VehicleSearchPage() {
                 })()}
 
                 {/* Quick Link to Port 5174 Portal */}
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex items-center justify-between">
+                <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 flex items-center justify-between">
                   <div className="text-xs">
                     <span className="font-bold text-ink block">Need to ingest another frame or edit this detection?</span>
                     <span className="text-mauve">Use the edge detection portal on Port 5174 to upload and verify.</span>
@@ -444,7 +444,7 @@ export function VehicleSearchPage() {
                     href="http://localhost:5174"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-amber-700 shrink-0"
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 shrink-0"
                   >
                     <span>Manage on Port 5174</span>
                     <Icon name="arrowUpRight" className="h-3 w-3" />

@@ -13,7 +13,7 @@ const TITLES: Record<string, { kicker: string; title: string }> = {
   settings: { kicker: 'Console', title: 'Settings' },
 };
 
-export function TopBar({ onMenu }: { onMenu: () => void }) {
+export function TopBar() {
   const app = useApp();
   const now = useClock();
   const t = TITLES[app.page] ?? TITLES.dashboard;
@@ -23,13 +23,6 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
   return (
     <header className="sticky top-0 z-30 border-b border-clay/25 bg-cream/85 backdrop-blur-xl">
       <div className="flex h-[58px] items-center gap-4 px-5 sm:px-8">
-        <button
-          onClick={onMenu}
-          aria-label="Open navigation"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-mauve/75 transition hover:bg-sand/50 hover:text-ink active:scale-90 lg:hidden"
-        >
-          <Icon name="layers" />
-        </button>
         <div className="min-w-0 flex-1">
           {t.kicker && <div className="text-[14px] font-bold uppercase tracking-[0.14em] text-mauve/70">{t.kicker}</div>}
           <h1 className="truncate font-display text-[22px] leading-tight text-ink">{t.title}</h1>
@@ -56,13 +49,13 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
           href="http://localhost:5174"
           target="_blank"
           rel="noreferrer"
-          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-amber-600/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-500/20 transition-all shadow-sm"
+          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-blue-600/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all shadow-sm"
           title="Open Standalone AI Vehicle Detection & Ingestion Portal on Port 5174"
         >
-          <Icon name="camera" className="h-3.5 w-3.5 text-amber-600" />
+          <Icon name="camera" className="h-3.5 w-3.5 text-blue-600" />
           <span>AI Detection Portal</span>
-          <span className="font-mono text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-bold">5174</span>
-          <Icon name="arrowUpRight" className="h-3 w-3 text-amber-700" />
+          <span className="font-mono text-[10px] bg-blue-600 text-white px-1.5 py-0.2 rounded font-bold">5174</span>
+          <Icon name="arrowUpRight" className="h-3 w-3 text-blue-700" />
         </a>
 
         <div className="hidden items-center gap-2 rounded-xl border border-clay/30 bg-sand/45 px-3 py-2 md:flex">

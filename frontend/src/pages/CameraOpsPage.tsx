@@ -132,9 +132,9 @@ export function CamerasPage() {
                     href="http://localhost:5174"
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg border border-amber-600/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-800 hover:bg-amber-500/20 transition-all"
+                    className="flex items-center gap-1.5 rounded-lg border border-blue-600/30 bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all"
                   >
-                    <Icon name="upload" className="h-3 w-3 text-amber-600" />
+                    <Icon name="upload" className="h-3 w-3 text-blue-600" />
                     <span>Upload on 5174</span>
                     <Icon name="arrowUpRight" className="h-2.5 w-2.5" />
                   </a>
@@ -197,7 +197,7 @@ export function CamerasPage() {
                 <span className="h-1.5 overflow-hidden rounded-full bg-clay/20">
                   <span
                     className="block h-full rounded-full transition-all duration-500 group-hover:opacity-80"
-                    style={{ width: `${UPTIME[c.id] ?? 0}%`, background: (UPTIME[c.id] ?? 0) > 97 ? 'rgba(199,169,163,.85)' : (UPTIME[c.id] ?? 0) > 90 ? 'rgba(158,129,137,.7)' : 'rgba(158,129,137,.45)' }}
+                    style={{ width: `${UPTIME[c.id] ?? 0}%`, background: (UPTIME[c.id] ?? 0) > 97 ? 'rgba(194,207,223,.85)' : (UPTIME[c.id] ?? 0) > 90 ? 'rgba(61,110,165,.7)' : 'rgba(61,110,165,.45)' }}
                   />
                 </span>
                 <span className="text-right text-[14px] font-semibold tabular-nums text-mauve/80">{(UPTIME[c.id] ?? 0).toFixed(1)}%</span>
