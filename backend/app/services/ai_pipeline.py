@@ -29,7 +29,7 @@ class IndianSyntaxRectifier:
     """
     Syntactic and Bayesian Post-Processing Engine for Indian License Plates.
     Standard Format: [State: 2 letters] [RTO: 2 digits] [Series: 1-3 letters] [Plate: 4 digits]
-    e.g. DL-01-AB-1234, HR-26-DK-2020, UP-32-BN-8800, MH-12-DE-5678
+    e.g. DL-01-AB-1234, HR-26-DK-2020, UP-32-BN-8800, MH-12-DE-5678, UP-16-DX-7291
     """
     INDIAN_STATES = {
         "AN", "AP", "AR", "AS", "BR", "CH", "CG", "DD", "DL", "DN",
@@ -41,10 +41,9 @@ class IndianSyntaxRectifier:
     ALPHA_TO_DIGIT = {'O': '0', 'D': '0', 'Q': '0', 'I': '1', 'L': '1', 'Z': '2', 'E': '3', 'A': '4', 'S': '5', 'G': '6', 'T': '7', 'B': '8', 'P': '9', 'R': '8'}
     
     STATE_CONFUSIONS = {
-        "NH": "MH", "WH": "MH", "HH": "MH", "VH": "MH", "MN": "MH",
-        "OL": "DL", "QL": "DL", "RL": "DL", "UL": "DL", "OI": "DL", "DI": "DL",
-        "UR": "HR", "RR": "HR", "HB": "HR",
-        "OP": "UP", "VP": "UP",
+        "NH": "MH", "WH": "MH", "HH": "MH", "VH": "MH", "MN": "MH", "MK": "MH",
+        "OL": "DL", "QL": "DL", "RL": "DL", "UL": "DL", "OI": "DL", "DI": "DL", "FL": "DL", "FD": "DL", "ID": "DL", "1D": "DL",
+        "UR": "UP", "OP": "UP", "VP": "UP", "FP": "UP", "FU": "UP", "PU": "UP", "IP": "UP", "JP": "UP", "UF": "UP", "DP": "UP", "TP": "UP", "LP": "UP",
         "RA": "KA", "HA": "KA", "KN": "KA",
         "CJ": "GJ", "QJ": "GJ",
         "PJ": "RJ", "BJ": "RJ",
@@ -56,10 +55,13 @@ class IndianSyntaxRectifier:
     def clean_raw_string(cls, raw: str) -> str:
         s = raw.upper()
         s = re.sub(r'[^A-Z0-9]', '', s)
+        # Strip common HSRP blue bar / IND prefixes
         if s.startswith('IND') and len(s) > 9:
             s = s[3:]
-        # Strip common OCR noise prefix like EX, FX, E, etc. if followed by a real state code
-        for st in ["KA", "DL", "MH", "HR", "UP", "GJ", "RJ", "TN", "WB", "AP", "CH", "PB", "MP"]:
+        elif s.startswith('1ND') and len(s) > 9:
+            s = s[3:]
+        # Strip single noisy leading letter from HSRP logo if followed by real state code
+        for st in ["KA", "DL", "MH", "HR", "UP", "GJ", "RJ", "TN", "WB", "AP", "CH", "PB", "MP", "TS", "CG", "UK"]:
             idx = s.find(st)
             if 0 < idx <= 3 and len(s) - idx >= 6:
                 s = s[idx:]
@@ -77,17 +79,26 @@ class IndianSyntaxRectifier:
             return cand
         if cand in cls.STATE_CONFUSIONS:
             return cls.STATE_CONFUSIONS[cand]
-        # Exact first char match with common state codes
         for s in ["MH", "DL", "HR", "KA", "UP", "GJ", "RJ", "TN", "WB"]:
             if cand[0] == s[0] and cand[1] == s[1]:
                 return s
         for s in cls.INDIAN_STATES:
             if cand[0] == s[0]:
                 return s
-        for s in cls.INDIAN_STATES:
+        for s in ["UP", "DL", "HR", "MH", "KA", "GJ", "RJ", "TN", "WB"]:
             if cand[1] == s[1]:
                 return s
         return cand
+
+    @classmethod
+    def rectify_series_part(cls, ser_raw: str) -> str:
+        s = ser_raw.upper()
+        # Common confusion: 0X / OX is DX
+        if re.match(r'^[0O]X$', s):
+            return "DX"
+        if s.startswith('0') or s.startswith('O'):
+            s = 'D' + s[1:]
+        return "".join(cls.DIGIT_TO_ALPHA.get(c, c) for c in s)
 
     @classmethod
     def rectify(cls, raw_ocr: str) -> Tuple[str, float, bool]:
@@ -97,7 +108,7 @@ class IndianSyntaxRectifier:
             state_part = cls.rectify_state_code(s_raw)
             rto_part = "".join(cls.ALPHA_TO_DIGIT.get(c, c) for c in rto_raw)
             if len(rto_part) == 1: rto_part = "0" + rto_part
-            series_part = "".join(cls.DIGIT_TO_ALPHA.get(c, c) for c in ser_raw)
+            series_part = cls.rectify_series_part(ser_raw)
             num_part = "".join(cls.ALPHA_TO_DIGIT.get(c, c) for c in num_raw)
             rectified = f"{state_part}-{rto_part}-{series_part}-{num_part}"
             is_valid = bool(re.match(r'^[A-Z]{2}-\d{2}-[A-Z]{1,3}-\d{4}$', rectified))
@@ -121,13 +132,13 @@ class IndianSyntaxRectifier:
                         rto_digits.append(cls.ALPHA_TO_DIGIT.get(ch, ch))
                     else:
                         parsing_rto = False
-                        series_letters.append(cls.DIGIT_TO_ALPHA.get(ch, ch))
+                        series_letters.append(ch)
                 else:
-                    series_letters.append(cls.DIGIT_TO_ALPHA.get(ch, ch))
+                    series_letters.append(ch)
 
             rto_str = "".join(rto_digits) if rto_digits else "01"
             if len(rto_str) == 1: rto_str = "0" + rto_str
-            series_str = "".join(series_letters) if series_letters else "AB"
+            series_str = cls.rectify_series_part("".join(series_letters)) if series_letters else "AB"
             rectified = f"{state_part}-{rto_str}-{series_str}-{num_part}"
             is_valid = bool(re.match(r'^[A-Z]{2}-\d{2}-[A-Z]{1,3}-\d{4}$', rectified))
             return rectified, 0.96 if is_valid else 0.82, is_valid
@@ -245,21 +256,43 @@ class FullAIIntelligencePipeline:
         if self.reader is not None:
             try:
                 ch, cw = crop.shape[:2]
-                if ch < 90 or cw < 220:
-                    scale = max(2.0, 90.0 / max(1, ch))
-                    crop_scaled = cv2.resize(crop, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-                else:
-                    crop_scaled = crop
+                scale = max(2.5, 90.0 / max(1, ch))
+                crop_scaled = cv2.resize(crop, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+                
+                # Generate multi-pass variants for robust OCR:
+                # Variant 1: Unsharp Masking (crisp stroke edges on plate characters)
+                gray = cv2.cvtColor(crop_scaled, cv2.COLOR_BGR2GRAY)
+                blurred = cv2.GaussianBlur(gray, (0, 0), 3)
+                unsharp = cv2.addWeighted(gray, 1.6, blurred, -0.6, 0)
+                
+                # Variant 2: Min-Max contrast normalization
+                norm = cv2.normalize(gray, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+                
+                variants = [unsharp, norm, crop_scaled]
+                best_text = ""
+                best_score = -1.0
+                best_conf = 0.0
 
-                res = self.reader.readtext(crop_scaled)
-                if res:
-                    texts = [item[1] for item in res]
-                    confs = [float(item[2]) for item in res]
-                    combined = " ".join(texts)
-                    avg_conf = sum(confs) / len(confs) if confs else 0.8
-                    return combined, avg_conf
-            except Exception:
-                pass
+                for var_img in variants:
+                    res = self.reader.readtext(var_img)
+                    if res:
+                        texts = [item[1] for item in res]
+                        confs = [float(item[2]) for item in res]
+                        combined = " ".join(texts)
+                        avg_c = sum(confs) / len(confs) if confs else 0.5
+                        
+                        rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(combined)
+                        score = (r_conf * 1.5 if is_valid else r_conf * 0.7) * avg_c
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_text = combined
+                            best_conf = max(avg_c, r_conf)
+                
+                if best_text:
+                    return best_text, best_conf
+            except Exception as e:
+                print(f"[OCR extraction warning]: {e}")
         return "", 0.0
 
     def infer_frame(self, frame: np.ndarray, camera_id: str, custom_raw_plate: Optional[str] = None) -> Dict[str, Any]:

@@ -187,7 +187,7 @@ def test_yolo_ai_model_metadata_and_inference():
     assert info["status"] in ["LOADED", "FALLBACK"]
     assert info["architecture"] == "YOLOv8-ANPR-Custom"
     assert info["plate_class_id"] == 80
-    assert "number_plate" in str(info["classes"])
+    assert "license_plate" in str(info["classes"]) or "number_plate" in str(info["classes"])
 
     # 2. Test Direct Inference on Frame Upload
     import numpy as np

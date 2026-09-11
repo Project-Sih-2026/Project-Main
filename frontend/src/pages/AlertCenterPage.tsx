@@ -29,6 +29,11 @@ export function AlertsPage() {
   const [type, setType] = useState('All types');
   const [selId, setSelId] = useState<string | null>(null);
 
+  const types = useMemo(() => {
+    const unique = new Set(app.alerts.map((a) => a.type));
+    return ['All types', ...Array.from(unique).sort()];
+  }, [app.alerts]);
+
   useEffect(() => {
     const t = app.target;
     if (t.statusFilter) setStatus(t.statusFilter);
