@@ -48,11 +48,12 @@ export function detectionsToVehicles(detections: Detection[]): Vehicle[] {
     const latest = sightings[sightings.length - 1];
 
     const cam = camById(latest.camera_id) || CAMERAS.find((c) => c.code === latest.camera_id) || CAMERAS[0];
-    const hasAnyAlert = sightings.some((s) => s.has_alert);
+    const isMissingPlate = latest.normalized_plate_text === 'NOPLATE' || latest.raw_plate_text === 'NO-PLATE' || latest.alert_type === 'MISSING_PLATE_VIOLATION';
+    const hasAnyAlert = isMissingPlate || sightings.some((s) => s.has_alert);
     const status: VehicleStatus = hasAnyAlert ? 'flagged' : 'clear';
 
-    let owner = latest.owner_name?.trim() || 'Registered Citizen';
-    let make = 'Vehicle';
+    let owner = isMissingPlate ? (latest.owner_name?.trim() || 'Unregistered / Missing Plate') : (latest.owner_name?.trim() || 'Registered Citizen');
+    let make = isMissingPlate ? 'Unregistered' : 'Vehicle';
     let model = latest.vehicle_type || 'Standard';
 
     if (owner.includes('(') && owner.includes(')')) {
@@ -74,26 +75,38 @@ export function detectionsToVehicles(detections: Detection[]): Vehicle[] {
         loc: sCam?.name || s.camera_id,
         speed: Math.round(28 + (s.confidence_score * 16) + (idx % 5)),
         dir: sCam?.heading?.split(' ')[0] || 'Northbound',
-        note: s.has_alert ? `Alert flag: ${s.alert_type}` : `OCR: ${Math.round(s.ocr_confidence * 100)}%`,
+        note: s.alert_type === 'MISSING_PLATE_VIOLATION'
+          ? '🚨 Missing Plate Violation (MVA Sec 39/192)'
+          : s.has_alert
+            ? `Alert flag: ${s.alert_type}`
+            : `OCR: ${Math.round(s.ocr_confidence * 100)}%`,
       };
     });
 
     vehicles.push({
       id: latest.id,
-      plate: latest.normalized_plate_text || latest.raw_plate_text,
+      plate: isMissingPlate ? 'NO-PLATE' : (latest.normalized_plate_text || latest.raw_plate_text),
       make,
       model,
       color: normalizeVehicleType(latest.vehicle_type) === 'Ambulance' ? 'Emergency White/Red' : 'Titanium Grey',
       type: normalizeVehicleType(latest.vehicle_type),
       owner,
-      license: `DL-REG-${plateKey.slice(-4) || '2026'}`,
+      license: isMissingPlate ? 'UNREGISTERED' : `DL-REG-${plateKey.slice(-4) || '2026'}`,
       status,
-      flaggedReason: hasAnyAlert ? `System flagged match on CCTV corridor: ${latest.alert_type || 'Watchlist'}` : undefined,
+      flaggedReason: isMissingPlate
+        ? 'CRITICAL VIOLATION: Vehicle operating without valid license plate (MVA Sec 39/192)'
+        : (hasAnyAlert ? `System flagged match on CCTV corridor: ${latest.alert_type || 'Watchlist'}` : undefined),
       speed: Math.round(30 + (latest.confidence_score * 15)),
       lastCam: latest.camera_id,
       lastSeen: timeSince(latest.timestamp),
       kmToday: Math.max(12, sightings.length * 8),
-      tags: ['live-database', 'yolov8-anpr', ...(hasAnyAlert ? ['flagged-alert'] : []), ...(normalizeVehicleType(latest.vehicle_type) === 'Ambulance' ? ['ambulance-corridor'] : [])],
+      tags: [
+        'live-database',
+        'yolov8-anpr',
+        ...(hasAnyAlert ? ['flagged-alert'] : []),
+        ...(isMissingPlate ? ['missing-plate-violation'] : []),
+        ...(normalizeVehicleType(latest.vehicle_type) === 'Ambulance' ? ['ambulance-corridor'] : [])
+      ],
       journey,
       road: 0,
       prog: Math.min(0.9, Math.max(0.1, (cam?.x || 300) / 700)),
@@ -116,17 +129,23 @@ export function detectionsToAlerts(detections: Detection[]): TrafficAlert[] {
   detections.filter((d) => d.has_alert).forEach((d) => {
     const cam = camById(d.camera_id) || CAMERAS.find((c) => c.code === d.camera_id);
     const diffMins = Math.max(1, Math.floor((Date.now() - new Date(d.timestamp).getTime()) / 60000));
+    const isNoPlate = d.alert_type === 'MISSING_PLATE_VIOLATION' || d.normalized_plate_text === 'NOPLATE';
+
     alerts.push({
       id: `alt-${d.id}`,
       severity: 'critical',
-      type: d.alert_type || 'Watchlist',
-      title: `${d.alert_type || 'Alert Flag'} — ${d.normalized_plate_text || d.raw_plate_text} at ${cam?.name || d.camera_id}`,
+      type: isNoPlate ? 'MISSING_PLATE_VIOLATION' : (d.alert_type || 'Watchlist'),
+      title: isNoPlate
+        ? `🚨 MISSING PLATE VIOLATION — Unregistered ${d.vehicle_type || 'Vehicle'} at ${cam?.name || d.camera_id}`
+        : `${d.alert_type || 'Alert Flag'} — ${d.normalized_plate_text || d.raw_plate_text} at ${cam?.name || d.camera_id}`,
       vehicleId: d.id,
       cameraId: cam?.id || 'c1',
       zone: cam?.district || 'Krishna Nagar',
       minsAgo: diffMins,
       status: 'open',
-      detail: `Vehicle registration ${d.normalized_plate_text || d.raw_plate_text} detected at ${cam?.name || d.camera_id} (${d.camera_id}) with ${Math.round(d.confidence_score * 100)}% detection confidence. Review status: ${d.processing_status}.`
+      detail: isNoPlate
+        ? `CRITICAL NON-COMPLIANCE: Vehicle operating illegally without a license plate (MVA Sec 39/192) detected at ${cam?.name || d.camera_id} (${d.camera_id}). Type: ${d.vehicle_type || 'Vehicle'}. Immediate patrol dispatch recommended.`
+        : `Vehicle registration ${d.normalized_plate_text || d.raw_plate_text} detected at ${cam?.name || d.camera_id} (${d.camera_id}) with ${Math.round(d.confidence_score * 100)}% detection confidence. Review status: ${d.processing_status}.`
     });
   });
 

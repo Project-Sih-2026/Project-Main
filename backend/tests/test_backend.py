@@ -301,5 +301,28 @@ def test_timestamped_observation_route_and_camera_sequence():
     assert j2["observation_stops"][1]["camera_id"] == "CAM-KN-02"
     assert j2["observation_stops"][1]["duration_mins_from_prev"] == 15.0
 
+def test_missing_plate_detection_and_alert():
+    import numpy as np
+    import cv2
+    import io
+
+    # Blank frame representing vehicle without license plate
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    frame[:] = (50, 50, 50)
+    _, encoded = cv2.imencode(".jpg", frame)
+
+    files = {"file": ("no_plate_car.jpg", io.BytesIO(encoded.tobytes()), "image/jpeg")}
+    res = client.post(
+        "/api/v1/detections/upload-route?camera_id=CAM-KN-03",
+        files=files
+    )
+    assert res.status_code == 200
+    data = res.json()["detection"]
+    assert data["raw_plate_text"] == "NO-PLATE"
+    assert data["normalized_plate_text"] == "NOPLATE"
+    assert data["ocr_confidence"] == 0.0
+    assert data["has_alert"] is True
+    assert data["alert_type"] == "MISSING_PLATE_VIOLATION"
+
 
 

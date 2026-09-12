@@ -929,93 +929,115 @@ export function CameraUploadPortalPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
-                      ✓ AI Inference Success • Stored in Dataset
-                    </span>
-                    <h2 className="font-mono text-3xl font-black tracking-wider text-ink mt-0.5">
-                      {resultDetection.normalized_plate_text}
-                    </h2>
-                    {resultDetection.owner_name && (
-                      <p className="text-xs font-semibold text-emerald-900 mt-1 flex items-center gap-1.5">
-                        <span className="text-[10px] uppercase font-bold bg-emerald-500/20 px-1.5 py-0.2 rounded">Owner/Name:</span>
-                        <span>{resultDetection.owner_name}</span>
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      resultDetection.has_alert
-                        ? 'bg-rose-500/15 text-rose-700 border border-rose-500/30'
-                        : 'bg-emerald-500/20 text-emerald-800 border border-emerald-500/40'
-                    }`}>
-                      {resultDetection.has_alert ? `ALERT: ${resultDetection.alert_type}` : 'CLEAN VEHICLE'}
-                    </span>
-                    <p className="text-[11px] text-mauve font-mono mt-1">ID: {resultDetection.id}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-clay/30 bg-white/70 p-2 text-center">
-                    <span className="text-[10px] font-bold uppercase text-mauve block mb-1">Cropped Plate Box</span>
-                    {resultDetection.plate_crop_uri ? (
-                      <img
-                        src={resultDetection.plate_crop_uri.startsWith('http') ? resultDetection.plate_crop_uri : `${BACKEND_STATIC}${resultDetection.plate_crop_uri}`}
-                        alt="Plate Crop"
-                        className="w-full h-36 object-contain rounded-lg border border-clay/20 bg-black/90 p-2"
-                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="w-full h-36 flex items-center justify-center font-mono text-sm font-bold text-ink bg-sand/30 rounded-lg">
-                        {resultDetection.normalized_plate_text}
+                {(() => {
+                  const isMissingPlate = resultDetection.normalized_plate_text === 'NOPLATE' || resultDetection.raw_plate_text === 'NO-PLATE' || resultDetection.alert_type === 'MISSING_PLATE_VIOLATION';
+                  return (
+                    <>
+                      <div className={`flex items-center justify-between border-b pb-3 ${isMissingPlate ? 'border-rose-500/20' : 'border-emerald-500/20'}`}>
+                        <div>
+                          <span className={`text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${isMissingPlate ? 'text-rose-700' : 'text-emerald-800'}`}>
+                            {isMissingPlate ? '⚠️ Critical Violation Detected • Unregistered Vehicle' : '✓ AI Inference Success • Stored in Dataset'}
+                          </span>
+                          <h2 className={`font-mono text-3xl font-black tracking-wider mt-0.5 ${isMissingPlate ? 'text-rose-700' : 'text-ink'}`}>
+                            {isMissingPlate ? 'NO-PLATE [UNREGISTERED]' : resultDetection.normalized_plate_text}
+                          </h2>
+                          {resultDetection.owner_name && (
+                            <p className="text-xs font-semibold text-ink mt-1 flex items-center gap-1.5">
+                              <span className="text-[10px] uppercase font-bold bg-clay/20 px-1.5 py-0.2 rounded">Owner/Name:</span>
+                              <span>{resultDetection.owner_name}</span>
+                            </p>
+                          )}
+                          {isMissingPlate && (
+                            <p className="text-xs font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                              <span>MVA Sec 39/192: Vehicle operating without required registration license plate</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                            isMissingPlate
+                              ? 'bg-rose-500/20 text-rose-800 border border-rose-500/40 shadow-xs'
+                              : resultDetection.has_alert
+                                ? 'bg-rose-500/15 text-rose-700 border border-rose-500/30'
+                                : 'bg-emerald-500/20 text-emerald-800 border border-emerald-500/40'
+                          }`}>
+                            {isMissingPlate
+                              ? '🚨 MISSING PLATE VIOLATION'
+                              : resultDetection.has_alert
+                                ? `ALERT: ${resultDetection.alert_type}`
+                                : 'CLEAN VEHICLE'}
+                          </span>
+                          <p className="text-[11px] text-mauve font-mono mt-1">ID: {resultDetection.id}</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="rounded-xl border border-clay/30 bg-white/70 p-2 text-center">
-                    <span className="text-[10px] font-bold uppercase text-mauve block mb-1">Annotated Evidence</span>
-                    <img
-                      src={resultDetection.evidence_image_uri.startsWith('http') ? resultDetection.evidence_image_uri : `${BACKEND_STATIC}${resultDetection.evidence_image_uri}`}
-                      alt="Full Evidence Frame"
-                      className="w-full h-36 object-cover rounded-lg border border-clay/20"
-                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                    />
-                  </div>
-                </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="rounded-xl border border-clay/30 bg-white/70 p-2 text-center">
+                          <span className="text-[10px] font-bold uppercase text-mauve block mb-1">
+                            {isMissingPlate ? 'Bumper / Plate Area Evidence' : 'Cropped Plate Box'}
+                          </span>
+                          {resultDetection.plate_crop_uri ? (
+                            <img
+                              src={resultDetection.plate_crop_uri.startsWith('http') ? resultDetection.plate_crop_uri : `${BACKEND_STATIC}${resultDetection.plate_crop_uri}`}
+                              alt="Plate Crop"
+                              className="w-full h-36 object-contain rounded-lg border border-clay/20 bg-black/90 p-2"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="w-full h-36 flex items-center justify-center font-mono text-sm font-bold text-ink bg-sand/30 rounded-lg">
+                              {isMissingPlate ? 'NO LICENSE PLATE' : resultDetection.normalized_plate_text}
+                            </div>
+                          )}
+                        </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">Camera Node</span>
-                    <span className="font-mono text-xs font-bold text-blue-700">{resultDetection.camera_id}</span>
-                  </div>
-                  <div className="rounded-xl bg-blue-50/70 p-2.5 border border-blue-300/40">
-                    <span className="text-[10px] font-bold uppercase text-blue-800 block flex items-center gap-1">
-                      <Icon name="clock" className="h-3 w-3 text-blue-600" />
-                      <span>Passage Time</span>
-                    </span>
-                    <span className="font-mono text-xs font-black text-ink">
-                      {new Date(resultDetection.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                    <span className="text-[10px] text-mauve block mt-0.5 font-medium">
-                      {new Date(resultDetection.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">Vehicle Type</span>
-                    <span className="text-xs font-bold text-ink">{resultDetection.vehicle_type}</span>
-                  </div>
-                  <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">OCR Confidence</span>
-                    <span className="font-mono text-xs font-bold text-emerald-700">
-                      {(resultDetection.ocr_confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">Raw OCR Text</span>
-                    <span className="font-mono text-xs font-bold text-ink">{resultDetection.raw_plate_text}</span>
-                  </div>
-                </div>
+                        <div className="rounded-xl border border-clay/30 bg-white/70 p-2 text-center">
+                          <span className="text-[10px] font-bold uppercase text-mauve block mb-1">Annotated Evidence</span>
+                          <img
+                            src={resultDetection.evidence_image_uri.startsWith('http') ? resultDetection.evidence_image_uri : `${BACKEND_STATIC}${resultDetection.evidence_image_uri}`}
+                            alt="Full Evidence Frame"
+                            className="w-full h-36 object-cover rounded-lg border border-clay/20"
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
+                          <span className="text-[10px] font-bold uppercase text-mauve block">Camera Node</span>
+                          <span className="font-mono text-xs font-bold text-blue-700">{resultDetection.camera_id}</span>
+                        </div>
+                        <div className="rounded-xl bg-blue-50/70 p-2.5 border border-blue-300/40">
+                          <span className="text-[10px] font-bold uppercase text-blue-800 block flex items-center gap-1">
+                            <Icon name="clock" className="h-3 w-3 text-blue-600" />
+                            <span>Passage Time</span>
+                          </span>
+                          <span className="font-mono text-xs font-black text-ink">
+                            {new Date(resultDetection.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </span>
+                          <span className="text-[10px] text-mauve block mt-0.5 font-medium">
+                            {new Date(resultDetection.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
+                          <span className="text-[10px] font-bold uppercase text-mauve block">Vehicle Type</span>
+                          <span className="text-xs font-bold text-ink">{resultDetection.vehicle_type}</span>
+                        </div>
+                        <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
+                          <span className="text-[10px] font-bold uppercase text-mauve block">OCR Status</span>
+                          <span className={`font-mono text-xs font-bold ${isMissingPlate ? 'text-rose-700' : 'text-emerald-700'}`}>
+                            {isMissingPlate ? '0.0% (Plate Absent)' : `${(resultDetection.ocr_confidence * 100).toFixed(1)}%`}
+                          </span>
+                        </div>
+                        <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
+                          <span className="text-[10px] font-bold uppercase text-mauve block">Plate Status</span>
+                          <span className={`font-mono text-xs font-bold ${isMissingPlate ? 'text-rose-700' : 'text-ink'}`}>
+                            {isMissingPlate ? 'NO-PLATE' : resultDetection.raw_plate_text}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-2">
@@ -1269,8 +1291,8 @@ export function CameraUploadPortalPage() {
                       </td>
 
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-emerald-700">
-                          {(d.ocr_confidence * 100).toFixed(1)}%
+                        <span className={`font-mono font-bold ${(d.normalized_plate_text === 'NOPLATE' || d.ocr_confidence === 0) ? 'text-rose-700' : 'text-emerald-700'}`}>
+                          {(d.normalized_plate_text === 'NOPLATE' || d.ocr_confidence === 0) ? '0.0%' : `${(d.ocr_confidence * 100).toFixed(1)}%`}
                         </span>
                       </td>
 
@@ -1279,9 +1301,15 @@ export function CameraUploadPortalPage() {
                           <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
                             d.alert_type === 'EMERGENCY_AMBULANCE'
                               ? 'bg-red-500/20 text-red-700 border-red-500/40 animate-pulse'
-                              : 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                              : d.alert_type === 'MISSING_PLATE_VIOLATION' || d.normalized_plate_text === 'NOPLATE'
+                                ? 'bg-rose-500/20 text-rose-800 border-rose-500/40 font-bold'
+                                : 'bg-rose-500/15 text-rose-700 border-rose-500/30'
                           }`}>
-                            {d.alert_type === 'EMERGENCY_AMBULANCE' ? '🚨 AMBULANCE PRIORITY' : (d.alert_type || 'WATCHLIST')}
+                            {d.alert_type === 'EMERGENCY_AMBULANCE'
+                              ? '🚨 AMBULANCE PRIORITY'
+                              : d.alert_type === 'MISSING_PLATE_VIOLATION' || d.normalized_plate_text === 'NOPLATE'
+                                ? '🚨 MISSING PLATE'
+                                : (d.alert_type || 'WATCHLIST')}
                           </span>
                         ) : (
                           <span className="rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-semibold">
