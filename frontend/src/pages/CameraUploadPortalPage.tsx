@@ -1100,7 +1100,14 @@ export function CameraUploadPortalPage() {
                       </td>
 
                       <td className="py-3 px-4 font-semibold text-ink">
-                        {d.vehicle_type || 'Vehicle'}
+                        {d.vehicle_type === 'Ambulance' ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 text-red-700 border border-red-500/30 px-2.5 py-0.5 text-[11px] font-bold">
+                            <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+                            Ambulance
+                          </span>
+                        ) : (
+                          d.vehicle_type || 'Vehicle'
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <span className="font-mono font-bold text-blue-800 bg-blue-500/10 px-2 py-0.5 rounded">
@@ -1117,8 +1124,12 @@ export function CameraUploadPortalPage() {
                       </td>
                       <td className="py-3 px-4">
                         {d.has_alert ? (
-                          <span className="rounded-full bg-rose-500/15 text-rose-700 border border-rose-500/30 px-2.5 py-0.5 text-[10px] font-bold">
-                            {d.alert_type || 'WATCHLIST'}
+                          <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
+                            d.alert_type === 'EMERGENCY_AMBULANCE'
+                              ? 'bg-red-500/20 text-red-700 border-red-500/40 animate-pulse'
+                              : 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                          }`}>
+                            {d.alert_type === 'EMERGENCY_AMBULANCE' ? '🚨 AMBULANCE PRIORITY' : (d.alert_type || 'WATCHLIST')}
                           </span>
                         ) : (
                           <span className="rounded-full bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-semibold">

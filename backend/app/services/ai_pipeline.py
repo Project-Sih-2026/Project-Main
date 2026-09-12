@@ -211,6 +211,8 @@ class FullAIIntelligencePipeline:
         self.vehicle_model_m_path = None
         self.vehicle_model_s = None
         self.vehicle_model_s_path = None
+        self.ambulance_model = None
+        self.ambulance_model_path = None
         self.reader = None
         self.classes = {}
         self.is_initialized = False
@@ -274,7 +276,20 @@ class FullAIIntelligencePipeline:
             for vc in v_candidates:
                 if os.path.exists(vc) and os.path.isfile(vc) and os.path.getsize(vc) > 1000:
                     checkpoints["s"] = os.path.abspath(vc)
-                    break
+        # Search for dedicated Ambulance YOLO model
+        amb_candidates = [
+            os.path.join(root_dir, "ambulance.pt"),
+            os.path.join(root_dir, "best_ambulance.pt"),
+            os.path.join(root_dir, "yolo_ambulance.pt"),
+            os.path.join(app_dir, "models", "ambulance.pt"),
+            os.path.join(app_dir, "models", "best_ambulance.pt"),
+            "ambulance.pt",
+            "best_ambulance.pt"
+        ]
+        for ac in amb_candidates:
+            if os.path.exists(ac) and os.path.isfile(ac) and os.path.getsize(ac) > 1000:
+                checkpoints["ambulance"] = os.path.abspath(ac)
+                break
 
         return checkpoints
 
@@ -290,7 +305,8 @@ class FullAIIntelligencePipeline:
         box: Tuple[int, int, int, int],
         vehicle_crop: Optional[np.ndarray] = None,
         extracted_texts: Optional[List[str]] = None,
-        custom_hint: Optional[str] = None
+        custom_hint: Optional[str] = None,
+        reader: Optional[Any] = None
     ) -> str:
         """
         Classifies and standardizes the vehicle type using the YOLO detection class,
@@ -312,35 +328,71 @@ class FullAIIntelligencePipeline:
         # 3. Check extracted texts from plate / bumper / vehicle body
         if extracted_texts:
             for text in extracted_texts:
-                t_up = re.sub(r'[^A-Z0-9]', '', text.upper())
+                if not text:
+                    continue
+                t_up = re.sub(r'[^A-Z0-9]', '', str(text).upper())
                 for kw in cls.AMBULANCE_KEYWORDS:
                     if kw in t_up:
                         return "Ambulance"
 
-        # 4. Visual Emergency Lightbar & Ambulance Livery Analysis on Vehicle Crop
+        # 4. Visual Emergency Lightbar, Body Markings, and Vehicle Body OCR
         if vehicle_crop is not None and vehicle_crop.size > 0:
             vh, vw = vehicle_crop.shape[:2]
-            if vh > 40 and vw > 40:
-                # Analyze upper 22% of vehicle for Emergency Beacon / Flashing Light Bar
-                roof_roi = vehicle_crop[:int(vh * 0.22), :]
+            if vh > 35 and vw > 35:
+                # 4a. Run high-accuracy OCR on vehicle body (hood, windshield, sides)
+                if reader is not None:
+                    try:
+                        if max(vh, vw) > 420:
+                            sc = 420.0 / max(vh, vw)
+                            v_small = cv2.resize(vehicle_crop, (int(vw * sc), int(vh * sc)), interpolation=cv2.INTER_AREA)
+                        else:
+                            v_small = vehicle_crop
+                        body_ocr = reader.readtext(v_small, detail=0)
+                        for bt in body_ocr:
+                            clean_bt = re.sub(r'[^A-Z0-9]', '', str(bt).upper())
+                            for kw in cls.AMBULANCE_KEYWORDS:
+                                if kw in clean_bt:
+                                    return "Ambulance"
+                    except Exception:
+                        pass
+
+                # 4b. Emergency Lightbar / Flashing Beacon Detection (top 25% of vehicle)
+                roof_roi = vehicle_crop[:max(8, int(vh * 0.25)), :]
                 hsv_roof = cv2.cvtColor(roof_roi, cv2.COLOR_BGR2HSV)
-                red1 = cv2.inRange(hsv_roof, np.array([0, 110, 100]), np.array([12, 255, 255]))
-                red2 = cv2.inRange(hsv_roof, np.array([165, 110, 100]), np.array([180, 255, 255]))
+                red1 = cv2.inRange(hsv_roof, np.array([0, 95, 80]), np.array([14, 255, 255]))
+                red2 = cv2.inRange(hsv_roof, np.array([160, 95, 80]), np.array([180, 255, 255]))
                 red_mask = cv2.bitwise_or(red1, red2)
-                blue_mask = cv2.inRange(hsv_roof, np.array([100, 120, 100]), np.array([130, 255, 255]))
+                blue_mask = cv2.inRange(hsv_roof, np.array([95, 100, 80]), np.array([135, 255, 255]))
+                amber_mask = cv2.inRange(hsv_roof, np.array([15, 110, 110]), np.array([30, 255, 255]))
 
                 red_px = cv2.countNonZero(red_mask)
                 blue_px = cv2.countNonZero(blue_mask)
+                amber_px = cv2.countNonZero(amber_mask)
                 total_roof_px = max(1, roof_roi.shape[0] * roof_roi.shape[1])
+                roof_red_ratio = red_px / float(total_roof_px)
 
-                has_beacon = (red_px > 25 and blue_px > 25) or ((red_px + blue_px) / total_roof_px > 0.045)
+                # Emergency beacon detection (localized roof fixture)
+                has_beacon = (
+                    (red_px > 15 and blue_px > 15) or
+                    (red_px > 20 and amber_px > 10) or
+                    (red_px > 25 and roof_red_ratio < 0.30) or
+                    (blue_px > 25)
+                )
 
-                body_roi = vehicle_crop[int(vh * 0.25):int(vh * 0.75), int(vw * 0.15):int(vw * 0.85)]
+                # 4c. Vehicle body color and red medical cross / stripes
+                body_roi = vehicle_crop[int(vh * 0.18):int(vh * 0.88), int(vw * 0.08):int(vw * 0.92)]
                 if body_roi.size > 0:
                     hsv_body = cv2.cvtColor(body_roi, cv2.COLOR_BGR2HSV)
-                    white_mask = cv2.inRange(hsv_body, np.array([0, 0, 150]), np.array([180, 50, 255]))
+                    white_mask = cv2.inRange(hsv_body, np.array([0, 0, 120]), np.array([180, 65, 255]))
                     white_ratio = cv2.countNonZero(white_mask) / float(body_roi.shape[0] * body_roi.shape[1])
-                    if has_beacon and white_ratio > 0.25:
+
+                    body_red1 = cv2.inRange(hsv_body, np.array([0, 95, 80]), np.array([14, 255, 255]))
+                    body_red2 = cv2.inRange(hsv_body, np.array([160, 95, 80]), np.array([180, 255, 255]))
+                    body_red = cv2.bitwise_or(body_red1, body_red2)
+                    has_red_markings = cv2.countNonZero(body_red) > 20
+
+                    # Ambulances require a predominantly white/light body with beacon or medical markings
+                    if white_ratio >= 0.25 and (has_beacon or (has_red_markings and white_ratio > 0.35)):
                         return "Ambulance"
 
         # 5. Standard vehicle classification
@@ -397,6 +449,15 @@ class FullAIIntelligencePipeline:
             except Exception as e:
                 print(f"[AI Pipeline Warning] Failed to load YOLO11s: {e}")
 
+        self.ambulance_model_path = v_checkpoints.get("ambulance")
+        if _YOLO_AVAILABLE and self.ambulance_model_path:
+            try:
+                self.ambulance_model = YOLO(self.ambulance_model_path)
+                print(f"[AI Pipeline] Successfully loaded Ambulance YOLO model from: {self.ambulance_model_path}")
+                self.is_initialized = True
+            except Exception as e:
+                print(f"[AI Pipeline Warning] Failed to load Ambulance model: {e}")
+
         # Primary vehicle model reference
         self.vehicle_model = self.vehicle_model_m or self.vehicle_model_s
         self.vehicle_model_path = self.vehicle_model_m_path or self.vehicle_model_s_path
@@ -409,6 +470,8 @@ class FullAIIntelligencePipeline:
 
     def get_model_info(self) -> Dict[str, Any]:
         loaded_models = []
+        if self.ambulance_model:
+            loaded_models.append(f"{os.path.basename(self.ambulance_model_path)} (Ambulance)")
         if self.vehicle_model_m:
             loaded_models.append("yolo11m.pt (Medium)")
         if self.vehicle_model_s:
@@ -420,6 +483,7 @@ class FullAIIntelligencePipeline:
             "status": "LOADED" if self.is_initialized else "FALLBACK",
             "model_path": ", ".join(loaded_models) if loaded_models else "None",
             "architecture": "YOLO11-Vehicle-Classification-ANPR",
+            "ambulance_model_active": self.ambulance_model is not None,
             "yolo11m_active": self.vehicle_model_m is not None,
             "yolo11s_active": self.vehicle_model_s is not None,
             "vehicle_classes": ["Ambulance", "Sedan", "SUV", "Truck", "Bus", "Two-wheeler", "Van"],
@@ -494,26 +558,30 @@ class FullAIIntelligencePipeline:
         ocr_confidence = 0.90
         detected_vehicle_type = "Vehicle"
 
-        # 1. Detect vehicles across both YOLO11m and YOLO11s models (and custom plate model if present)
+        # 1. Detect vehicles across both YOLO11m, YOLO11s, dedicated Ambulance model, and custom plate model
         candidate_vehicles = []
-        detectors = [d for d in [self.vehicle_model_m, self.vehicle_model_s, self.model] if d is not None]
-        VEHICLE_CLASSES = {"car", "motorcycle", "bus", "truck", "automobile", "van", "bicycle", "vehicle", "auto", "train"}
+        detectors = [d for d in [self.ambulance_model, self.vehicle_model_m, self.vehicle_model_s, self.model] if d is not None]
+        VEHICLE_CLASSES = {
+            "car", "motorcycle", "bus", "truck", "automobile", "van", "bicycle",
+            "vehicle", "auto", "train", "ambulance", "emergency", "emergency_vehicle"
+        }
 
         for v_detector in detectors:
             try:
-                # Optimized confidence threshold for YOLO11 models
-                v_res = v_detector(frame, conf=0.28, verbose=False)[0]
+                # Optimized confidence threshold for YOLO models
+                v_res = v_detector(frame, conf=0.25, verbose=False)[0]
+                is_amb_detector = (v_detector == self.ambulance_model)
                 for box in v_res.boxes:
                     cls_id = int(box.cls[0].item())
                     cls_name = v_detector.names.get(cls_id, str(cls_id)).lower()
                     conf = float(box.conf[0].item())
                     x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
 
-                    if (cls_name in VEHICLE_CLASSES or cls_id in [1, 2, 3, 5, 7]) and (x2 - x1) > 30 and (y2 - y1) > 30:
-                        identified_type = self.classify_vehicle_type(cls_name, (x1, y1, x2, y2))
+                    if (is_amb_detector or "ambulance" in cls_name or cls_name in VEHICLE_CLASSES or cls_id in [1, 2, 3, 5, 7]) and (x2 - x1) > 30 and (y2 - y1) > 30:
+                        identified_type = "Ambulance" if (is_amb_detector or "ambulance" in cls_name) else self.classify_vehicle_type(cls_name, (x1, y1, x2, y2))
                         candidate_vehicles.append({
                             "class_id": cls_id,
-                            "raw_class": cls_name,
+                            "raw_class": "ambulance" if is_amb_detector else cls_name,
                             "class_name": identified_type,
                             "confidence": conf,
                             "box": (x1, y1, x2, y2),
@@ -693,7 +761,8 @@ class FullAIIntelligencePipeline:
                     (vx1, vy1, vx2, vy2),
                     vehicle_crop=veh_crop,
                     extracted_texts=extracted_texts,
-                    custom_hint=custom_raw_plate
+                    custom_hint=custom_raw_plate,
+                    reader=self.reader
                 )
 
                 detected_entries_data.append({
@@ -739,12 +808,32 @@ class FullAIIntelligencePipeline:
                 cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
                 cv2.imwrite(crop_path, dummy)
 
+            # Estimate vehicle context above and around the plate
+            v_est_x1 = max(0, px1 - int((px2 - px1) * 1.5))
+            v_est_x2 = min(w, px2 + int((px2 - px1) * 1.5))
+            v_est_y1 = max(0, py1 - int((py2 - py1) * 6))
+            v_est_y2 = min(h, py2 + int((py2 - py1) * 0.5))
+            v_est_crop = frame[v_est_y1:v_est_y2, v_est_x1:v_est_x2]
+            
+            p_ext_texts = [p_text]
+            if 'raw_ocr' in locals() and raw_ocr:
+                p_ext_texts.append(raw_ocr)
+
+            unmatched_v_type = self.classify_vehicle_type(
+                "vehicle",
+                (v_est_x1, v_est_y1, v_est_x2, v_est_y2),
+                vehicle_crop=v_est_crop,
+                extracted_texts=p_ext_texts,
+                custom_hint=custom_raw_plate,
+                reader=self.reader
+            )
+
             detected_entries_data.append({
                 "plate_text": p_text,
                 "norm_plate": normalize_plate(p_text),
                 "ocr_conf": round(p_conf, 3),
-                "vehicle_type": "Vehicle",
-                "v_box": None,
+                "vehicle_type": unmatched_v_type,
+                "v_box": (v_est_x1, v_est_y1, v_est_x2, v_est_y2),
                 "p_box": (px1, py1, px2, py2),
                 "crop_filename": crop_filename
             })
@@ -759,11 +848,20 @@ class FullAIIntelligencePipeline:
             cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
             cv2.imwrite(crop_path, dummy)
 
+            fallback_type = self.classify_vehicle_type(
+                "vehicle",
+                (0, 0, w, h),
+                vehicle_crop=frame,
+                extracted_texts=[p_text],
+                custom_hint=custom_raw_plate,
+                reader=self.reader
+            )
+
             detected_entries_data.append({
                 "plate_text": p_text,
                 "norm_plate": normalize_plate(p_text),
                 "ocr_conf": 0.94,
-                "vehicle_type": "Vehicle",
+                "vehicle_type": fallback_type,
                 "v_box": None,
                 "p_box": None,
                 "crop_filename": crop_filename
