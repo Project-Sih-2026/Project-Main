@@ -39,6 +39,21 @@ async def background_feed_emitter():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup: auto-seed if database is freshly initialized or empty
+    try:
+        from seed_data import seed_database
+        from app.models.camera import Camera
+        db = SessionLocal()
+        try:
+            if db.query(Camera).count() == 0:
+                print("⚡ Database is empty. Auto-seeding cameras, routes, and baseline detections...")
+                seed_database(target_db=db)
+                print("✅ Database auto-seeding complete.")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[Startup Notice] Auto-seed check: {e}")
+
     # Startup: spawn background emitter
     task = asyncio.create_task(background_feed_emitter())
     yield
