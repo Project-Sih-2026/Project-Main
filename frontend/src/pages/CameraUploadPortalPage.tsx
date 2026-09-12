@@ -186,7 +186,7 @@ export function CameraUploadPortalPage() {
 
     const plateToUse = customPlateInput.trim() || undefined;
     const ownerToUse = ownerNameInput.trim() || undefined;
-    const timeToUse = customTimeInput ? new Date(customTimeInput).toISOString() : undefined;
+    const timeToUse = customTimeInput ? customTimeInput : undefined;
 
     try {
       let fileToUpload = file;
@@ -237,7 +237,7 @@ export function CameraUploadPortalPage() {
         camera_id: editCameraId || undefined,
       };
       if (editTimestamp) {
-        payload.timestamp = new Date(editTimestamp).toISOString();
+        payload.timestamp = editTimestamp;
       }
       await api.updateDetection(detectionId, payload);
       app.toast('Detection record & passage time updated in dataset!');
