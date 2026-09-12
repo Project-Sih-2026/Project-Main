@@ -45,6 +45,13 @@ def test_camera_distances_and_nearest():
     assert near_data["nearest"][0]["camera_id"] in ["CAM-KN-02", "CAM-GN-07"]
 
 def test_detections_and_dual_storage():
+    # Ingest a detection to ensure at least one record exists
+    client.post("/api/v1/detections/ingest", json={
+        "camera_id": "CAM-KN-01",
+        "plate_text": "DL 01 AB 1234",
+        "confidence_score": 0.95,
+        "vehicle_type": "Sedan"
+    })
     response = client.get("/api/v1/detections")
     assert response.status_code == 200
     data = response.json()
@@ -55,6 +62,13 @@ def test_detections_and_dual_storage():
     assert "normalized_plate_text" in sample
 
 def test_ocr_correction_immutable_audit():
+    # Ingest a detection to ensure target detection exists
+    client.post("/api/v1/detections/ingest", json={
+        "camera_id": "CAM-KN-01",
+        "plate_text": "DL 01 AB 1234",
+        "confidence_score": 0.95,
+        "vehicle_type": "Sedan"
+    })
     # 1. Fetch a detection
     det_res = client.get("/api/v1/detections")
     detections = det_res.json()
@@ -228,6 +242,9 @@ def test_timestamped_observation_route_and_camera_sequence():
     import numpy as np
     import cv2
     import io
+    import uuid
+
+    test_plate = f"HR26{uuid.uuid4().hex[:4].upper()}"
 
     frame = np.zeros((480, 640, 3), dtype=np.uint8)
     _, encoded = cv2.imencode(".jpg", frame)
@@ -235,27 +252,27 @@ def test_timestamped_observation_route_and_camera_sequence():
     # Checkpoint 1 at 10:00 AM
     files1 = {"file": ("cam1.jpg", io.BytesIO(encoded.tobytes()), "image/jpeg")}
     r1 = client.post(
-        "/api/v1/detections/upload-route?camera_id=CAM-KN-01&custom_plate=HR-26-AB-9999&owner_name=Vipul%20Sharma&timestamp=2026-09-12T10:00:00",
+        f"/api/v1/detections/upload-route?camera_id=CAM-KN-01&custom_plate={test_plate}&owner_name=Vipul%20Sharma&timestamp=2026-09-12T10:00:00",
         files=files1
     )
     assert r1.status_code == 200
     d1 = r1.json()["detection"]
     assert d1["camera_id"] == "CAM-KN-01"
-    assert d1["normalized_plate_text"] == "HR26AB9999"
+    assert d1["normalized_plate_text"] == test_plate
     assert "2026-09-12T10:00:00" in d1["timestamp"]
 
     # Checkpoint 2 at 10:15 AM
     files2 = {"file": ("cam2.jpg", io.BytesIO(encoded.tobytes()), "image/jpeg")}
     r2 = client.post(
-        "/api/v1/detections/upload-route?camera_id=CAM-KN-02&custom_plate=HR-26-AB-9999&owner_name=Vipul%20Sharma&timestamp=2026-09-12T10:15:00",
+        f"/api/v1/detections/upload-route?camera_id=CAM-KN-02&custom_plate={test_plate}&owner_name=Vipul%20Sharma&timestamp=2026-09-12T10:15:00",
         files=files2
     )
     assert r2.status_code == 200
     j2 = r2.json()["journey"]
     assert j2 is not None
-    assert j2["total_observations"] >= 2
+    assert j2["total_observations"] == 2
     assert j2["total_duration_mins"] == 15.0
-    assert len(j2["observation_stops"]) >= 2
+    assert len(j2["observation_stops"]) == 2
     assert j2["observation_stops"][0]["camera_id"] == "CAM-KN-01"
     assert j2["observation_stops"][1]["camera_id"] == "CAM-KN-02"
     assert j2["observation_stops"][1]["duration_mins_from_prev"] == 15.0

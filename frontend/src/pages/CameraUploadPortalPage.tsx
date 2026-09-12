@@ -1,10 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useApp } from '../state/appContext';
 import { api, BACKEND_STATIC } from '../services/api';
-import type { Camera, Detection, VehicleJourney, WatchlistItem } from '../types';
+import type { Camera, Detection, WatchlistItem } from '../types';
 import { Icon } from '../components/Icons';
 import { getOperationsPortalUrl } from '../utils/navigation';
-import { TacticalMap } from '../components/gis/TacticalMap';
 
 export function CameraUploadPortalPage() {
   const app = useApp();
@@ -12,7 +11,7 @@ export function CameraUploadPortalPage() {
   // State: Cameras
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [selectedCamId, setSelectedCamId] = useState<string>('CAM-KN-01');
-  const [cameraFilter, setCameraFilter] = useState<'ALL' | 'Krishna Nagar' | 'Gandhi Nagar'>('ALL');
+  const [cameraFilter, setCameraFilter] = useState<string>('ALL');
   const [cameraSearch, setCameraSearch] = useState<string>('');
 
   // State: Upload & Inference
@@ -23,8 +22,7 @@ export function CameraUploadPortalPage() {
   const [customTimeInput, setCustomTimeInput] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultDetection, setResultDetection] = useState<Detection | null>(null);
-  const [resultJourney, setResultJourney] = useState<VehicleJourney | null>(null);
-  const [resultEntries, setResultEntries] = useState<Array<{ detection: Detection; journey: VehicleJourney | null }>>([]);
+  const [resultEntries, setResultEntries] = useState<Array<{ detection: Detection }>>([]);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -33,7 +31,6 @@ export function CameraUploadPortalPage() {
   const [isLoadingRegistry, setIsLoadingRegistry] = useState(false);
   const [registrySearch, setRegistrySearch] = useState('');
   const [registryTypeFilter, setRegistryTypeFilter] = useState('All');
-  const [registrySelectedJourney, setRegistrySelectedJourney] = useState<VehicleJourney | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editOwnerName, setEditOwnerName] = useState<string>('');
@@ -72,7 +69,6 @@ export function CameraUploadPortalPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadSectionRef = useRef<HTMLDivElement>(null);
-  const routeSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadCameras();
@@ -130,7 +126,6 @@ export function CameraUploadPortalPage() {
     setFile(null);
     setPreviewUrl(null);
     setResultDetection(null);
-    setResultJourney(null);
     setResultEntries([]);
     setSelectedEntryIdx(0);
     setErrorMsg(null);
@@ -155,7 +150,6 @@ export function CameraUploadPortalPage() {
     setFile(null);
     setPreviewUrl(null);
     setResultDetection(null);
-    setResultJourney(null);
     setResultEntries([]);
     setSelectedEntryIdx(0);
     setErrorMsg(null);
@@ -189,7 +183,6 @@ export function CameraUploadPortalPage() {
     setIsProcessing(true);
     setErrorMsg(null);
     setResultDetection(null);
-    setResultJourney(null);
 
     const plateToUse = customPlateInput.trim() || undefined;
     const ownerToUse = ownerNameInput.trim() || undefined;
@@ -205,11 +198,10 @@ export function CameraUploadPortalPage() {
       }
 
       const res = await api.uploadFrameAndGetRoute(selectedCamId, fileToUpload, plateToUse, ownerToUse, timeToUse);
-      const entries = res.detections && res.detections.length > 0 ? res.detections : [{ detection: res.detection, journey: res.journey }];
+      const entries = res.detections && res.detections.length > 0 ? res.detections : [{ detection: res.detection }];
       setResultEntries(entries);
       setSelectedEntryIdx(0);
       setResultDetection(entries[0].detection);
-      setResultJourney(entries[0].journey);
       if (entries.length > 1) {
         app.toast(`Multi-vehicle frame: ${entries.length} plates detected! Select below to inspect.`);
       } else {
@@ -280,7 +272,6 @@ export function CameraUploadPortalPage() {
       await api.purgeAllDetections();
       app.toast('Database cleared: All detection records purged.');
       setResultDetection(null);
-      setResultJourney(null);
       loadStoredDetections();
     } catch (err: any) {
       app.toast(`Purge failed: ${err.message}`);
@@ -304,19 +295,6 @@ export function CameraUploadPortalPage() {
       loadStoredDetections();
     } catch (err: any) {
       app.toast(`Failed to flag plate: ${err.message}`);
-    }
-  };
-
-  const handleTrackStoredPlate = async (plate: string) => {
-    try {
-      const journey = await api.getVehicleHistory(plate);
-      setRegistrySelectedJourney(journey);
-      app.toast(`Loaded ${journey.total_observations} observations for ${plate}`);
-      setTimeout(() => {
-        routeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    } catch (err: any) {
-      app.toast(`No multi-camera route found for ${plate}`);
     }
   };
 
@@ -351,6 +329,15 @@ export function CameraUploadPortalPage() {
     }
   };
 
+  // Distinct districts from all loaded cameras
+  const availableDistricts = useMemo(() => {
+    const set = new Set<string>();
+    cameras.forEach((c) => {
+      if (c.district) set.add(c.district);
+    });
+    return ['ALL', ...Array.from(set)];
+  }, [cameras]);
+
   // Filtered cameras
   const filteredCameras = useMemo(() => {
     return cameras.filter((c) => {
@@ -384,8 +371,6 @@ export function CameraUploadPortalPage() {
   const uniquePlatesCount = useMemo(() => {
     return new Set(storedDetections.map((d) => d.normalized_plate_text)).size;
   }, [storedDetections]);
-
-  const activeJourney = registrySelectedJourney || resultJourney;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-10">
@@ -562,21 +547,20 @@ export function CameraUploadPortalPage() {
 
           {/* District Filter & Search */}
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-xl border border-clay/30 bg-white/70 p-1 text-xs">
-              {(['ALL', 'Krishna Nagar', 'Gandhi Nagar'] as const).map((dist) => (
-                <button
-                  key={dist}
-                  onClick={() => setCameraFilter(dist)}
-                  className={`rounded-lg px-3 py-1.5 font-bold transition-all ${
-                    cameraFilter === dist
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-mauve hover:text-ink hover:bg-sand/40'
-                  }`}
-                >
-                  {dist === 'ALL' ? 'All (20)' : dist}
-                </button>
-              ))}
-            </div>
+            <select
+              value={cameraFilter}
+              onChange={(e) => setCameraFilter(e.target.value)}
+              className="rounded-xl border border-clay/30 bg-white/90 px-3 py-1.5 text-xs font-bold text-ink focus:border-blue-500 focus:outline-none shadow-xs"
+            >
+              <option value="ALL">All Camera Locations ({cameras.length})</option>
+              {availableDistricts
+                .filter((d) => d !== 'ALL')
+                .map((dist) => (
+                  <option key={dist} value={dist}>
+                    {dist} ({cameras.filter((c) => c.district === dist).length})
+                  </option>
+                ))}
+            </select>
 
             <div className="relative">
               <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-mauve" />
@@ -584,8 +568,8 @@ export function CameraUploadPortalPage() {
                 type="text"
                 value={cameraSearch}
                 onChange={(e) => setCameraSearch(e.target.value)}
-                placeholder="Search camera..."
-                className="w-44 rounded-xl border border-clay/30 bg-white/70 pl-8 pr-3 py-1.5 text-xs text-ink focus:border-blue-500 focus:outline-none"
+                placeholder="Search camera or location..."
+                className="w-48 rounded-xl border border-clay/30 bg-white/90 pl-8 pr-3 py-1.5 text-xs text-ink focus:border-blue-500 focus:outline-none shadow-xs"
               />
             </div>
           </div>
@@ -924,7 +908,6 @@ export function CameraUploadPortalPage() {
                             onClick={() => {
                               setSelectedEntryIdx(idx);
                               setResultDetection(entry.detection);
-                              setResultJourney(entry.journey);
                             }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all ${
                               isSel
@@ -1080,181 +1063,7 @@ export function CameraUploadPortalPage() {
         </div>
       </section>
 
-      {/* SECTION 3: MULTI-CAMERA VEHICLE TRAJECTORY & ROUTE MAP */}
-      <section ref={routeSectionRef} className="rounded-3xl border border-clay/25 bg-white/95 p-6 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-clay/20 pb-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-700">
-              <Icon name="map" className="h-4 w-4" />
-              <span>Multi-Camera GIS Trajectory Tracking</span>
-            </div>
-            <h2 className="font-display text-xl font-bold text-ink mt-0.5 flex items-center gap-2.5 flex-wrap">
-              <span>Vehicle Route Map & Checkpoint Analytics</span>
-              {activeJourney && (
-                <span className="font-mono text-base font-extrabold bg-blue-600 text-white px-2.5 py-0.5 rounded-lg shadow-sm">
-                  {activeJourney.plate}
-                </span>
-              )}
-            </h2>
-            <p className="text-xs text-mauve mt-0.5">
-              {activeJourney
-                ? `Tracking vehicle across ${activeJourney.total_observations} camera node${activeJourney.total_observations > 1 ? 's' : ''} in the network.`
-                : 'Upload images at different cameras (e.g. CAM-KN-01 then CAM-KN-08) or click "Route" on any plate below to trace vehicle movements across the city.'}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {activeJourney && (
-              <>
-                <div className="flex items-center gap-3 bg-cream/60 border border-clay/30 rounded-xl px-3.5 py-1.5 text-xs">
-                  <div>
-                    <span className="text-[10px] text-mauve uppercase font-bold block">Checkpoints</span>
-                    <span className="font-mono font-bold text-ink">{activeJourney.total_observations} Stops</span>
-                  </div>
-                  <div className="h-6 w-px bg-clay/30" />
-                  <div>
-                    <span className="text-[10px] text-mauve uppercase font-bold block">Transit Dist.</span>
-                    <span className="font-mono font-bold text-blue-700">{activeJourney.total_distance_km !== null ? `${activeJourney.total_distance_km} km` : '—'}</span>
-                  </div>
-                  <div className="h-6 w-px bg-clay/30" />
-                  <div>
-                    <span className="text-[10px] text-mauve uppercase font-bold block">Duration</span>
-                    <span className="font-mono font-bold text-ink">{activeJourney.total_duration_mins !== null ? `${activeJourney.total_duration_mins}m` : '—'}</span>
-                  </div>
-                  {activeJourney.average_speed_kmh && (
-                    <>
-                      <div className="h-6 w-px bg-clay/30" />
-                      <div>
-                        <span className="text-[10px] text-mauve uppercase font-bold block">Avg Speed</span>
-                        <span className="font-mono font-bold text-emerald-700">{activeJourney.average_speed_kmh} km/h</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => {
-                    setRegistrySelectedJourney(null);
-                    setResultJourney(null);
-                  }}
-                  className="rounded-xl border border-clay/30 bg-white px-3 py-2 text-xs font-semibold text-mauve hover:text-ink hover:bg-sand/30 transition-all shadow-sm"
-                  title="Clear active route overlay"
-                >
-                  Clear Route
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={() => {
-                if (activeJourney) {
-                  app.nav({ page: 'map', mapVehicle: activeJourney.plate });
-                }
-                window.open(getOperationsPortalUrl('map'), '_blank');
-              }}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-all shadow-sm"
-            >
-              <Icon name="map" className="h-4 w-4" />
-              <span>Fullscreen City Map</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Map Container */}
-        <div className="h-[460px] w-full rounded-2xl overflow-hidden border border-clay/30 shadow-inner relative">
-          <TacticalMap
-            cameras={cameras}
-            selectedCamera={selectedCam}
-            onSelectCamera={(cam) => {
-              setSelectedCamId(cam.id);
-            }}
-            journey={activeJourney}
-          />
-        </div>
-
-        {/* Route Steps Timeline & Breadcrumbs */}
-        {activeJourney && activeJourney.observation_stops.length > 0 ? (
-          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-blue-950 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-blue-600 animate-ping" />
-                <span>Camera Checkpoint Sequence for Plate <span className="font-mono font-black text-blue-700">{activeJourney.plate}</span></span>
-              </h3>
-              {activeJourney.observation_stops.length === 1 && (
-                <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
-                  ℹ️ 1 Stop Recorded. Upload this vehicle at another camera (e.g. CAM-KN-08) to connect the route!
-                </span>
-              )}
-              {activeJourney.observation_stops.length > 1 && (
-                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full">
-                  ✓ Route Connected: {activeJourney.observation_stops[0].camera_id} → {activeJourney.observation_stops[activeJourney.observation_stops.length - 1].camera_id} ({activeJourney.total_distance_km} km)
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {activeJourney.observation_stops.map((stop, idx) => {
-                const isFirst = idx === 0;
-                const isLast = idx === activeJourney.observation_stops.length - 1 && activeJourney.observation_stops.length > 1;
-                return (
-                  <div
-                    key={`${stop.camera_id}-${stop.timestamp}-${idx}`}
-                    className={`rounded-xl border p-3.5 transition-all relative ${
-                      isLast
-                        ? 'border-emerald-500/50 bg-emerald-50/70 shadow-sm'
-                        : isFirst
-                        ? 'border-blue-500/40 bg-blue-50/70 shadow-sm'
-                        : 'border-clay/25 bg-white shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className={`flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs font-bold ${
-                          isLast ? 'bg-emerald-600 text-white' : isFirst ? 'bg-blue-600 text-white' : 'bg-sand text-ink'
-                        }`}>
-                          #{stop.stop_number}
-                        </span>
-                        <span className="font-mono text-xs font-black text-ink">{stop.camera_id}</span>
-                      </div>
-                      <span className="font-mono text-[10px] text-mauve">
-                        {new Date(stop.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </span>
-                    </div>
-
-                    <h4 className="text-xs font-bold text-ink truncate">{stop.camera_designation}</h4>
-                    <p className="text-[11px] text-mauve truncate mt-0.5">{stop.location_address}</p>
-
-                    <div className="mt-2.5 pt-2 border-t border-clay/15 flex items-center justify-between text-[11px]">
-                      <span className="font-mono font-bold text-slate-700 bg-sand/60 px-1.5 py-0.2 rounded">
-                        Plate: {stop.raw_plate_text}
-                      </span>
-                      {stop.distance_from_prev_km !== null && stop.distance_from_prev_km !== undefined ? (
-                        <span className="font-semibold text-blue-700">
-                          +{stop.distance_from_prev_km} km ({stop.duration_mins_from_prev}m)
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-mauve font-semibold uppercase tracking-wider">Start Origin</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-clay/30 bg-cream/30 p-6 text-center">
-            <div className="flex flex-col items-center justify-center space-y-1.5 max-w-md mx-auto">
-              <Icon name="map" className="h-8 w-8 text-blue-600/60 mb-1" />
-              <p className="text-xs font-bold text-ink">Interactive Camera Network Ready</p>
-              <p className="text-[11px] text-mauve">
-                Upload a vehicle image at <strong>Camera 1 (CAM-KN-01)</strong> and then another image at <strong>Camera 8 (CAM-KN-08)</strong> to see the route drawn automatically here.
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 4: LIVE DATASET OF STORED NUMBER PLATES & NAMES */}
+      {/* SECTION 3: LIVE DATASET OF STORED NUMBER PLATES & NAMES */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -1517,12 +1326,6 @@ export function CameraUploadPortalPage() {
                               title="View vehicle trajectory on GIS City Map"
                             >
                               Map
-                            </button>
-                            <button
-                              onClick={() => handleTrackStoredPlate(d.normalized_plate_text)}
-                              className="rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-ink/90 transition-colors"
-                            >
-                              Route
                             </button>
                             <button
                               onClick={() => handleDeleteDetection(d.id, d.normalized_plate_text)}
