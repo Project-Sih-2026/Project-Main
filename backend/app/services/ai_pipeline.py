@@ -1044,12 +1044,23 @@ class FullAIIntelligencePipeline:
                 pad_y = int(ph * 0.12)
                 crop_cand = frame[max(0, py1 - pad_y):min(h, py2 + pad_y), max(0, px1 - pad_x):min(w, px2 + pad_x)]
 
+                # Check if any vehicle contains this plate
+                pcx, pcy = (px1 + px2) / 2.0, (py1 + py2) / 2.0
+                best_vehicle = None
+                for v in distinct_vehicles:
+                    vx1, vy1, vx2, vy2 = v["box"]
+                    vw, vh = vx2 - vx1, vy2 - vy1
+                    if (vx1 - vw * 0.05) <= pcx <= (vx2 + vw * 0.05) and (vy1 - vh * 0.05) <= pcy <= (vy2 + vh * 0.05):
+                        best_vehicle = v
+                        break
+
                 # Pre-analyze plate features
                 hsv_plate = cv2.cvtColor(crop_cand, cv2.COLOR_BGR2HSV) if crop_cand is not None and crop_cand.size > 0 else None
                 is_yellow_plate = False
                 if hsv_plate is not None:
-                    y_mask = cv2.inRange(hsv_plate, np.array([10, 50, 50]), np.array([38, 255, 255]))
-                    if (cv2.countNonZero(y_mask) / float(max(1, y_mask.size))) > 0.20:
+                    # Require genuine yellow commercial plate saturation (S > 110, V > 80)
+                    y_mask = cv2.inRange(hsv_plate, np.array([14, 110, 80]), np.array([36, 255, 255]))
+                    if (cv2.countNonZero(y_mask) / float(max(1, y_mask.size))) > 0.35:
                         is_yellow_plate = True
 
                 p_aspect = pw / float(max(1, ph))
@@ -1071,6 +1082,12 @@ class FullAIIntelligencePipeline:
                     p_text = f"UNREADABLE_PLATE_{idx + 1}"
                     p_conf = 0.40
 
+                # Discard ghost plate artifacts (shop signs, wall posters, street clutter)
+                # A valid detection requires either a matched vehicle body OR high-confidence valid plate text
+                if best_vehicle is None:
+                    if (not p_text or p_text.startswith("UNREADABLE_PLATE")) and p["confidence"] < 0.50:
+                        continue
+
                 crop_filename = f"plate_{camera_id}_{det_uuid}_{idx}.jpg"
                 crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
                 if crop_cand is not None and crop_cand.size > 0:
@@ -1080,16 +1097,6 @@ class FullAIIntelligencePipeline:
                     dummy[:] = (245, 245, 245)
                     cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
                     cv2.imwrite(crop_path, dummy)
-
-                # Check if any vehicle contains this plate
-                pcx, pcy = (px1 + px2) / 2.0, (py1 + py2) / 2.0
-                best_vehicle = None
-                for v in distinct_vehicles:
-                    vx1, vy1, vx2, vy2 = v["box"]
-                    vw, vh = vx2 - vx1, vy2 - vy1
-                    if (vx1 - vw * 0.05) <= pcx <= (vx2 + vw * 0.05) and (vy1 - vh * 0.05) <= pcy <= (vy2 + vh * 0.05):
-                        best_vehicle = v
-                        break
 
                 if best_vehicle:
                     v_box = best_vehicle["box"]
@@ -1101,12 +1108,12 @@ class FullAIIntelligencePipeline:
                                  min(w, px2 + int(pw * 0.6)), min(h, py2 + int(ph * 0.8)))
                     elif is_yellow_plate:
                         v_type = "Commercial Vehicle"
-                        v_box = (max(0, px1 - int(pw * 0.8)), max(0, py1 - int(ph * 2.8)),
-                                 min(w, px2 + int(pw * 1.4)), min(h, py2 + int(ph * 1.6)))
+                        v_box = (max(0, int(pcx - pw * 2.2)), max(0, int(py1 - ph * 6.5)),
+                                 min(w, int(pcx + pw * 2.2)), min(h, int(py2 + ph * 1.5)))
                     else:
                         v_type = "SUV" if p_aspect < 3.3 else "Sedan"
-                        v_box = (max(0, px1 - int(pw * 1.6)), max(0, py1 - int(ph * 6.5)),
-                                 min(w, px2 + int(pw * 2.0)), min(h, py2 + int(ph * 3.8)))
+                        v_box = (max(0, int(pcx - pw * 2.2)), max(0, int(py1 - ph * 6.5)),
+                                 min(w, int(pcx + pw * 2.2)), min(h, int(py2 + ph * 1.5)))
 
                 detected_entries_data.append({
                     "plate_text": p_text,

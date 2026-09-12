@@ -36,6 +36,8 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 *.pt
+!best.pt
+!backend/models/best.pt
 *.zip
 best_pt_folder/
 test_img.jpg
