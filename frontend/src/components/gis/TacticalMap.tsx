@@ -252,13 +252,15 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         routeLayerRef.current?.addLayer(stopMarker);
       });
 
-      const polyline = L.polyline(latlngs, {
-        color: '#0B2545',
-        weight: 3.5,
-        dashArray: '6, 6',
-        opacity: 0.9
-      });
-      routeLayerRef.current.addLayer(polyline);
+      if (latlngs.length > 1) {
+        const polyline = L.polyline(latlngs, {
+          color: '#0B2545',
+          weight: 3.5,
+          dashArray: '6, 6',
+          opacity: 0.9
+        });
+        routeLayerRef.current.addLayer(polyline);
+      }
 
       // Add midpoint directional hop badges between consecutive stops
       if (journey.observation_stops.length > 1) {
@@ -302,6 +304,8 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       if (latlngs.length > 1) {
         mapInstanceRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
+      } else if (latlngs.length === 1) {
+        mapInstanceRef.current.flyTo(latlngs[0], 15);
       }
     }
   }, [journey]);

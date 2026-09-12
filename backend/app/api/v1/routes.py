@@ -59,8 +59,8 @@ def get_vehicle_history(plate: str, db: Session = Depends(get_db)):
         (Detection.corrected_plate_text == norm)
     ).order_by(Detection.timestamp.asc()).all()
     
-    if not detections:
-        # Check partial match if exact match not found
+    if not detections and len(norm) >= 6:
+        # Check partial match only if search query is sufficiently specific
         detections = db.query(Detection).filter(
             Detection.normalized_plate_text.ilike(f"%{norm}%")
         ).order_by(Detection.timestamp.asc()).all()

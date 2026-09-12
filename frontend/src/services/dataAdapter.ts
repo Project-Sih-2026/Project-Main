@@ -83,7 +83,7 @@ export function detectionsToVehicles(detections: Detection[]): Vehicle[] {
       plate: latest.normalized_plate_text || latest.raw_plate_text,
       make,
       model,
-      color: 'Titanium Grey',
+      color: normalizeVehicleType(latest.vehicle_type) === 'Ambulance' ? 'Emergency White/Red' : 'Titanium Grey',
       type: normalizeVehicleType(latest.vehicle_type),
       owner,
       license: `DL-REG-${plateKey.slice(-4) || '2026'}`,
@@ -93,13 +93,17 @@ export function detectionsToVehicles(detections: Detection[]): Vehicle[] {
       lastCam: latest.camera_id,
       lastSeen: timeSince(latest.timestamp),
       kmToday: Math.max(12, sightings.length * 8),
-      tags: ['live-database', 'yolov8-anpr', ...(hasAnyAlert ? ['flagged-alert'] : [])],
+      tags: ['live-database', 'yolov8-anpr', ...(hasAnyAlert ? ['flagged-alert'] : []), ...(normalizeVehicleType(latest.vehicle_type) === 'Ambulance' ? ['ambulance-corridor'] : [])],
       journey,
       road: 0,
       prog: Math.min(0.9, Math.max(0.1, (cam?.x || 300) / 700)),
       dir: 1,
-    });
+      _rawTimestamp: new Date(latest.timestamp).getTime(),
+    } as any);
   });
+
+  // Most recent vehicle sightings first
+  vehicles.sort((a: any, b: any) => (b._rawTimestamp || 0) - (a._rawTimestamp || 0));
 
   return vehicles;
 }

@@ -903,13 +903,26 @@ export function CameraUploadPortalPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <button
-                    onClick={() => handleAddCurrentToWatchlist(resultDetection.normalized_plate_text)}
-                    className="flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-500/15 border border-rose-500/30 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <Icon name="shield" className="h-3.5 w-3.5" />
-                    <span>Flag on Active Watchlist</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleAddCurrentToWatchlist(resultDetection.normalized_plate_text)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-500/15 border border-rose-500/30 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Icon name="shield" className="h-3.5 w-3.5" />
+                      <span>Flag on Active Watchlist</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        app.nav({ page: 'map', mapVehicle: resultDetection.normalized_plate_text });
+                        window.open(getOperationsPortalUrl('map'), '_blank');
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-500/15 border border-blue-500/30 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <Icon name="map" className="h-3.5 w-3.5" />
+                      <span>🗺️ View on City Map</span>
+                    </button>
+                  </div>
 
                   <div className="flex items-center gap-2">
                     <button
@@ -1139,6 +1152,16 @@ export function CameraUploadPortalPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              app.nav({ page: 'map', mapVehicle: d.normalized_plate_text });
+                              window.open(getOperationsPortalUrl('map'), '_blank');
+                            }}
+                            className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 hover:bg-blue-500/20 transition-colors"
+                            title="View vehicle trajectory on GIS City Map"
+                          >
+                            Map
+                          </button>
                           <button
                             onClick={() => handleTrackStoredPlate(d.normalized_plate_text)}
                             className="rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-ink/90 transition-colors"

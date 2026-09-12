@@ -196,6 +196,20 @@ SAMPLE_PLATES = [
 ]
 
 
+def generate_synthetic_plate(vehicle_type: str = "Vehicle") -> str:
+    """
+    Generates a fresh, unique synthetic license plate to avoid colliding
+    with pre-seeded multi-camera vehicle histories when an unreadable plate is uploaded.
+    """
+    if "ambulance" in str(vehicle_type).lower():
+        return f"DL-01-AMB-{random.randint(100, 999)}"
+    st = random.choice(["DL", "HR", "UP", "MH", "KA"])
+    rto = f"{random.randint(1, 15):02d}"
+    ser = "".join(random.choices("ABCDEFGHJKLMNPQRSTUVWXYZ", k=2))
+    num = f"{random.randint(1000, 9999)}"
+    return f"{st}-{rto}-{ser}-{num}"
+
+
 class FullAIIntelligencePipeline:
     """
     Unified YOLOv8 + ANPR Inference Pipeline.
@@ -735,8 +749,7 @@ class FullAIIntelligencePipeline:
                 if idx < len(custom_plate_list):
                     p_text = custom_plate_list[idx]
                 elif not p_text:
-                    sample = SAMPLE_PLATES[idx % len(SAMPLE_PLATES)]
-                    p_text = sample[0]
+                    p_text = generate_synthetic_plate(v_box_info.get("class_name", "Vehicle"))
 
                 crop_filename = f"plate_{camera_id}_{det_uuid}_{idx}.jpg"
                 crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
@@ -795,8 +808,7 @@ class FullAIIntelligencePipeline:
             if idx < len(custom_plate_list):
                 p_text = custom_plate_list[idx]
             elif not p_text:
-                sample = SAMPLE_PLATES[idx % len(SAMPLE_PLATES)]
-                p_text = sample[0]
+                p_text = generate_synthetic_plate("Vehicle")
 
             crop_filename = f"plate_{camera_id}_{det_uuid}_{idx}.jpg"
             crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
@@ -840,22 +852,21 @@ class FullAIIntelligencePipeline:
 
         # Fallback if nothing detected at all
         if not detected_entries_data:
-            p_text = custom_raw_plate or random.choice(SAMPLE_PLATES)[0]
+            fallback_type = self.classify_vehicle_type(
+                "vehicle",
+                (0, 0, w, h),
+                vehicle_crop=frame,
+                extracted_texts=[],
+                custom_hint=custom_raw_plate,
+                reader=self.reader
+            )
+            p_text = custom_raw_plate or generate_synthetic_plate(fallback_type)
             crop_filename = f"plate_{camera_id}_{det_uuid}_0.jpg"
             crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
             dummy = np.zeros((80, 240, 3), dtype=np.uint8)
             dummy[:] = (245, 245, 245)
             cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
             cv2.imwrite(crop_path, dummy)
-
-            fallback_type = self.classify_vehicle_type(
-                "vehicle",
-                (0, 0, w, h),
-                vehicle_crop=frame,
-                extracted_texts=[p_text],
-                custom_hint=custom_raw_plate,
-                reader=self.reader
-            )
 
             detected_entries_data.append({
                 "plate_text": p_text,
@@ -946,7 +957,7 @@ class FullAIIntelligencePipeline:
         px1, py1, px2, py2 = 560, 520, 720, 570
         cv2.rectangle(frame, (px1, py1), (px2, py2), (255, 255, 255), -1)
 
-        plate_text = custom_raw_plate or random.choice(SAMPLE_PLATES)[0]
+        plate_text = custom_raw_plate or generate_synthetic_plate("Vehicle")
         cv2.putText(frame, plate_text, (px1 + 8, py1 + 35), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
 
         return self.infer_frame(frame, camera_id, custom_raw_plate=plate_text)

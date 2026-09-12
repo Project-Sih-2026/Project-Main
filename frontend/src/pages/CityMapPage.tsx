@@ -126,12 +126,12 @@ export function CityMapPage() {
 
   const [layers, setLayers] = useState({
     cameras: true,
-    corridors: true,
-    distances: true,
+    corridors: false,
+    distances: false,
     journey: true,
-    altRoutes: true,
+    altRoutes: false,
     alerts: true,
-    congestion: true,
+    congestion: false,
   });
 
   const [mapReady, setMapReady] = useState(false);
@@ -151,9 +151,26 @@ export function CityMapPage() {
 
   const [selCamId, setSelCamId] = useState<string | null>(null);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(
-    app.target.mapVehicle || app.target.vehicleId || 'v1'
+    () => app.target.mapVehicle || app.target.vehicleId || app.vehicles[0]?.id || 'v1'
   );
   const [dynamicVehicles, setDynamicVehicles] = useState<Record<string, Vehicle>>({});
+
+  // Sync selected vehicle when arriving from upload portal or search page
+  useEffect(() => {
+    if (app.target.mapVehicle) {
+      const cleanTarget = app.target.mapVehicle.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const match = app.vehicles.find(
+        (v) => v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanTarget || v.id === app.target.mapVehicle
+      );
+      if (match) {
+        setSelectedVehicleId(match.id);
+      } else {
+        setSelectedVehicleId(app.target.mapVehicle);
+      }
+    } else if (app.vehicles.length > 0 && selectedVehicleId === 'v1') {
+      setSelectedVehicleId(app.vehicles[0].id);
+    }
+  }, [app.target.mapVehicle, app.vehicles]);
 
   // Inter-Camera Section Speed Trap Analyzer State
   const [speedSourceCam, setSpeedSourceCam] = useState<string>('c2'); // CAM-KN-02
@@ -717,48 +734,76 @@ export function CityMapPage() {
     });
 
     if (stopCoords.length > 0) {
-      const routeColor = focusVeh.status === 'watchlist' ? '#D97706' : focusVeh.status === 'flagged' ? '#DC2626' : '#2563EB';
+      const isAmbulance = focusVeh.type === 'Ambulance' || 
+                          focusVeh.flaggedReason?.toLowerCase().includes('ambulance') || 
+                          focusVeh.tags?.includes('ambulance-corridor') ||
+                          focusVeh.plate.toUpperCase().includes('AMB');
 
-      // 1. Initial sequential fallback line
-      let routeLine = L.polyline(stopCoords, {
-        color: routeColor,
-        weight: 4,
-        opacity: 0.85,
-        dashArray: '6, 8',
-        lineCap: 'round',
-        lineJoin: 'round'
-      });
-      journeyLayerRef.current.addLayer(routeLine);
+      const routeColor = isAmbulance 
+        ? '#10B981' 
+        : focusVeh.status === 'watchlist' 
+        ? '#D97706' 
+        : focusVeh.status === 'flagged' 
+        ? '#DC2626' 
+        : '#2563EB';
 
-      // 2. Render AI Feasible Alternative Transit Corridors (Segment by segment, cleanly curved)
-      if (layers.altRoutes && stopCoords.length >= 2) {
-        for (let i = 0; i < stopCoords.length - 1; i++) {
-          const ptA = stopCoords[i];
-          const ptB = stopCoords[i + 1];
-
-          // Compute a gentle realistic alternative branch between camera A and camera B
-          const midLat = (ptA[0] + ptB[0]) / 2 + ((i % 2 === 0 ? 1 : -1) * 0.005);
-          const midLng = (ptA[1] + ptB[1]) / 2 + ((i % 2 === 0 ? -1 : 1) * 0.007);
-
-          const altCorridor = L.polyline([ptA, [midLat, midLng], ptB], {
-            color: '#8B5CF6',
-            weight: 3,
-            opacity: 0.6,
-            dashArray: '4, 6',
-            lineCap: 'round'
-          });
-
-          altCorridor.bindTooltip(`AI Feasible Branch (${i === 0 ? '34%' : '27%'} likelihood): Stop ${i + 1} ➔ Stop ${i + 2}`, {
-            sticky: true,
-            direction: 'center'
-          });
-
-          altCorridorLayerRef.current.addLayer(altCorridor);
+      // SINGLE SIGHTING vs MULTI-CAMERA TRANSIT:
+      // If there is ONLY 1 stop (single camera observation), DO NOT draw lines/corridors/paths!
+      if (stopCoords.length === 1) {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo(stopCoords[0], 15, { duration: 0.6 });
         }
-      }
+      } else if (stopCoords.length >= 2) {
+        // Multi-Camera Transit Route between checkpoints (e.g. Camera 3 -> Camera 6)
+        let routeLine = L.polyline(stopCoords, {
+          color: routeColor,
+          weight: isAmbulance ? 5.5 : 4,
+          opacity: 0.9,
+          dashArray: isAmbulance ? '10, 6' : '6, 8',
+          lineCap: 'round',
+          lineJoin: 'round'
+        });
+        journeyLayerRef.current.addLayer(routeLine);
 
-      // 3. Fetch True Road-to-Road AI Primary Snapped Path from OSRM
-      if (stopCoords.length >= 2) {
+        // Ambulance Green Corridor ambient glow casing
+        if (isAmbulance) {
+          const ambCasing = L.polyline(stopCoords, {
+            color: '#10B981',
+            weight: 14,
+            opacity: 0.35,
+            lineCap: 'round',
+            lineJoin: 'round'
+          });
+          journeyLayerRef.current.addLayer(ambCasing);
+        }
+
+        // 2. Render AI Feasible Alternative Transit Corridors if enabled
+        if (layers.altRoutes && stopCoords.length >= 2) {
+          for (let i = 0; i < stopCoords.length - 1; i++) {
+            const ptA = stopCoords[i];
+            const ptB = stopCoords[i + 1];
+
+            const midLat = (ptA[0] + ptB[0]) / 2 + ((i % 2 === 0 ? 1 : -1) * 0.005);
+            const midLng = (ptA[1] + ptB[1]) / 2 + ((i % 2 === 0 ? -1 : 1) * 0.007);
+
+            const altCorridor = L.polyline([ptA, [midLat, midLng], ptB], {
+              color: '#8B5CF6',
+              weight: 3,
+              opacity: 0.6,
+              dashArray: '4, 6',
+              lineCap: 'round'
+            });
+
+            altCorridor.bindTooltip(`AI Feasible Branch (${i === 0 ? '34%' : '27%'} likelihood): Stop ${i + 1} ➔ Stop ${i + 2}`, {
+              sticky: true,
+              direction: 'center'
+            });
+
+            altCorridorLayerRef.current.addLayer(altCorridor);
+          }
+        }
+
+        // 3. True Road Snapping via OSRM
         const coordsQuery = stopCoords.map(([lat, lng]) => `${lng},${lat}`).join(';');
         const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsQuery}?overview=full&geometries=geojson`;
 
@@ -776,8 +821,8 @@ export function CityMapPage() {
                 // Ambient Route Glow
                 const casingLine = L.polyline(roadCoordinates, {
                   color: routeColor,
-                  weight: 8,
-                  opacity: 0.3,
+                  weight: isAmbulance ? 12 : 8,
+                  opacity: isAmbulance ? 0.45 : 0.3,
                   lineCap: 'round',
                   lineJoin: 'round'
                 });
@@ -786,7 +831,7 @@ export function CityMapPage() {
                 // Solid Tactical Primary Road Line
                 const roadPolyline = L.polyline(roadCoordinates, {
                   color: routeColor,
-                  weight: 4.5,
+                  weight: isAmbulance ? 5.5 : 4.5,
                   opacity: 0.95,
                   lineCap: 'round',
                   lineJoin: 'round'
@@ -810,12 +855,65 @@ export function CityMapPage() {
           });
       }
 
-      // 4. Draw Clean Sequential Stop Waypoint Badges (1 -> 2 -> 3 -> 4)
+      // 4. Draw Waypoint Badges (or single observation marker)
       stopData.forEach((stop) => {
         const isWatch = focusVeh.status !== 'clear';
+        const isSingleStop = stopCoords.length === 1;
+
         const stopMarkerIcon = L.divIcon({
           className: 'custom-journey-stop',
-          html: `
+          html: isSingleStop ? `
+            <div style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              position: relative;
+            ">
+              <div style="
+                position: absolute;
+                top: -6px;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                border: 2px solid ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#2563EB'};
+                opacity: 0.75;
+                animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+              "></div>
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 34px;
+                height: 34px;
+                border-radius: 50%;
+                background: ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#1E293B'};
+                border: 2.5px solid #FFFFFF;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                color: #FFFFFF;
+                font-family: monospace;
+                font-size: 15px;
+                font-weight: 900;
+                z-index: 10;
+              ">
+                ${isAmbulance ? '🚑' : '📍'}
+              </div>
+              <div style="
+                background: #0F172A;
+                color: #FFFFFF;
+                font-size: 9px;
+                font-family: system-ui, sans-serif;
+                font-weight: 700;
+                padding: 2px 6px;
+                border-radius: 4px;
+                margin-top: 3px;
+                white-space: nowrap;
+                border: 1px solid ${isAmbulance ? '#10B981' : '#CBD5E1'};
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              ">
+                ${isAmbulance ? 'Emergency Ambulance Sighting' : `Single Sighting: ${stop.cam.code}`}
+              </div>
+            </div>
+          ` : `
             <div style="
               display: flex;
               align-items: center;
@@ -823,7 +921,7 @@ export function CityMapPage() {
               width: 28px;
               height: 28px;
               border-radius: 50%;
-              background: ${isWatch ? '#DC2626' : '#1E293B'};
+              background: ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#1E293B'};
               border: 2px solid #FFFFFF;
               box-shadow: 0 3px 8px rgba(0,0,0,0.35);
               color: #FFFFFF;
@@ -831,28 +929,33 @@ export function CityMapPage() {
               font-size: 12px;
               font-weight: 800;
             ">
-              ${stop.stopNum}
+              ${isAmbulance ? '🚑' : stop.stopNum}
             </div>
           `,
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
+          iconSize: isSingleStop ? [140, 56] : [28, 28],
+          iconAnchor: isSingleStop ? [70, 20] : [14, 14]
         });
 
         const stopMarker = L.marker([stop.cam.lat, stop.cam.lng], { icon: stopMarkerIcon });
         stopMarker.bindPopup(`
-          <div style="font-family: system-ui, sans-serif; padding: 3px; min-width: 220px;">
-            <div style="font-size: 10px; font-weight: 800; color: #D97706; text-transform: uppercase;">
-              Stop #${stop.stopNum} · ${stop.time}
+          <div style="font-family: system-ui, sans-serif; padding: 4px; min-width: 230px;">
+            <div style="font-size: 10px; font-weight: 800; color: ${isAmbulance ? '#059669' : '#D97706'}; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+              <span>${isSingleStop ? '📍 Single Camera Observation' : `Stop #${stop.stopNum} · ${stop.time}`}</span>
+              ${isAmbulance ? '<span style="background: #10B98125; color: #059669; padding: 1px 5px; border-radius: 4px; font-weight: 900;">🚨 PRIORITY AMBULANCE</span>' : ''}
             </div>
-            <div style="font-size: 13px; font-weight: 700; color: #1E293B; margin-top: 2px;">
+            <div style="font-size: 14px; font-weight: 800; color: #1E293B; margin-top: 3px;">
               ${focusVeh.plate} (${focusVeh.make} ${focusVeh.model})
             </div>
             <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
               ${stop.cam.code}: ${stop.cam.name}
             </div>
             <div style="font-size: 11px; color: #334155; margin-top: 4px; background: #F1F5F9; padding: 4px 6px; border-radius: 4px;">
-              Recorded Speed: <strong>${stop.speed} km/h</strong>
+              Recorded Speed: <strong>${stop.speed} km/h</strong> · Time: <strong>${stop.time}</strong>
             </div>
+            ${isSingleStop ? `
+              <div style="font-size: 10.5px; color: #64748B; margin-top: 5px; background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 6px; border-radius: 5px; line-height: 1.35;">
+                ℹ️ <strong>Single observation checkpoint recorded.</strong> No multi-camera transit way is drawn for single sightings. Uploading this vehicle at a subsequent camera (e.g. Camera 3 ➔ Camera 6) will trace the transit way.
+              </div>` : ''}
             ${focusVeh.flaggedReason ? `
               <div style="font-size: 10px; color: #DC2626; margin-top: 4px; font-weight: 700; border-top: 1px solid #E2E8F0; padding-top: 3px;">
                 🚨 ${focusVeh.flaggedReason}
