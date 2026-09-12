@@ -106,7 +106,7 @@ export default function CityApp() {
     }
   }, []);
 
-  // Poll database on mount and every 4 seconds to sync any uploads from Port 5174
+  // Poll database on mount and every 4 seconds to sync any live detections and AI uploads
   useEffect(() => {
     fetchLiveData();
     const interval = setInterval(fetchLiveData, 4000);

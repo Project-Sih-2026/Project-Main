@@ -110,7 +110,7 @@ export function OperationsPage() {
 
   return (
     <div className="page-shell fade-up">
-      {/* Top Banner connecting to Port 5174 */}
+      {/* Top Banner connecting to AI Detection Portal */}
       <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
@@ -119,23 +119,21 @@ export function OperationsPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-sm text-ink">Edge AI CCTV Detection & Ingestion Portal</span>
-              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">AI PIPELINE</span>
             </div>
             <p className="text-xs text-mauve mt-0.5">
-              Upload CCTV images, recognize license plates with YOLOv8, and view real-time database ingestions across both portals.
+              Upload CCTV images, recognize license plates with YOLOv8, and view real-time database ingestions.
             </p>
           </div>
         </div>
 
-        <a
-          href={getDetectionPortalUrl()}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0"
+        <button
+          onClick={() => app.nav({ page: 'upload' })}
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0 cursor-pointer"
         >
           <span>Open Detection Portal</span>
-          <Icon name="arrowUpRight" className="h-3.5 w-3.5" />
-        </a>
+          <Icon name="arrowRight" className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       <div className="page-hero flex flex-wrap items-end justify-between gap-3 px-5 py-5 sm:px-6 sm:py-6">
@@ -372,13 +370,13 @@ export function OperationsPage() {
         </Card>
       </div>
 
-      {/* Live AI Detections & Evidence Gallery from Port 5174 */}
+      {/* Live AI Detections & Evidence Gallery */}
       <Card tone="strong" className="section-contrast p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-clay/20 pb-3">
           <div>
             <div className="flex items-center gap-2">
               <Kicker>Live Database Ingestions</Kicker>
-              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">LIVE SYNC</span>
             </div>
             <div className="mt-1 font-display text-[20px] text-ink">
               Recent YOLOv8 Vehicle Detections ({liveDetections.length} Records)
@@ -388,15 +386,13 @@ export function OperationsPage() {
             <Btn size="sm" variant="ghost" icon="car" onClick={() => app.nav({ page: 'vehicles' })}>
               View in Vehicle Search <Icon name="arrowRight" className="h-3.5 w-3.5" />
             </Btn>
-            <a
-              href={getDetectionPortalUrl()}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-blue-600/10 hover:bg-blue-600/20 px-3 py-1.5 text-xs font-bold text-blue-800 transition-colors"
+            <button
+              onClick={() => app.nav({ page: 'upload' })}
+              className="flex items-center gap-1.5 rounded-xl border border-clay/30 bg-blue-600/10 hover:bg-blue-600/20 px-3 py-1.5 text-xs font-bold text-blue-800 transition-colors cursor-pointer"
             >
               <span>Ingest New Frame</span>
-              <Icon name="arrowUpRight" className="h-3 w-3 text-blue-700" />
-            </a>
+              <Icon name="arrowRight" className="h-3 w-3 text-blue-700" />
+            </button>
           </div>
         </div>
 
@@ -438,7 +434,7 @@ export function OperationsPage() {
           <div className="py-8 text-center text-xs text-mauve">
             <p className="font-semibold text-ink">No vehicle frames ingested in the database yet</p>
             <p className="mt-1 text-mauve/75">
-              Upload a vehicle image on <a href={getDetectionPortalUrl()} target="_blank" rel="noreferrer" className="text-blue-700 underline font-bold">Port 5174</a> to see live ANPR recognition here.
+              Upload a vehicle image in the <button onClick={() => app.nav({ page: 'upload' })} className="text-blue-700 underline font-bold cursor-pointer">AI Detection Portal</button> to see live ANPR recognition here.
             </p>
           </div>
         )}

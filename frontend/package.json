@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -p \"[{name}]\" -n \"OPS-5173,DETECT-5174\" -c \"blue.bold,green.bold\" \"vite\" \"vite --config vite.detection.config.ts\"",
+    "dev": "vite",
     "dev:ops": "vite --port 5173",
     "dev:detect": "vite --config vite.detection.config.ts",
     "build": "tsc -b && vite build",

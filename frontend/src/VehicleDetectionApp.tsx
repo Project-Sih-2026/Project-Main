@@ -71,7 +71,7 @@ export default function VehicleDetectionApp() {
     <AppContext.Provider value={value}>
       <div className="relative isolate min-h-screen bg-cream text-ink flex flex-col">
         <PageBackground variant="faded" />
-        {/* Dedicated Standalone Top Bar for Port 5174 */}
+        {/* Unified Standalone Top Bar */}
         <header className="sticky top-0 z-50 border-b border-clay/20 bg-cream/95 backdrop-blur px-4 py-3 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -86,7 +86,7 @@ export default function VehicleDetectionApp() {
                     NETRA • AI Vehicle Detection & Plate Registry
                   </h2>
                   <span className="rounded-md bg-blue-500/15 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-mono font-bold text-blue-800">
-                    PORT 5174
+                    AI PIPELINE
                   </span>
                 </div>
                 <p className="text-[11px] text-mauve">
@@ -103,12 +103,9 @@ export default function VehicleDetectionApp() {
 
               <a
                 href={getOperationsPortalUrl()}
-                target="_blank"
-                rel="noreferrer"
                 className="flex items-center gap-1.5 rounded-xl border border-clay/35 bg-ink px-3.5 py-2 text-xs font-bold text-white shadow-sm hover:bg-ink/90 transition-all"
               >
-                <span>City Operations Console</span>
-                <span className="font-mono text-[10px] bg-white/20 px-1.5 py-0.5 rounded">Port 5173</span>
+                <span>Operations Console</span>
                 <Icon name="arrowUpRight" className="h-3.5 w-3.5 text-blue-400" />
               </a>
             </div>

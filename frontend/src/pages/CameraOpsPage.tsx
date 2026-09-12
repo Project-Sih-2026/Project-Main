@@ -129,16 +129,14 @@ export function CamerasPage() {
               <div className="flex items-center justify-between">
                 <Kicker>Plates captured — {cam.code}</Kicker>
                 <div className="flex items-center gap-2">
-                  <a
-                    href={getDetectionPortalUrl()}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg border border-blue-600/30 bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all"
+                  <button
+                    onClick={() => app.nav({ page: 'upload' })}
+                    className="flex items-center gap-1.5 rounded-lg border border-blue-600/30 bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all cursor-pointer"
                   >
                     <Icon name="upload" className="h-3 w-3 text-blue-600" />
-                    <span>Upload on 5174</span>
-                    <Icon name="arrowUpRight" className="h-2.5 w-2.5" />
-                  </a>
+                    <span>Upload & Ingest</span>
+                    <Icon name="arrowRight" className="h-2.5 w-2.5" />
+                  </button>
                   <Badge tone="neutral">last 30 min</Badge>
                 </div>
               </div>

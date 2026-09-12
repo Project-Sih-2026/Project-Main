@@ -23,7 +23,7 @@ export function VehicleSearchPage() {
   const [status, setStatus] = useState(STATUSES[0]);
   const [timeWindow, setTimeWindow] = useState(TIME_WINDOWS[0]);
 
-  // Real Database Detections from Port 5174 / Backend
+  // Real Database Detections from Backend / AI Detection Engine
   const [liveDetections, setLiveDetections] = useState<Detection[]>([]);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [selectedDetId, setSelectedDetId] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export function VehicleSearchPage() {
 
   return (
     <div className="page-shell fade-up">
-      {/* Top Banner connecting to Port 5174 */}
+      {/* Top Banner connecting to AI Detection Portal */}
       <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
@@ -103,7 +103,7 @@ export function VehicleSearchPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display font-bold text-sm text-ink">Edge CCTV Vehicle Detection & Ingestion Portal</span>
-              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">PORT 5174</span>
+              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">AI PIPELINE</span>
             </div>
             <p className="text-xs text-mauve mt-0.5">
               Upload new CCTV image frames, recognize number plates, and associate vehicle/owner names into the database.
@@ -111,15 +111,13 @@ export function VehicleSearchPage() {
           </div>
         </div>
 
-        <a
-          href={getDetectionPortalUrl()}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0"
+        <button
+          onClick={() => app.nav({ page: 'upload' })}
+          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0 cursor-pointer"
         >
           <span>Open Detection Portal</span>
-          <Icon name="arrowUpRight" className="h-3.5 w-3.5" />
-        </a>
+          <Icon name="arrowRight" className="h-3.5 w-3.5" />
+        </button>
       </div>
 
       {/* Hero & Search Form */}
@@ -241,17 +239,15 @@ export function VehicleSearchPage() {
                 <Icon name="camera" className="h-10 w-10 text-mauve/40 mx-auto" />
                 <p className="font-semibold text-ink text-sm">No live detections match your filter</p>
                 <p className="max-w-xs mx-auto text-mauve/70">
-                  Upload images on Port 5174 to see them instantly recorded in this database with their vehicle types and plates.
+                  Upload images in the AI Detection Portal to see them instantly recorded in this database with their vehicle types and plates.
                 </p>
-                <a
-                  href={getDetectionPortalUrl()}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700"
+                <button
+                  onClick={() => app.nav({ page: 'upload' })}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 cursor-pointer"
                 >
-                  <span>Upload Image on Port 5174</span>
-                  <Icon name="arrowUpRight" className="h-3 w-3" />
-                </a>
+                  <span>Upload Image in AI Portal</span>
+                  <Icon name="arrowRight" className="h-3 w-3" />
+                </button>
               </div>
             )}
           </div>
@@ -405,7 +401,7 @@ export function VehicleSearchPage() {
                   </div>
                   <div className="rounded-lg bg-cream/70 p-2 border border-clay/20">
                     <span className="text-mauve font-semibold block text-[10px]">INSPECTION SOURCE</span>
-                    <span className="font-semibold text-blue-800">Port 5174 Feed</span>
+                    <span className="font-semibold text-blue-800">Live AI Feed</span>
                   </div>
                 </div>
 
@@ -435,21 +431,19 @@ export function VehicleSearchPage() {
                   );
                 })()}
 
-                {/* Quick Link to Port 5174 Portal */}
+                {/* Quick Link to AI Detection Portal */}
                 <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3 flex items-center justify-between">
                   <div className="text-xs">
                     <span className="font-bold text-ink block">Need to ingest another frame or edit this detection?</span>
-                    <span className="text-mauve">Use the edge detection portal on Port 5174 to upload and verify.</span>
+                    <span className="text-mauve">Use the edge detection portal to upload and verify.</span>
                   </div>
-                  <a
-                    href={getDetectionPortalUrl()}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 shrink-0"
+                  <button
+                    onClick={() => app.nav({ page: 'upload' })}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-700 shrink-0 cursor-pointer"
                   >
-                    <span>Manage on Port 5174</span>
-                    <Icon name="arrowUpRight" className="h-3 w-3" />
-                  </a>
+                    <span>Manage in AI Portal</span>
+                    <Icon name="arrowRight" className="h-3 w-3" />
+                  </button>
                 </div>
               </Card>
             </div>

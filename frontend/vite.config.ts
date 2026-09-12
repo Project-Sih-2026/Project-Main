@@ -19,6 +19,14 @@ export default defineConfig({
       }
     }
   ],
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        detection: 'detection.html',
+      },
+    },
+  },
   server: {
     port: 5173,
     host: '0.0.0.0',
