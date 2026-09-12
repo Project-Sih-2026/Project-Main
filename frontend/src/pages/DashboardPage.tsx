@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../state/appContext';
 import { AreaChart } from '../components/Charts';
+import { NetworkFlow3D } from '../components/NetworkFlow3D';
 import { CameraFeed } from '../components/CameraFeed';
 import { Icon, type IconName } from '../components/Icons';
 import { Badge, Btn, Card, Kicker, Select, Tabs, cx, useClock } from '../components/ui';
@@ -60,6 +61,7 @@ function Kpi({ icon, label, v, d, light }: { icon: IconName; label: string; v: s
 export function OperationsPage() {
   const app = useApp();
   const [rk, setRk] = useState<RangeKey>('24h');
+  const [dimension, setDimension] = useState<'3d' | '2d'>('3d');
   const [flowMode, setFlowMode] = useState<'volume' | 'speed' | 'dual'>('volume');
   const [district, setDistrict] = useState('All districts');
   const [camId, setCamId] = useState('c1');
@@ -176,7 +178,7 @@ export function OperationsPage() {
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
         <Card tone="strong" className="section-contrast p-4 sm:p-5 relative overflow-hidden">
-          {/* Top Bar with Live Indicator, Metrics & Tabs */}
+          {/* Top Bar with Live Indicator, Dimension Mode, Metrics & Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-clay/20 pb-3">
             <div>
               <div className="flex items-center gap-2">
@@ -185,9 +187,16 @@ export function OperationsPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   LIVE RADAR
                 </span>
+                {dimension === '3d' && (
+                  <span className="rounded bg-sky-500/20 text-sky-700 text-[10px] font-mono font-bold px-1.5 py-0.5 border border-sky-500/30">
+                    WEBGL 3D
+                  </span>
+                )}
               </div>
               <div className="mt-1 font-display text-[22px] text-ink">
-                {flowMode === 'volume'
+                {dimension === '3d'
+                  ? '3D Volumetric Corridor Flow Hologram'
+                  : flowMode === 'volume'
                   ? 'Vehicles per hour · all corridors'
                   : flowMode === 'speed'
                   ? 'Average corridor transit speed'
@@ -196,39 +205,67 @@ export function OperationsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {/* Metric View Mode Toggle */}
-              <div className="flex rounded-xl border border-clay/30 bg-cream/70 p-0.5 text-xs font-bold">
+              {/* 3D vs 2D Dimension Switcher */}
+              <div className="flex rounded-xl border border-sky-500/30 bg-sky-500/10 p-0.5 text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => setFlowMode('volume')}
+                  onClick={() => setDimension('3d')}
                   className={cx(
-                    'rounded-lg px-2.5 py-1 transition-all',
-                    flowMode === 'volume' ? 'bg-sky-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                    'flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all',
+                    dimension === '3d' ? 'bg-sky-600 text-white shadow-sm' : 'text-sky-800 hover:text-sky-950'
                   )}
                 >
-                  Volume
+                  <Icon name="layers" className="h-3.5 w-3.5" />
+                  <span>3D View</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFlowMode('speed')}
+                  onClick={() => setDimension('2d')}
                   className={cx(
-                    'rounded-lg px-2.5 py-1 transition-all',
-                    flowMode === 'speed' ? 'bg-amber-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                    'flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all',
+                    dimension === '2d' ? 'bg-sky-600 text-white shadow-sm' : 'text-sky-800 hover:text-sky-950'
                   )}
                 >
-                  Speed
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFlowMode('dual')}
-                  className={cx(
-                    'rounded-lg px-2.5 py-1 transition-all',
-                    flowMode === 'dual' ? 'bg-indigo-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
-                  )}
-                >
-                  Dual View
+                  <Icon name="activity" className="h-3.5 w-3.5" />
+                  <span>2D Spline</span>
                 </button>
               </div>
+
+              {/* Metric View Mode Toggle (for 2D view) */}
+              {dimension === '2d' && (
+                <div className="flex rounded-xl border border-clay/30 bg-cream/70 p-0.5 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setFlowMode('volume')}
+                    className={cx(
+                      'rounded-lg px-2.5 py-1 transition-all',
+                      flowMode === 'volume' ? 'bg-sky-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                    )}
+                  >
+                    Volume
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlowMode('speed')}
+                    className={cx(
+                      'rounded-lg px-2.5 py-1 transition-all',
+                      flowMode === 'speed' ? 'bg-amber-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                    )}
+                  >
+                    Speed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlowMode('dual')}
+                    className={cx(
+                      'rounded-lg px-2.5 py-1 transition-all',
+                      flowMode === 'dual' ? 'bg-indigo-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                    )}
+                  >
+                    Dual
+                  </button>
+                </div>
+              )}
 
               <Tabs
                 items={[
@@ -243,29 +280,40 @@ export function OperationsPage() {
             </div>
           </div>
 
-          {/* Upgraded Spline Chart with Crosshair & Tooltip */}
+          {/* Visualization Area: Interactive 3D WebGL Hologram OR 2D Spline HUD */}
           <div className="mt-4">
-            <AreaChart
-              data={r.volume}
-              secondaryData={r.speed}
-              labels={r.labels}
-              height={220}
-              color="#0284c7"
-              secondaryColor="#f59e0b"
-              unit="veh/hr"
-              secondaryUnit={app.settings.units === 'mph' ? 'mph' : 'km/h'}
-              mode={flowMode}
-              showGrid={true}
-              showPeakMarker={true}
-              showCapacityLine={true}
-            />
-          </div>
-
-          {/* Time Labels */}
-          <div className="mt-2 flex justify-between text-[13px] font-semibold tabular-nums text-mauve/70 px-10">
-            <span>{r.labels[0]}</span>
-            <span>{r.labels[Math.floor(r.labels.length / 2)]}</span>
-            <span>{r.labels[r.labels.length - 1]}</span>
+            {dimension === '3d' ? (
+              <NetworkFlow3D
+                data={r.volume}
+                secondaryData={r.speed}
+                labels={r.labels}
+                height={260}
+                unit="veh/hr"
+                secondaryUnit={app.settings.units === 'mph' ? 'mph' : 'km/h'}
+              />
+            ) : (
+              <>
+                <AreaChart
+                  data={r.volume}
+                  secondaryData={r.speed}
+                  labels={r.labels}
+                  height={220}
+                  color="#0284c7"
+                  secondaryColor="#f59e0b"
+                  unit="veh/hr"
+                  secondaryUnit={app.settings.units === 'mph' ? 'mph' : 'km/h'}
+                  mode={flowMode}
+                  showGrid={true}
+                  showPeakMarker={true}
+                  showCapacityLine={true}
+                />
+                <div className="mt-2 flex justify-between text-[13px] font-semibold tabular-nums text-mauve/70 px-10">
+                  <span>{r.labels[0]}</span>
+                  <span>{r.labels[Math.floor(r.labels.length / 2)]}</span>
+                  <span>{r.labels[r.labels.length - 1]}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Bottom Telemetry & KPI Ribbon */}
