@@ -40,14 +40,14 @@ class FullSceneYOLODetector:
         "stop sign": (0, 255, 255),     # Yellow in BGR
     }
 
-    def __init__(self, model_name: str = "yolo11m.pt"):
-        # Auto-detect available YOLO model weights (yolo11m.pt, yolo11s.pt, yolov8n.pt)
+    def __init__(self, model_name: str = "best.pt"):
+        # Auto-detect available YOLO model weights (best.pt)
         if not os.path.exists(model_name):
-            for candidate in ["yolo11m.pt", "yolo11s.pt", "../yolo11m.pt", "../yolo11s.pt", "yolov8n.pt"]:
+            for candidate in ["best.pt", "models/best.pt", "../best.pt", "backend/models/best.pt"]:
                 if os.path.exists(candidate):
                     model_name = candidate
                     break
-        print(f"⚡ Loading YOLO High-Precision Detection Model ({model_name})...")
+        print(f"⚡ Loading YOLO High-Precision Plate Detection Model ({model_name})...")
         self.model = YOLO(model_name)
         self.anpr = HighPrecisionANPR(languages=['en'], gpu=False)
         print(f"✅ High-Precision YOLO ({model_name}) + ANPR Model Ready!\n")

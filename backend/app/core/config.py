@@ -12,8 +12,9 @@ class Settings(BaseSettings):
     # PostgreSQL via Neon or fallback SQLite for local development
     DATABASE_URL: str = "sqlite:///./traffic_analytics.db"
     
-    EVIDENCE_DIR: str = "./static/evidence"
-    FEEDS_DIR: str = "./static/feeds"
+    _BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    EVIDENCE_DIR: str = os.path.join(_BASE_DIR, "static", "evidence")
+    FEEDS_DIR: str = os.path.join(_BASE_DIR, "static", "feeds")
     
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]
 

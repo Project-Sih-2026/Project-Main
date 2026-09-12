@@ -52,8 +52,36 @@ class PlatePreprocessor:
         return rotated
 
     @staticmethod
+    def preprocess_plate(img: np.ndarray) -> np.ndarray:
+        """
+        Standard license plate preprocessing pipeline:
+        1. Grayscale
+        2. Histogram Equalization
+        3. Gaussian Blur
+        4. Sharpening
+        """
+        if img is None or img.size == 0:
+            return img
+
+        # 1. Grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img.copy()
+
+        # 2. Histogram Equalization
+        equalized = cv2.equalizeHist(gray)
+
+        # 3. Gaussian Blur
+        blurred = cv2.GaussianBlur(equalized, (3, 3), 0)
+
+        # 4. Sharpening
+        sharp_kernel = np.array([[0, -1, 0],
+                                 [-1, 5, -1],
+                                 [0, -1, 0]], dtype=np.float32)
+        sharpened = cv2.filter2D(blurred, -1, sharp_kernel)
+        return sharpened
+
+    @staticmethod
     def clean_plate_for_ocr(img: np.ndarray) -> np.ndarray:
-        """Full enhancement pipeline: Resize -> CLAHE -> Bilateral Filter -> Sharpen."""
+        """Full enhancement pipeline: Resize -> CLAHE -> Deskew -> Preprocess."""
         h, w = img.shape[:2]
         target_h = 120
         target_w = int(w * (target_h / h))
@@ -65,7 +93,6 @@ class PlatePreprocessor:
         # 2. Deskew
         deskewed = PlatePreprocessor.deskew_plate(enhanced)
 
-        # 3. Bilateral Filter (Removes road dust grain while preserving crisp character edges)
-        filtered = cv2.bilateralFilter(deskewed, 9, 75, 75)
+        # 3. Preprocessing (Grayscale, Histogram Equalization, Gaussian Blur, Sharpening)
+        return PlatePreprocessor.preprocess_plate(deskewed)
 
-        return filtered
