@@ -56,18 +56,23 @@ export function TopBar() {
           </button>
         </form>
 
-        <a
-          href={getDetectionPortalUrl()}
-          target="_blank"
-          rel="noreferrer"
-          className="hidden sm:flex items-center gap-1.5 rounded-xl border border-blue-600/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-800 hover:bg-blue-500/20 transition-all shadow-sm"
-          title="Open Standalone AI Vehicle Detection & Ingestion Portal on Port 5174"
+        <button
+          onClick={() => app.nav({ page: 'upload' })}
+          className={`hidden sm:flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all shadow-sm ${
+            app.page === 'upload'
+              ? 'border-blue-600 bg-blue-600 text-white shadow-md'
+              : 'border-blue-600/30 bg-blue-500/10 text-blue-800 hover:bg-blue-500/20'
+          }`}
+          title="Open AI Vehicle Detection & Plate Registry Portal"
         >
-          <Icon name="camera" className="h-3.5 w-3.5 text-blue-600" />
+          <Icon name="camera" className={`h-3.5 w-3.5 ${app.page === 'upload' ? 'text-white' : 'text-blue-600'}`} />
           <span>AI Detection Portal</span>
-          <span className="font-mono text-[10px] bg-blue-600 text-white px-1.5 py-0.2 rounded font-bold">5174</span>
-          <Icon name="arrowUpRight" className="h-3 w-3 text-blue-700" />
-        </a>
+          <span className={`font-mono text-[10px] px-1.5 py-0.2 rounded font-bold ${
+            app.page === 'upload' ? 'bg-white/20 text-white' : 'bg-blue-600 text-white'
+          }`}>
+            PORTAL
+          </span>
+        </button>
 
         <div className="hidden items-center gap-2 rounded-xl border border-clay/30 bg-sand/45 px-3 py-2 md:flex">
           <span className="relative flex h-2 w-2">
