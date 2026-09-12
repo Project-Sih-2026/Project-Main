@@ -7,7 +7,7 @@ import { api, BACKEND_STATIC } from '../services/api';
 import { getDetectionPortalUrl } from '../utils/navigation';
 import type { Detection } from '../types';
 
-const TYPES = ['All types', 'Sedan', 'SUV', 'Truck', 'Bus', 'Two-wheeler', 'Van', 'Car'];
+const TYPES = ['All types', 'Ambulance', 'Sedan', 'SUV', 'Truck', 'Bus', 'Two-wheeler', 'Van', 'Car'];
 const STATUSES = ['All statuses', 'clear', 'watchlist', 'flagged'];
 const TIME_WINDOWS = ['All Day (24h)', 'Live ANPR (30m)', 'Past 2 Hours', 'Shift Window (8h)', 'Past 7 Days File'];
 const QUICK = ['dl-01', 'truck', 'stolen', 'dhaula', 'mh12', 'wb02'];

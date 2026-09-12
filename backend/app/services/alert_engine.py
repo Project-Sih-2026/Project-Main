@@ -55,5 +55,41 @@ def check_and_generate_alerts(db: Session, detection: Detection) -> Alert | None
         db.commit()
         db.refresh(new_alert)
         return new_alert
+
+    # Automatic Priority Alert for Ambulances (Emergency Corridor Dispatch)
+    if detection.vehicle_type == "Ambulance":
+        existing_alert = db.query(Alert).filter(Alert.detection_id == detection.id).first()
+        if not existing_alert:
+            alert_id = f"alt-amb-{uuid.uuid4().hex[:8]}"
+            amb_alert = Alert(
+                id=alert_id,
+                detection_id=detection.id,
+                camera_id=detection.camera_id,
+                watchlist_id=None,
+                plate_matched=normalized,
+                category="EMERGENCY_AMBULANCE",
+                severity="HIGH",
+                status="NEW",
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            action_log = AlertAction(
+                id=f"act-{uuid.uuid4().hex[:8]}",
+                alert_id=alert_id,
+                user_id="sys-engine",
+                username="Emergency Corridor Controller",
+                action="TRIGGER_ALERT",
+                from_status="NONE",
+                to_status="NEW",
+                notes=f"Emergency Ambulance identified at {detection.camera_id}. Priority Green Corridor signal dispatch recommended.",
+                created_at=datetime.now(timezone.utc)
+            )
+            detection.has_alert = True
+            detection.alert_type = "EMERGENCY_AMBULANCE"
+            db.add(amb_alert)
+            db.add(action_log)
+            db.commit()
+            db.refresh(amb_alert)
+            return amb_alert
         
     return None

@@ -8,7 +8,7 @@ export interface Camera {
 }
 
 export type VehicleStatus = 'clear' | 'watchlist' | 'flagged';
-export type VehicleType = 'Sedan' | 'SUV' | 'Truck' | 'Bus' | 'Two-wheeler' | 'Van';
+export type VehicleType = 'Sedan' | 'SUV' | 'Truck' | 'Bus' | 'Two-wheeler' | 'Van' | 'Ambulance';
 export interface JourneyEvent { t: string; cam: string; loc: string; speed: number; dir: string; note?: string }
 export interface Vehicle {
   id: string; plate: string; make: string; model: string; color: string; type: VehicleType;

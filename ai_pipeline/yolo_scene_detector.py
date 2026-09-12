@@ -40,11 +40,17 @@ class FullSceneYOLODetector:
         "stop sign": (0, 255, 255),     # Yellow in BGR
     }
 
-    def __init__(self, model_name: str = "yolov8n.pt"):
-        print(f"⚡ Loading YOLOv8 High-Precision Detection Model ({model_name})...")
+    def __init__(self, model_name: str = "yolo11m.pt"):
+        # Auto-detect available YOLO model weights (yolo11m.pt, yolo11s.pt, yolov8n.pt)
+        if not os.path.exists(model_name):
+            for candidate in ["yolo11m.pt", "yolo11s.pt", "../yolo11m.pt", "../yolo11s.pt", "yolov8n.pt"]:
+                if os.path.exists(candidate):
+                    model_name = candidate
+                    break
+        print(f"⚡ Loading YOLO High-Precision Detection Model ({model_name})...")
         self.model = YOLO(model_name)
         self.anpr = HighPrecisionANPR(languages=['en'], gpu=False)
-        print("✅ High-Precision YOLO + ANPR Model Ready!\n")
+        print(f"✅ High-Precision YOLO ({model_name}) + ANPR Model Ready!\n")
 
     def locate_subpixel_plate_crop(self, vehicle_crop: np.ndarray) -> Optional[np.ndarray]:
         """

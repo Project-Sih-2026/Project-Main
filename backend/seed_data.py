@@ -200,6 +200,7 @@ def seed_database():
         ("CAM-GN-02", "WB-02-AK-4433", "WB02AK4433", "Transit Van", now - timedelta(minutes=8), False, None),
         ("CAM-KN-05", "HR-26-DK-2020", "HR26DK2020", "SUV", now - timedelta(minutes=6), False, None),
         ("CAM-GN-05", "TN-09-CQ-7711", "TN09CQ7711", "Sedan", now - timedelta(minutes=4), False, None),
+        ("CAM-GN-04", "DL-01-AMB-0108", "DL01AMB0108", "Ambulance", now - timedelta(minutes=2), True, "EMERGENCY_AMBULANCE"),
         ("CAM-KN-03", "UP-32-BN-8800", "UP32BN8800", "Motorcycle", now - timedelta(minutes=1), False, None),
     ]
 

@@ -101,7 +101,38 @@ class IndianSyntaxRectifier:
         return "".join(cls.DIGIT_TO_ALPHA.get(c, c) for c in s)
 
     @classmethod
+    def is_valid_plate_candidate(cls, raw: str) -> bool:
+        if not raw:
+            return False
+        clean = cls.clean_raw_string(raw)
+        # Immediately reject ambulance texts, status words, or UI labels
+        reject_words = [
+            "AMBULANCE", "ECNALUBMA", "BOMAJUAMA", "3OMAJUBMA", "EMERGENCY",
+            "HOSPITAL", "TRAUMA", "TARGET", "CAMERA", "NODE", "TRAFFIC",
+            "PORTE", "MULTI", "CCTV", "POLICE", "HIGHWAY"
+        ]
+        if any(rw in clean for rw in reject_words):
+            return False
+        if len(clean) < 5 or len(clean) > 13:
+            return False
+        letters = sum(1 for c in clean if c.isalpha())
+        digits = sum(1 for c in clean if c.isdigit())
+        # Indian license plates ALWAYS contain both letters (state/series) and digits (district/number)
+        if letters < 2 or digits < 2:
+            return False
+        # State prefix check or valid format
+        prefix = clean[:2]
+        if prefix in cls.INDIAN_STATES or prefix in cls.STATE_CONFUSIONS:
+            return True
+        if re.search(r'\d{4}$', clean) and letters >= 2:
+            return True
+        return False
+
+    @classmethod
     def rectify(cls, raw_ocr: str) -> Tuple[str, float, bool]:
+        if not raw_ocr or not cls.is_valid_plate_candidate(raw_ocr):
+            return "", 0.0, False
+
         parts = [p.strip() for p in re.split(r'[-\s]+', raw_ocr.upper()) if p.strip()]
         if len(parts) == 4:
             s_raw, rto_raw, ser_raw, num_raw = parts
@@ -111,16 +142,16 @@ class IndianSyntaxRectifier:
             series_part = cls.rectify_series_part(ser_raw)
             num_part = "".join(cls.ALPHA_TO_DIGIT.get(c, c) for c in num_raw)
             rectified = f"{state_part}-{rto_part}-{series_part}-{num_part}"
-            is_valid = bool(re.match(r'^[A-Z]{2}-\d{2}-[A-Z]{1,3}-\d{4}$', rectified))
-            return rectified, 0.98 if is_valid else 0.85, is_valid
+            is_valid = bool(re.match(r'^[A-Z]{2}-\d{1,2}-[A-Z]{1,3}-\d{4}$', rectified))
+            return rectified, 0.98 if is_valid else 0.75, is_valid
 
         clean = cls.clean_raw_string(raw_ocr)
-        if len(clean) < 7:
-            return raw_ocr.upper(), 0.35, False
+        if len(clean) < 5:
+            return "", 0.0, False
 
         state_part = cls.rectify_state_code(clean[:2])
         rest = clean[2:]
-        if len(rest) >= 5:
+        if len(rest) >= 4:
             num_part_raw = rest[-4:]
             mid_part = rest[:-4]
             num_part = "".join(cls.ALPHA_TO_DIGIT.get(c, c) for c in num_part_raw)
@@ -138,12 +169,15 @@ class IndianSyntaxRectifier:
 
             rto_str = "".join(rto_digits) if rto_digits else "01"
             if len(rto_str) == 1: rto_str = "0" + rto_str
-            series_str = cls.rectify_series_part("".join(series_letters)) if series_letters else "AB"
+            series_str = cls.rectify_series_part("".join(series_letters)) if series_letters else "A"
             rectified = f"{state_part}-{rto_str}-{series_str}-{num_part}"
-            is_valid = bool(re.match(r'^[A-Z]{2}-\d{2}-[A-Z]{1,3}-\d{4}$', rectified))
-            return rectified, 0.96 if is_valid else 0.82, is_valid
+            is_valid = bool(re.match(r'^[A-Z]{2}-\d{1,2}-[A-Z]{1,3}-\d{4}$', rectified))
+            if is_valid:
+                return rectified, 0.96, True
+            if state_part in cls.INDIAN_STATES and len(num_part) == 4:
+                return rectified, 0.82, True
 
-        return clean, 0.50, False
+        return "", 0.0, False
 
 
 SAMPLE_PLATES = [
@@ -173,6 +207,10 @@ class FullAIIntelligencePipeline:
         self.model_path = None
         self.vehicle_model = None
         self.vehicle_model_path = None
+        self.vehicle_model_m = None
+        self.vehicle_model_m_path = None
+        self.vehicle_model_s = None
+        self.vehicle_model_s_path = None
         self.reader = None
         self.classes = {}
         self.is_initialized = False
@@ -193,21 +231,140 @@ class FullAIIntelligencePipeline:
             if os.path.exists(c) and os.path.isfile(c) and os.path.getsize(c) > 1000:
                 print(f"[AI Pipeline] Successfully loaded YOLO best.pt weights from: {os.path.abspath(c)}")
                 return os.path.abspath(c)
-        print("[AI Pipeline] Warning: Could not locate best.pt checkpoint file!")
+        print("[AI Pipeline] Note: best.pt plate model not found, will utilize YOLO11 vehicle-localized ROIs.")
         return None
 
-    def _find_vehicle_checkpoint(self) -> Optional[str]:
-        app_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        root_dir = os.path.dirname(app_dir)
-        v_candidates = [
-            os.path.join(root_dir, "yolov8n.pt"),
-            os.path.join(app_dir, "models", "yolov8n.pt"),
-            "yolov8n.pt"
+    def _find_vehicle_checkpoints(self) -> Dict[str, Optional[str]]:
+        app_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__))) # backend
+        root_dir = os.path.dirname(app_dir) # repo root
+        
+        checkpoints: Dict[str, Optional[str]] = {"m": None, "s": None}
+        
+        # Search for YOLO11m (Medium model)
+        m_candidates = [
+            os.path.join(root_dir, "yolo11m.pt"),
+            os.path.join(app_dir, "models", "yolo11m.pt"),
+            "yolo11m.pt",
+            "../yolo11m.pt"
         ]
-        for vc in v_candidates:
-            if os.path.exists(vc) and os.path.isfile(vc) and os.path.getsize(vc) > 1000:
-                return os.path.abspath(vc)
-        return None
+        for mc in m_candidates:
+            if os.path.exists(mc) and os.path.isfile(mc) and os.path.getsize(mc) > 1000:
+                checkpoints["m"] = os.path.abspath(mc)
+                break
+                
+        # Search for YOLO11s (Small model)
+        s_candidates = [
+            os.path.join(root_dir, "yolo11s.pt"),
+            os.path.join(app_dir, "models", "yolo11s.pt"),
+            "yolo11s.pt",
+            "../yolo11s.pt"
+        ]
+        for sc in s_candidates:
+            if os.path.exists(sc) and os.path.isfile(sc) and os.path.getsize(sc) > 1000:
+                checkpoints["s"] = os.path.abspath(sc)
+                break
+                
+        # Fallback to yolov8n if YOLO11 not located
+        if not checkpoints["m"] and not checkpoints["s"]:
+            v_candidates = [
+                os.path.join(root_dir, "yolov8n.pt"),
+                os.path.join(app_dir, "models", "yolov8n.pt"),
+                "yolov8n.pt"
+            ]
+            for vc in v_candidates:
+                if os.path.exists(vc) and os.path.isfile(vc) and os.path.getsize(vc) > 1000:
+                    checkpoints["s"] = os.path.abspath(vc)
+                    break
+
+        return checkpoints
+
+    AMBULANCE_KEYWORDS = [
+        "AMBULANCE", "ECNALUBMA", "EMERGENCY", "HOSPITAL", "TRAUMA",
+        "PATIENT", "RESCUE", "MEDIC", "CAT", "RED CROSS", "108", "102", "AMB"
+    ]
+
+    @classmethod
+    def classify_vehicle_type(
+        cls,
+        cls_name: str,
+        box: Tuple[int, int, int, int],
+        vehicle_crop: Optional[np.ndarray] = None,
+        extracted_texts: Optional[List[str]] = None,
+        custom_hint: Optional[str] = None
+    ) -> str:
+        """
+        Classifies and standardizes the vehicle type using the YOLO detection class,
+        bounding box geometry, visual emergency beacon / livery analysis, and OCR markings.
+        Returns one of: 'Ambulance', 'Sedan', 'SUV', 'Truck', 'Bus', 'Two-wheeler', 'Van'.
+        """
+        c = cls_name.lower()
+        
+        # 1. Direct model / class name match
+        if "ambulance" in c or "emergency" in c:
+            return "Ambulance"
+
+        # 2. Check hint or custom plate / metadata
+        if custom_hint:
+            hint_up = custom_hint.upper()
+            if any(k in hint_up for k in ["AMBULANCE", "ECNALUBMA", "EMERGENCY", "108", "102", "AMB"]):
+                return "Ambulance"
+
+        # 3. Check extracted texts from plate / bumper / vehicle body
+        if extracted_texts:
+            for text in extracted_texts:
+                t_up = re.sub(r'[^A-Z0-9]', '', text.upper())
+                for kw in cls.AMBULANCE_KEYWORDS:
+                    if kw in t_up:
+                        return "Ambulance"
+
+        # 4. Visual Emergency Lightbar & Ambulance Livery Analysis on Vehicle Crop
+        if vehicle_crop is not None and vehicle_crop.size > 0:
+            vh, vw = vehicle_crop.shape[:2]
+            if vh > 40 and vw > 40:
+                # Analyze upper 22% of vehicle for Emergency Beacon / Flashing Light Bar
+                roof_roi = vehicle_crop[:int(vh * 0.22), :]
+                hsv_roof = cv2.cvtColor(roof_roi, cv2.COLOR_BGR2HSV)
+                red1 = cv2.inRange(hsv_roof, np.array([0, 110, 100]), np.array([12, 255, 255]))
+                red2 = cv2.inRange(hsv_roof, np.array([165, 110, 100]), np.array([180, 255, 255]))
+                red_mask = cv2.bitwise_or(red1, red2)
+                blue_mask = cv2.inRange(hsv_roof, np.array([100, 120, 100]), np.array([130, 255, 255]))
+
+                red_px = cv2.countNonZero(red_mask)
+                blue_px = cv2.countNonZero(blue_mask)
+                total_roof_px = max(1, roof_roi.shape[0] * roof_roi.shape[1])
+
+                has_beacon = (red_px > 25 and blue_px > 25) or ((red_px + blue_px) / total_roof_px > 0.045)
+
+                body_roi = vehicle_crop[int(vh * 0.25):int(vh * 0.75), int(vw * 0.15):int(vw * 0.85)]
+                if body_roi.size > 0:
+                    hsv_body = cv2.cvtColor(body_roi, cv2.COLOR_BGR2HSV)
+                    white_mask = cv2.inRange(hsv_body, np.array([0, 0, 150]), np.array([180, 50, 255]))
+                    white_ratio = cv2.countNonZero(white_mask) / float(body_roi.shape[0] * body_roi.shape[1])
+                    if has_beacon and white_ratio > 0.25:
+                        return "Ambulance"
+
+        # 5. Standard vehicle classification
+        x1, y1, x2, y2 = box
+        vw = max(1, x2 - x1)
+        vh = max(1, y2 - y1)
+        aspect = vw / float(vh)
+        
+        if c in ["motorcycle", "bicycle", "bike"]:
+            return "Two-wheeler"
+        elif c == "bus":
+            return "Bus"
+        elif c == "truck":
+            return "Truck"
+        elif c == "van":
+            return "Van"
+        elif c in ["car", "automobile", "vehicle"]:
+            # Taller stance / boxy proportions indicate SUV / Compact SUV
+            # Flatter / wider aspect ratio indicates Sedan
+            if aspect < 1.30:
+                return "SUV"
+            else:
+                return "Sedan"
+        return c.capitalize()
 
     def _initialize(self):
         self.model_path = self._find_model_checkpoint()
@@ -220,12 +377,29 @@ class FullAIIntelligencePipeline:
                 print(f"[AI Pipeline Warning] Failed to load YOLO from {self.model_path}: {e}")
                 self.model = None
 
-        self.vehicle_model_path = self._find_vehicle_checkpoint()
-        if _YOLO_AVAILABLE and self.vehicle_model_path:
+        v_checkpoints = self._find_vehicle_checkpoints()
+        self.vehicle_model_m_path = v_checkpoints.get("m")
+        self.vehicle_model_s_path = v_checkpoints.get("s")
+
+        if _YOLO_AVAILABLE and self.vehicle_model_m_path:
             try:
-                self.vehicle_model = YOLO(self.vehicle_model_path)
+                self.vehicle_model_m = YOLO(self.vehicle_model_m_path)
+                print(f"[AI Pipeline] Successfully loaded YOLO11m model from: {self.vehicle_model_m_path}")
+                self.is_initialized = True
             except Exception as e:
-                print(f"[AI Pipeline Warning] Failed to load vehicle model: {e}")
+                print(f"[AI Pipeline Warning] Failed to load YOLO11m: {e}")
+
+        if _YOLO_AVAILABLE and self.vehicle_model_s_path:
+            try:
+                self.vehicle_model_s = YOLO(self.vehicle_model_s_path)
+                print(f"[AI Pipeline] Successfully loaded YOLO11s model from: {self.vehicle_model_s_path}")
+                self.is_initialized = True
+            except Exception as e:
+                print(f"[AI Pipeline Warning] Failed to load YOLO11s: {e}")
+
+        # Primary vehicle model reference
+        self.vehicle_model = self.vehicle_model_m or self.vehicle_model_s
+        self.vehicle_model_path = self.vehicle_model_m_path or self.vehicle_model_s_path
 
         if _EASYOCR_AVAILABLE:
             try:
@@ -234,13 +408,21 @@ class FullAIIntelligencePipeline:
                 print(f"[AI Pipeline Warning] EasyOCR init warning: {e}")
 
     def get_model_info(self) -> Dict[str, Any]:
+        loaded_models = []
+        if self.vehicle_model_m:
+            loaded_models.append("yolo11m.pt (Medium)")
+        if self.vehicle_model_s:
+            loaded_models.append("yolo11s.pt (Small)")
+        if self.model:
+            loaded_models.append(os.path.basename(self.model_path or "best.pt"))
+
         return {
             "status": "LOADED" if self.is_initialized else "FALLBACK",
-            "model_path": self.model_path,
-            "architecture": "YOLOv8-ANPR-Custom",
-            "num_classes": len(self.classes) if self.classes else 81,
-            "classes": self.classes if self.classes else {80: "number_plate", 2: "car", 3: "motorcycle", 5: "bus", 7: "truck"},
-            "plate_class_id": 80,
+            "model_path": ", ".join(loaded_models) if loaded_models else "None",
+            "architecture": "YOLO11-Vehicle-Classification-ANPR",
+            "yolo11m_active": self.vehicle_model_m is not None,
+            "yolo11s_active": self.vehicle_model_s is not None,
+            "vehicle_classes": ["Ambulance", "Sedan", "SUV", "Truck", "Bus", "Two-wheeler", "Van"],
             "easyocr_ready": self.reader is not None,
             "device": "CPU"
         }
@@ -312,31 +494,33 @@ class FullAIIntelligencePipeline:
         ocr_confidence = 0.90
         detected_vehicle_type = "Vehicle"
 
-        # 1. Detect vehicles across both vehicle_model and primary model
+        # 1. Detect vehicles across both YOLO11m and YOLO11s models (and custom plate model if present)
         candidate_vehicles = []
-        detectors = [d for d in [self.vehicle_model, self.model] if d is not None]
+        detectors = [d for d in [self.vehicle_model_m, self.vehicle_model_s, self.model] if d is not None]
         VEHICLE_CLASSES = {"car", "motorcycle", "bus", "truck", "automobile", "van", "bicycle", "vehicle", "auto", "train"}
 
         for v_detector in detectors:
             try:
-                # Balanced threshold (0.35) for real vehicles without false positives
-                v_res = v_detector(frame, conf=0.35, verbose=False)[0]
+                # Optimized confidence threshold for YOLO11 models
+                v_res = v_detector(frame, conf=0.28, verbose=False)[0]
                 for box in v_res.boxes:
                     cls_id = int(box.cls[0].item())
                     cls_name = v_detector.names.get(cls_id, str(cls_id)).lower()
                     conf = float(box.conf[0].item())
                     x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
 
-                    if (cls_name in VEHICLE_CLASSES or cls_id in [1, 2, 3, 5, 7]) and (x2 - x1) > 40 and (y2 - y1) > 40:
+                    if (cls_name in VEHICLE_CLASSES or cls_id in [1, 2, 3, 5, 7]) and (x2 - x1) > 30 and (y2 - y1) > 30:
+                        identified_type = self.classify_vehicle_type(cls_name, (x1, y1, x2, y2))
                         candidate_vehicles.append({
                             "class_id": cls_id,
-                            "class_name": cls_name.capitalize(),
+                            "raw_class": cls_name,
+                            "class_name": identified_type,
                             "confidence": conf,
                             "box": (x1, y1, x2, y2),
                             "area": (x2 - x1) * (y2 - y1)
                         })
             except Exception as e:
-                print(f"[Vehicle Detection Error]: {e}")
+                print(f"[YOLO11 Vehicle Detection Error]: {e}")
 
         # Non-Maximum Suppression (IoU > 0.45) across all detected vehicles
         def calc_iou(b1, b2):
@@ -353,9 +537,18 @@ class FullAIIntelligencePipeline:
         candidate_vehicles.sort(key=lambda v: v["confidence"], reverse=True)
         distinct_vehicles = []
         for v in candidate_vehicles:
-            if not any(calc_iou(v["box"], dv["box"]) > 0.45 for dv in distinct_vehicles):
+            matched = False
+            for dv in distinct_vehicles:
+                if calc_iou(v["box"], dv["box"]) > 0.45:
+                    matched = True
+                    if v["confidence"] > dv["confidence"]:
+                        dv["class_name"] = v["class_name"]
+                        dv["confidence"] = v["confidence"]
+                        dv["box"] = v["box"]
+                    break
+            if not matched:
                 distinct_vehicles.append(v)
-        distinct_vehicles = distinct_vehicles[:6]
+        distinct_vehicles = distinct_vehicles[:10]
 
         # Sort distinct vehicles visually left-to-right across the frame
         distinct_vehicles.sort(key=lambda v: v["box"][0])
@@ -487,11 +680,27 @@ class FullAIIntelligencePipeline:
                     cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
                     cv2.imwrite(crop_path, dummy)
 
+                # Comprehensive Ambulance check across vehicle crop and OCR texts
+                veh_crop = frame[max(0, vy1):min(h, vy2), max(0, vx1):min(w, vx2)]
+                extracted_texts = [p_text]
+                if 'raw_ocr' in locals() and raw_ocr:
+                    extracted_texts.append(raw_ocr)
+                if idx < len(custom_plate_list):
+                    extracted_texts.append(custom_plate_list[idx])
+
+                refined_type = self.classify_vehicle_type(
+                    v.get("raw_class", v["class_name"]),
+                    (vx1, vy1, vx2, vy2),
+                    vehicle_crop=veh_crop,
+                    extracted_texts=extracted_texts,
+                    custom_hint=custom_raw_plate
+                )
+
                 detected_entries_data.append({
                     "plate_text": p_text,
                     "norm_plate": normalize_plate(p_text),
                     "ocr_conf": round(p_conf, 3),
-                    "vehicle_type": v["class_name"],
+                    "vehicle_type": refined_type,
                     "v_box": (vx1, vy1, vx2, vy2),
                     "p_box": actual_p_box,
                     "crop_filename": crop_filename
@@ -562,12 +771,14 @@ class FullAIIntelligencePipeline:
 
         # Annotate ALL detected vehicles and plates on the full frame
         for idx, entry in enumerate(detected_entries_data):
-            col = colors[idx % len(colors)]
             tag = f"#{idx + 1}"
+            is_ambulance = entry["vehicle_type"] == "Ambulance"
+            col = (0, 0, 238) if is_ambulance else colors[idx % len(colors)]
             if entry["v_box"]:
                 vx1, vy1, vx2, vy2 = entry["v_box"]
-                cv2.rectangle(annotated_frame, (vx1, vy1), (vx2, vy2), col, 3)
-                label = f"{tag} {entry['vehicle_type'].upper()}"
+                thickness = 4 if is_ambulance else 3
+                cv2.rectangle(annotated_frame, (vx1, vy1), (vx2, vy2), col, thickness)
+                label = f"{tag} AMBULANCE [EMERGENCY]" if is_ambulance else f"{tag} {entry['vehicle_type'].upper()}"
                 cv2.putText(annotated_frame, label, (vx1 + 4, max(24, vy1 - 10)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.65, col, 2)
             if entry["p_box"]:
@@ -602,7 +813,7 @@ class FullAIIntelligencePipeline:
                 "normalized_plate_text": entry["norm_plate"],
                 "confidence_score": round(random.uniform(0.92, 0.99), 3),
                 "ocr_confidence": entry["ocr_conf"],
-                "model_version": f"YOLOv8-ANPR-Custom ({os.path.basename(self.model_path) if self.model_path else 'best.pt'})",
+                "model_version": f"YOLO11-ANPR ({'YOLO11m' if self.vehicle_model_m else ''}{'+YOLO11s' if self.vehicle_model_s else ''})",
                 "vehicle_type": entry["vehicle_type"],
                 "bounding_box": json.dumps(v_box_norm),
                 "plate_bounding_box": json.dumps(p_box_norm),

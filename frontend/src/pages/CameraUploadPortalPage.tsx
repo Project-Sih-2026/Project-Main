@@ -994,6 +994,7 @@ export function CameraUploadPortalPage() {
               className="rounded-xl border border-clay/30 bg-cream/40 px-3 py-2 text-xs font-medium text-ink focus:border-blue-500 focus:outline-none w-full sm:w-auto"
             >
               <option value="All">All Vehicle Types</option>
+              <option value="Ambulance">Ambulances</option>
               <option value="Car">Cars</option>
               <option value="Sedan">Sedans</option>
               <option value="SUV">SUVs</option>

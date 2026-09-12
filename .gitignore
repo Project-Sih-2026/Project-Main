@@ -39,3 +39,4 @@ Thumbs.db
 *.zip
 backend/static/evidence/*.jpg
 backend/static/evidence/*.png
+static/

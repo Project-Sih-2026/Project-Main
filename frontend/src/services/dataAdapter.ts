@@ -4,6 +4,7 @@ import type { Detection, AlertItem } from '../types';
 export function normalizeVehicleType(raw?: string): VehicleType {
   if (!raw) return 'Sedan';
   const r = raw.toLowerCase();
+  if (r.includes('ambulance') || r.includes('emergency')) return 'Ambulance';
   if (r.includes('suv')) return 'SUV';
   if (r.includes('truck') || r.includes('tipper') || r.includes('lorry')) return 'Truck';
   if (r.includes('bus')) return 'Bus';

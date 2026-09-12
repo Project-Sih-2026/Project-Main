@@ -380,7 +380,7 @@ async def infer_uploaded_frame_with_route(
             journey = None
 
         results_list.append({
-            "detection": det,
+            "detection": DetectionResponse.model_validate(det),
             "journey": journey
         })
 
