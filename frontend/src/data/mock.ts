@@ -183,13 +183,28 @@ export function getLiveVehicles(): Vehicle[] {
 
 // ─── Helpers ───
 export function camById(id: string) {
-  return CAMERAS.find((c) => c.id === id || c.code === id);
+  if (!id) return undefined;
+  const trimmed = id.trim();
+  const clean = trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return CAMERAS.find((c) =>
+    c.id.toLowerCase() === trimmed.toLowerCase() ||
+    c.code.toLowerCase() === trimmed.toLowerCase() ||
+    c.id.toLowerCase().replace(/[^a-z0-9]/g, '') === clean ||
+    c.code.toLowerCase().replace(/[^a-z0-9]/g, '') === clean
+  );
 }
 export function vehById(id: string) {
   if (!id) return undefined;
   const norm = id.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return _liveVehicles.find((v) => v.id === id || v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === norm || v.plate === id) ||
-         VEHICLES.find((v) => v.id === id || v.plate === id);
+  return _liveVehicles.find((v) =>
+    v.id === id ||
+    v.plate === id ||
+    v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === norm
+  ) || VEHICLES.find((v) =>
+    v.id === id ||
+    v.plate === id ||
+    v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === norm
+  );
 }
 export function timeAgo(mins: number) {
   if (mins < 1) return 'just now';

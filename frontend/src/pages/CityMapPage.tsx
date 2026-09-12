@@ -9,6 +9,7 @@ import { getCamera30MinDetections, type ANPRDetection } from '../data/anprGenera
 import { getCameraDistance, getNearestCameras, formatDistance, type CameraDistanceTarget } from '../data/cameraDistances';
 import { CameraFeed } from '../components/CameraFeed';
 import { calculateInterCameraSpeed, type InterCameraSpeedResult } from '../data/speedTrapEngine';
+import { api } from '../services/api';
 
 const CONGESTION: Record<string, number> = { r1: 3, r2: 2, r3: 4, r4: 2, r5: 1, r6: 3, r7: 2, r8: 2, r9: 1, r10: 2, r11: 1, r12: 2 };
 
@@ -150,27 +151,112 @@ export function CityMapPage() {
   } | null>(null);
 
   const [selCamId, setSelCamId] = useState<string | null>(null);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(
-    () => app.target.mapVehicle || app.target.vehicleId || app.vehicles[0]?.id || 'v1'
-  );
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(() => {
+    if (app.target.mapVehicle) return app.target.mapVehicle;
+    if (app.target.vehicleId) return app.target.vehicleId;
+    if (typeof window !== 'undefined') {
+      const rawHash = window.location.hash.replace('#', '');
+      const queryIdx = rawHash.indexOf('?');
+      if (queryIdx !== -1) {
+        const p = new URLSearchParams(rawHash.slice(queryIdx + 1));
+        const veh = p.get('vehicle') || p.get('plate') || p.get('mapVehicle');
+        if (veh) return veh;
+      }
+      const p2 = new URLSearchParams(window.location.search);
+      const veh2 = p2.get('vehicle') || p2.get('plate') || p2.get('mapVehicle');
+      if (veh2) return veh2;
+    }
+    return app.vehicles[0]?.id || '';
+  });
   const [dynamicVehicles, setDynamicVehicles] = useState<Record<string, Vehicle>>({});
 
-  // Sync selected vehicle when arriving from upload portal or search page
+  // Sync selected vehicle when arriving from upload portal, search page, or live vehicles update
   useEffect(() => {
-    if (app.target.mapVehicle) {
-      const cleanTarget = app.target.mapVehicle.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const targetVal = app.target.mapVehicle || app.target.vehicleId;
+    if (targetVal) {
+      const cleanTarget = targetVal.toUpperCase().replace(/[^A-Z0-9]/g, '');
       const match = app.vehicles.find(
-        (v) => v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanTarget || v.id === app.target.mapVehicle
+        (v) => v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanTarget || v.id === targetVal || v.plate === targetVal
       );
       if (match) {
         setSelectedVehicleId(match.id);
       } else {
-        setSelectedVehicleId(app.target.mapVehicle);
+        setSelectedVehicleId(targetVal);
       }
-    } else if (app.vehicles.length > 0 && selectedVehicleId === 'v1') {
+    } else if (app.vehicles.length > 0 && (!selectedVehicleId || selectedVehicleId === 'v1')) {
       setSelectedVehicleId(app.vehicles[0].id);
     }
-  }, [app.target.mapVehicle, app.vehicles]);
+  }, [app.target.mapVehicle, app.target.vehicleId, app.vehicles]);
+
+  // Fetch live journey history from backend whenever selected vehicle changes
+  useEffect(() => {
+    const targetPlate = selectedVehicleId || app.target.mapVehicle || app.target.vehicleId;
+    if (!targetPlate || targetPlate === 'v1') return;
+
+    let isSubscribed = true;
+
+    const fetchJourney = async () => {
+      try {
+        const journeyData = await api.getVehicleHistory(targetPlate).catch(() => null);
+        if (!isSubscribed || !journeyData) return;
+
+        if (journeyData.observation_stops && journeyData.observation_stops.length > 0) {
+          const stops = journeyData.observation_stops;
+          const latestStop = stops[stops.length - 1];
+          const plateText = journeyData.plate || targetPlate;
+          const cleanPlate = plateText.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+          const vehicleObj: Vehicle = {
+            id: `live-${plateText}`,
+            plate: plateText,
+            make: 'Vehicle',
+            model: 'Tracked',
+            color: 'Titanium Grey',
+            type: 'Sedan',
+            owner: 'Registered Citizen',
+            license: `DL-REG-${cleanPlate.slice(-4) || '2026'}`,
+            status: stops.some((s) => s.status.includes('Match') || s.status.includes('Alert')) ? 'flagged' : 'clear',
+            speed: Math.round(journeyData.average_speed_kmh || latestStop.estimated_speed_kmh || 35),
+            lastCam: latestStop.camera_id,
+            lastSeen: 'just now',
+            kmToday: Math.round(journeyData.total_distance_km || stops.length * 4),
+            tags: ['live-database', 'trajectory'],
+            journey: stops.map((s, idx) => {
+              const camObj = camById(s.camera_id);
+              const tStr = new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              return {
+                t: tStr,
+                cam: s.camera_id,
+                loc: s.location_address || camObj?.name || s.camera_id,
+                speed: Math.round(s.estimated_speed_kmh || 30 + (idx * 2)),
+                dir: camObj?.heading?.split(' ')[0] || 'Northbound',
+                note: `Stop #${s.stop_number} · ${s.status}`,
+              };
+            }),
+            road: 0,
+            prog: 0.5,
+            dir: 1,
+          };
+
+          setDynamicVehicles((prev) => ({
+            ...prev,
+            [targetPlate]: vehicleObj,
+            [plateText]: vehicleObj,
+            [cleanPlate]: vehicleObj,
+            [`live-${plateText}`]: vehicleObj,
+          }));
+        }
+      } catch (err) {
+        console.warn('Could not fetch backend vehicle journey:', err);
+      }
+    };
+
+    fetchJourney();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [selectedVehicleId, app.target.mapVehicle, app.target.vehicleId]);
 
   // Inter-Camera Section Speed Trap Analyzer State
   const [speedSourceCam, setSpeedSourceCam] = useState<string>('c2'); // CAM-KN-02
@@ -440,8 +526,20 @@ export function CityMapPage() {
 
   // Active vehicle for route trajectory
   const focusVeh: Vehicle | undefined = useMemo(() => {
-    if (dynamicVehicles[selectedVehicleId]) return dynamicVehicles[selectedVehicleId];
-    return app.vehicles.find((v) => v.id === selectedVehicleId || v.plate === selectedVehicleId) || filteredVehicles[0] || app.vehicles[0];
+    if (selectedVehicleId) {
+      if (dynamicVehicles[selectedVehicleId]) return dynamicVehicles[selectedVehicleId];
+      const cleanId = selectedVehicleId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (cleanId && dynamicVehicles[cleanId]) return dynamicVehicles[cleanId];
+
+      const found = app.vehicles.find(
+        (v) =>
+          v.id === selectedVehicleId ||
+          v.plate === selectedVehicleId ||
+          (cleanId && v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanId)
+      );
+      if (found) return found;
+    }
+    return filteredVehicles[0] || app.vehicles[0];
   }, [selectedVehicleId, dynamicVehicles, filteredVehicles, app.vehicles]);
 
   // Search vehicle by plate
@@ -748,14 +846,15 @@ export function CityMapPage() {
         : '#2563EB';
 
       // SINGLE SIGHTING vs MULTI-CAMERA TRANSIT:
-      // If there is ONLY 1 stop (single camera observation), DO NOT draw lines/corridors/paths!
+      // If there is ONLY 1 stop (single camera observation), fly to that coordinate and show single sighting badge
       if (stopCoords.length === 1) {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.flyTo(stopCoords[0], 15, { duration: 0.6 });
         }
       } else if (stopCoords.length >= 2) {
-        // Multi-Camera Transit Route between checkpoints (e.g. Camera 3 -> Camera 6)
-        let routeLine = L.polyline(stopCoords, {
+        // Multi-Camera Transit Route between checkpoints (e.g. Camera 1 -> Camera 2)
+        // 1. Immediately render direct polyline and fit map bounds so user sees route immediately
+        const initialPolyline = L.polyline(stopCoords, {
           color: routeColor,
           weight: isAmbulance ? 5.5 : 4,
           opacity: 0.9,
@@ -763,7 +862,11 @@ export function CityMapPage() {
           lineCap: 'round',
           lineJoin: 'round'
         });
-        journeyLayerRef.current.addLayer(routeLine);
+        journeyLayerRef.current.addLayer(initialPolyline);
+
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.fitBounds(L.latLngBounds(stopCoords), { padding: [55, 55], maxZoom: 15 });
+        }
 
         // Ambulance Green Corridor ambient glow casing
         if (isAmbulance) {
@@ -803,7 +906,7 @@ export function CityMapPage() {
           }
         }
 
-        // 3. True Road Snapping via OSRM
+        // 3. True Road Snapping via OSRM (enhancement with graceful fallback)
         const coordsQuery = stopCoords.map(([lat, lng]) => `${lng},${lat}`).join(';');
         const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsQuery}?overview=full&geometries=geojson`;
 
@@ -816,7 +919,7 @@ export function CityMapPage() {
               );
 
               if (journeyLayerRef.current) {
-                journeyLayerRef.current.removeLayer(routeLine);
+                journeyLayerRef.current.removeLayer(initialPolyline);
 
                 // Ambient Route Glow
                 const casingLine = L.polyline(roadCoordinates, {
@@ -848,10 +951,6 @@ export function CityMapPage() {
           })
           .catch((err) => {
             console.warn('Road snapping fallback active:', err);
-            if (stopCoords.length > 1 && mapInstanceRef.current) {
-              const bounds = L.latLngBounds(stopCoords);
-              mapInstanceRef.current.fitBounds(bounds, { padding: [55, 55], maxZoom: 15 });
-            }
           });
       }
 

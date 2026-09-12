@@ -18,16 +18,22 @@ export function getDetectionPortalUrl(useSamePortFallback: boolean = false): str
   return `${protocol}//${hostname}:5174`;
 }
 
-export function getOperationsPortalUrl(hash: string = ''): string {
+export function getOperationsPortalUrl(hashOrPage: string = '', vehiclePlate?: string): string {
   if (typeof window === 'undefined') return '/';
   const protocol = window.location.protocol;
   const hostname = window.location.hostname;
-  const cleanHash = hash ? (hash.startsWith('#') ? hash : `#${hash}`) : '';
+
+  let cleanHash = hashOrPage ? (hashOrPage.startsWith('#') ? hashOrPage.slice(1) : hashOrPage) : '';
+  if (vehiclePlate) {
+    const sep = cleanHash.includes('?') ? '&' : '?';
+    cleanHash = `${cleanHash}${sep}vehicle=${encodeURIComponent(vehiclePlate)}`;
+  }
+  const fullHash = cleanHash ? `#${cleanHash}` : '';
 
   // If on port 5174, route to port 5173 on the same host
   if (window.location.port === '5174') {
-    return `${protocol}//${hostname}:5173/${cleanHash}`;
+    return `${protocol}//${hostname}:5173/${fullHash}`;
   }
 
-  return `/${cleanHash}`;
+  return `/${fullHash}`;
 }

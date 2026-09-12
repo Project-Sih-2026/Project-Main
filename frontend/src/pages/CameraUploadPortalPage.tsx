@@ -1029,8 +1029,9 @@ export function CameraUploadPortalPage() {
 
                     <button
                       onClick={() => {
-                        app.nav({ page: 'map', mapVehicle: resultDetection.normalized_plate_text });
-                        window.open(getOperationsPortalUrl('map'), '_blank');
+                        const plate = resultDetection.normalized_plate_text || resultDetection.raw_plate_text;
+                        app.nav({ page: 'map', mapVehicle: plate });
+                        window.open(getOperationsPortalUrl('map', plate), '_blank');
                       }}
                       className="flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-500/15 border border-blue-500/30 px-3 py-1.5 rounded-lg transition-colors"
                     >
@@ -1319,8 +1320,9 @@ export function CameraUploadPortalPage() {
                             </button>
                             <button
                               onClick={() => {
-                                app.nav({ page: 'map', mapVehicle: d.normalized_plate_text });
-                                window.open(getOperationsPortalUrl('map'), '_blank');
+                                const plate = d.normalized_plate_text || d.raw_plate_text;
+                                app.nav({ page: 'map', mapVehicle: plate });
+                                window.open(getOperationsPortalUrl('map', plate), '_blank');
                               }}
                               className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 hover:bg-blue-500/20 transition-colors"
                               title="View vehicle trajectory on GIS City Map"

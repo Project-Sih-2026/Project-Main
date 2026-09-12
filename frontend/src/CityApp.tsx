@@ -21,22 +21,48 @@ import { api } from './services/api';
 import { detectionsToVehicles, detectionsToAlerts, backendAlertsToTrafficAlerts } from './services/dataAdapter';
 
 export default function CityApp() {
-  const getInitialPage = (): PageId => {
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    if (hash === 'upload' || hash === 'detection' || hash === 'anpr') {
-      return 'upload';
+  const extractUrlState = (): { page: PageId; target: Nav } => {
+    if (typeof window === 'undefined') return { page: 'dashboard', target: {} };
+    const rawHash = window.location.hash.replace('#', '');
+    const queryIdx = rawHash.indexOf('?');
+    const hashPage = (queryIdx !== -1 ? rawHash.slice(0, queryIdx) : rawHash).toLowerCase();
+
+    let pageId: PageId = 'dashboard';
+    if (hashPage === 'upload' || hashPage === 'detection' || hashPage === 'anpr') {
+      pageId = 'upload';
+    } else if (['dashboard', 'vehicles', 'cameras', 'map', 'alerts', 'analytics', 'settings', 'upload'].includes(hashPage)) {
+      pageId = hashPage as PageId;
     }
-    if (hash === 'vehicles' || hash === 'search') return 'vehicles';
-    if (hash === 'cameras') return 'cameras';
-    if (hash === 'map') return 'map';
-    if (hash === 'alerts') return 'alerts';
-    if (hash === 'analytics') return 'analytics';
-    if (hash === 'settings') return 'settings';
-    return 'dashboard';
+
+    let params = new URLSearchParams();
+    if (queryIdx !== -1) {
+      params = new URLSearchParams(rawHash.slice(queryIdx + 1));
+    }
+    if (!params.get('vehicle') && !params.get('plate') && !params.get('mapVehicle')) {
+      params = new URLSearchParams(window.location.search);
+    }
+
+    const veh = params.get('vehicle') || params.get('plate') || params.get('mapVehicle');
+    const cam = params.get('camera') || params.get('cameraId');
+
+    const targetObj: Nav = {};
+    if (veh) {
+      targetObj.mapVehicle = veh;
+      targetObj.vehicleId = veh;
+    }
+    if (cam) {
+      targetObj.cameraId = cam;
+    }
+    if (Object.keys(targetObj).length > 0) {
+      targetObj.page = pageId;
+    }
+
+    return { page: pageId, target: targetObj };
   };
 
-  const [page, setPage] = useState<PageId>(getInitialPage);
-  const [target, setTarget] = useState<Nav>({});
+  const initialUrlState = extractUrlState();
+  const [page, setPage] = useState<PageId>(initialUrlState.page);
+  const [target, setTarget] = useState<Nav>(initialUrlState.target);
   const [navSeq, setNavSeq] = useState(0);
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('civic_user');
@@ -87,19 +113,23 @@ export default function CityApp() {
     return () => clearInterval(interval);
   }, [fetchLiveData]);
 
-  // Sync window.location.hash with active page
+  // Sync window.location.hash with active page when page changes
   useEffect(() => {
-    window.location.hash = page;
-  }, [page]);
+    const currentHash = window.location.hash.replace('#', '');
+    const currentHashPage = currentHash.split('?')[0];
+    if (currentHashPage !== page) {
+      window.location.hash = target.mapVehicle ? `${page}?vehicle=${encodeURIComponent(target.mapVehicle)}` : page;
+    }
+  }, [page, target]);
 
   // Listen to external hash changes
   useEffect(() => {
     const onHashChange = () => {
-      const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (hash === 'upload' || hash === 'detection' || hash === 'anpr') {
-        setPage('upload');
-      } else if (['dashboard', 'vehicles', 'cameras', 'map', 'alerts', 'analytics', 'settings', 'upload'].includes(hash)) {
-        setPage(hash as PageId);
+      const { page: newPage, target: newTarget } = extractUrlState();
+      setPage(newPage);
+      if (Object.keys(newTarget).length > 0) {
+        setTarget(newTarget);
+        setNavSeq((s) => s + 1);
       }
     };
     window.addEventListener('hashchange', onHashChange);
