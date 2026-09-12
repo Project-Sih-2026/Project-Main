@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import * as THREE from 'three';
-import { Icon } from './Icons';
 
 export interface NetworkFlow3DProps {
   data: number[];
@@ -15,13 +14,12 @@ export function NetworkFlow3D({
   data,
   secondaryData,
   labels,
-  height = 260,
+  height = 290,
   unit = 'veh/hr',
   secondaryUnit = 'km/h',
 }: NetworkFlow3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [viewAngle, setViewAngle] = useState<'iso' | 'front' | 'top'>('iso');
 
   // Clean, safe datasets
   const safeData = useMemo(() => (data && data.length > 0 ? data : [100, 200, 300, 400, 500, 600]), [data]);
@@ -36,18 +34,8 @@ export function NetworkFlow3D({
     pillars: THREE.Mesh[];
     highlightMesh?: THREE.Mesh;
     reqId?: number;
-    theta: number;
-    phi: number;
-    radius: number;
-    isDragging: boolean;
-    prevMousePos: { x: number; y: number };
   }>({
     pillars: [],
-    theta: Math.PI / 4.4,
-    phi: Math.PI / 3.2,
-    radius: 40,
-    isDragging: false,
-    prevMousePos: { x: 0, y: 0 },
   });
 
   useEffect(() => {
@@ -59,7 +47,7 @@ export function NetworkFlow3D({
 
     // 1. Setup Three.js Scene, Camera, Renderer
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(36, width / h, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(35, width / h, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
 
     renderer.setSize(width, h);
@@ -76,39 +64,39 @@ export function NetworkFlow3D({
     sState.renderer = renderer;
 
     // 2. Soft, Premium Studio Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.15);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    keyLight.position.set(20, 35, 25);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    keyLight.position.set(18, 32, 22);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
     keyLight.shadow.mapSize.height = 1024;
     keyLight.shadow.bias = -0.001;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xcfd8dc, 0.6);
-    fillLight.position.set(-20, 20, -20);
+    const fillLight = new THREE.DirectionalLight(0xcfd8dc, 0.65);
+    fillLight.position.set(-18, 18, -18);
     scene.add(fillLight);
 
     // 3. Clean Minimalist Base Podium
-    const baseGeo = new THREE.BoxGeometry(42, 0.4, 10);
+    const baseGeo = new THREE.BoxGeometry(40, 0.35, 9);
     const baseMat = new THREE.MeshStandardMaterial({
       color: 0x1e293b,
-      roughness: 0.4,
+      roughness: 0.38,
       metalness: 0.1,
     });
     const base = new THREE.Mesh(baseGeo, baseMat);
-    base.position.set(0, -0.2, 0);
+    base.position.set(0, -0.18, 0);
     base.receiveShadow = true;
     scene.add(base);
 
-    // Subtle reference level lines on base
-    const gridHelper = new THREE.GridHelper(40, 20, 0x334155, 0x1e293b);
+    // Subtle reference grid lines on base
+    const gridHelper = new THREE.GridHelper(38, 19, 0x334155, 0x1e293b);
     gridHelper.position.y = 0.01;
     scene.add(gridHelper);
 
-    // 4. Create Refined, Rounded 3D Architectural Columns
+    // 4. Create Refined 3D Architectural Columns
     const count = safeData.length;
     const spacing = 1.45;
     const startX = -((count - 1) * spacing) / 2;
@@ -116,27 +104,27 @@ export function NetworkFlow3D({
 
     safeData.forEach((val, i) => {
       const normalized = val / maxVal;
-      const pillarHeight = Math.max(0.5, normalized * 11);
+      const pillarHeight = Math.max(0.5, normalized * 11.5);
       const x = startX + i * spacing;
       const z = 0;
 
-      // Calm, sophisticated corporate palette
+      // Color scheme: Deep royal blue with warm amber highlight on peak
       let pillarColor = 0x2563eb; // Royal Blue
       if (i === peakIdx) {
-        pillarColor = 0xf59e0b; // Warm Amber Peak Highlight
+        pillarColor = 0xf59e0b; // Warm Amber Peak
       } else if (normalized > 0.75) {
         pillarColor = 0x3b82f6; // Sky Sapphire
       } else if (normalized < 0.3) {
-        pillarColor = 0x1d4ed8; // Deep Blue Trough
+        pillarColor = 0x1d4ed8; // Deep Blue
       }
 
       const geo = new THREE.BoxGeometry(0.92, pillarHeight, 0.92);
       const mat = new THREE.MeshStandardMaterial({
         color: pillarColor,
-        roughness: 0.32,
+        roughness: 0.3,
         metalness: 0.12,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.96,
       });
 
       const mesh = new THREE.Mesh(geo, mat);
@@ -148,7 +136,7 @@ export function NetworkFlow3D({
       scene.add(mesh);
       pillars.push(mesh);
 
-      // Subtle Top Cap Lid
+      // Top Cap Lid
       const capGeo = new THREE.PlaneGeometry(0.9, 0.9);
       const capMat = new THREE.MeshBasicMaterial({
         color: i === peakIdx ? 0xfef08a : 0x93c5fd,
@@ -162,8 +150,8 @@ export function NetworkFlow3D({
 
     sState.pillars = pillars;
 
-    // 5. Clean Hover Highlight Wireframe
-    const hiGeo = new THREE.BoxGeometry(1.05, 1, 1.05);
+    // 5. Hover Highlight Mesh
+    const hiGeo = new THREE.BoxGeometry(1.04, 1, 1.04);
     const hiMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       wireframe: true,
@@ -175,30 +163,24 @@ export function NetworkFlow3D({
     scene.add(highlightMesh);
     sState.highlightMesh = highlightMesh;
 
-    // 6. Camera Orbit Position updater (Static by default)
-    const updateCameraPos = () => {
-      const { radius, theta, phi } = sState;
-      camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
-      camera.position.y = radius * Math.cos(phi);
-      camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
-      camera.lookAt(0, 3.5, 0);
-    };
-    updateCameraPos();
+    // 6. Static Locked & Zoomed Camera Position
+    const theta = Math.PI / 6.2; // ~29 degrees front-isometric
+    const phi = Math.PI / 2.62;  // ~69 degrees elevation
+    const radius = 29.5;         // Zoomed in closer for prominent, bold display
 
-    // 7. Render Loop (Only renders when needed or during user drag)
+    camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
+    camera.position.y = radius * Math.cos(phi);
+    camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
+    camera.lookAt(0, 4.0, 0);
+
+    // 7. Render Loop
     const animate = () => {
       renderer.render(scene, camera);
       sState.reqId = requestAnimationFrame(animate);
     };
-
     sState.reqId = requestAnimationFrame(animate);
 
-    // 8. User Interaction: Click & Drag to inspect, Raycasting on Hover
-    const onMouseDown = (e: MouseEvent) => {
-      sState.isDragging = true;
-      sState.prevMousePos = { x: e.clientX, y: e.clientY };
-    };
-
+    // 8. Raycasting on Hover for Clean Telemetry Readout
     const onMouseMove = (e: MouseEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       const mouse = new THREE.Vector2(
@@ -224,32 +206,14 @@ export function NetworkFlow3D({
         setHoveredIdx(null);
         if (highlightMesh) highlightMesh.visible = false;
       }
-
-      if (!sState.isDragging) return;
-      const dx = e.clientX - sState.prevMousePos.x;
-      const dy = e.clientY - sState.prevMousePos.y;
-      sState.prevMousePos = { x: e.clientX, y: e.clientY };
-
-      sState.theta -= dx * 0.007;
-      sState.phi = Math.max(0.15, Math.min(Math.PI / 2.05, sState.phi - dy * 0.007));
-      updateCameraPos();
-    };
-
-    const onMouseUp = () => {
-      sState.isDragging = false;
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      sState.radius = Math.max(22, Math.min(55, sState.radius + e.deltaY * 0.025));
-      updateCameraPos();
     };
 
     const domEl = renderer.domElement;
-    domEl.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    domEl.addEventListener('wheel', onWheel, { passive: false });
+    domEl.addEventListener('mousemove', onMouseMove);
+    domEl.addEventListener('mouseleave', () => {
+      setHoveredIdx(null);
+      if (highlightMesh) highlightMesh.visible = false;
+    });
 
     const handleResize = () => {
       if (!container) return;
@@ -262,41 +226,11 @@ export function NetworkFlow3D({
 
     return () => {
       if (sState.reqId) cancelAnimationFrame(sState.reqId);
-      domEl.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      domEl.removeEventListener('wheel', onWheel);
+      domEl.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('resize', handleResize);
       renderer.dispose();
     };
   }, [safeData, maxVal, peakIdx, height]);
-
-  // Clean Camera Presets
-  const setPreset = (angle: 'iso' | 'front' | 'top') => {
-    setViewAngle(angle);
-    const sState = sceneStateRef.current;
-    if (!sState.camera) return;
-
-    if (angle === 'iso') {
-      sState.theta = Math.PI / 4.4;
-      sState.phi = Math.PI / 3.2;
-      sState.radius = 40;
-    } else if (angle === 'front') {
-      sState.theta = 0;
-      sState.phi = Math.PI / 2.05;
-      sState.radius = 38;
-    } else {
-      sState.theta = 0.01;
-      sState.phi = 0.12;
-      sState.radius = 36;
-    }
-
-    const { radius, theta, phi } = sState;
-    sState.camera.position.x = radius * Math.sin(phi) * Math.cos(theta);
-    sState.camera.position.y = radius * Math.cos(phi);
-    sState.camera.position.z = radius * Math.sin(phi) * Math.sin(theta);
-    sState.camera.lookAt(0, 3.5, 0);
-  };
 
   const hoveredVal = hoveredIdx !== null ? safeData[hoveredIdx] : null;
   const hoveredSecVal = hoveredIdx !== null && secondaryData ? secondaryData[hoveredIdx] : null;
@@ -311,41 +245,20 @@ export function NetworkFlow3D({
             3D Corridor Flow Distribution
           </span>
         </div>
-
-        {/* Minimalist Camera Angle Switcher */}
-        <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-0.5 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setPreset('iso')}
-            className={`rounded px-2 py-0.5 transition-colors ${
-              viewAngle === 'iso' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Isometric
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreset('front')}
-            className={`rounded px-2 py-0.5 transition-colors ${
-              viewAngle === 'front' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Front Elevation
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreset('top')}
-            className={`rounded px-2 py-0.5 transition-colors ${
-              viewAngle === 'top' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            Top Plan
-          </button>
+        <div className="text-[11px] font-semibold text-slate-400">
+          Peak Surge: <strong className="text-amber-400">{maxVal.toLocaleString()} {unit}</strong>
         </div>
       </div>
 
-      {/* 3D WebGL Canvas (Calm & Static) */}
-      <div ref={containerRef} className="w-full cursor-grab active:cursor-grabbing" style={{ height }} />
+      {/* 3D WebGL Canvas (Locked Static & Zoomed In) */}
+      <div ref={containerRef} className="w-full cursor-pointer" style={{ height }} />
+
+      {/* Time Label Benchmarks Underneath Columns */}
+      <div className="flex justify-between px-6 text-[12px] font-mono font-semibold text-slate-400/80 -mt-2 mb-1">
+        <span>{safeLabels[0]}</span>
+        <span>{safeLabels[Math.floor(safeLabels.length / 2)]}</span>
+        <span>{safeLabels[safeLabels.length - 1]}</span>
+      </div>
 
       {/* Clean Bottom Tooltip HUD (When hovering a 3D bar) */}
       {hoveredIdx !== null ? (
@@ -376,11 +289,6 @@ export function NetworkFlow3D({
           <span>💡 Hover any column to inspect time window details</span>
         </div>
       )}
-
-      {/* Subtle Drag Hint */}
-      <div className="pointer-events-none absolute bottom-3 right-4 text-right text-[11px] font-medium text-slate-500">
-        <span>Click & drag to tilt view</span>
-      </div>
     </div>
   );
 }
