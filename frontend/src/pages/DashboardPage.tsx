@@ -60,6 +60,7 @@ function Kpi({ icon, label, v, d, light }: { icon: IconName; label: string; v: s
 export function OperationsPage() {
   const app = useApp();
   const [rk, setRk] = useState<RangeKey>('24h');
+  const [flowMode, setFlowMode] = useState<'volume' | 'speed' | 'dual'>('volume');
   const [district, setDistrict] = useState('All districts');
   const [camId, setCamId] = useState('c1');
   const r = RANGES[rk];
@@ -174,34 +175,117 @@ export function OperationsPage() {
         ))}
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
-        <Card tone="strong" className="section-contrast p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <Card tone="strong" className="section-contrast p-4 sm:p-5 relative overflow-hidden">
+          {/* Top Bar with Live Indicator, Metrics & Tabs */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-clay/20 pb-3">
             <div>
-              <Kicker>Network flow</Kicker>
-              <div className="mt-1 font-display text-[22px] text-ink">Vehicles per hour · all corridors</div>
+              <div className="flex items-center gap-2">
+                <Kicker>Network flow telemetry</Kicker>
+                <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE RADAR
+                </span>
+              </div>
+              <div className="mt-1 font-display text-[22px] text-ink">
+                {flowMode === 'volume'
+                  ? 'Vehicles per hour · all corridors'
+                  : flowMode === 'speed'
+                  ? 'Average corridor transit speed'
+                  : 'Synchronized volume & speed telemetry'}
+              </div>
             </div>
-            <Tabs
-              items={[
-                { id: '15m', label: '15m Live' },
-                { id: '8h', label: '8h Shift' },
-                { id: '24h', label: '24h Day' },
-                { id: '7d', label: '7d Week' },
-              ]}
-              value={rk}
-              onChange={(id) => setRk(id as RangeKey)}
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Metric View Mode Toggle */}
+              <div className="flex rounded-xl border border-clay/30 bg-cream/70 p-0.5 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setFlowMode('volume')}
+                  className={cx(
+                    'rounded-lg px-2.5 py-1 transition-all',
+                    flowMode === 'volume' ? 'bg-sky-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                  )}
+                >
+                  Volume
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFlowMode('speed')}
+                  className={cx(
+                    'rounded-lg px-2.5 py-1 transition-all',
+                    flowMode === 'speed' ? 'bg-amber-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                  )}
+                >
+                  Speed
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFlowMode('dual')}
+                  className={cx(
+                    'rounded-lg px-2.5 py-1 transition-all',
+                    flowMode === 'dual' ? 'bg-indigo-600 text-white shadow-sm' : 'text-mauve hover:text-ink'
+                  )}
+                >
+                  Dual View
+                </button>
+              </div>
+
+              <Tabs
+                items={[
+                  { id: '15m', label: '15m Live' },
+                  { id: '8h', label: '8h Shift' },
+                  { id: '24h', label: '24h Day' },
+                  { id: '7d', label: '7d Week' },
+                ]}
+                value={rk}
+                onChange={(id) => setRk(id as RangeKey)}
+              />
+            </div>
+          </div>
+
+          {/* Upgraded Spline Chart with Crosshair & Tooltip */}
+          <div className="mt-4">
+            <AreaChart
+              data={r.volume}
+              secondaryData={r.speed}
+              labels={r.labels}
+              height={220}
+              color="#0284c7"
+              secondaryColor="#f59e0b"
+              unit="veh/hr"
+              secondaryUnit={app.settings.units === 'mph' ? 'mph' : 'km/h'}
+              mode={flowMode}
+              showGrid={true}
+              showPeakMarker={true}
+              showCapacityLine={true}
             />
           </div>
-          <div className="mt-4">
-            <AreaChart data={r.volume} height={210} color="#C2CFDF" />
-          </div>
-          <div className="mt-2 flex justify-between text-[14px] font-semibold tabular-nums text-mauve/70">
+
+          {/* Time Labels */}
+          <div className="mt-2 flex justify-between text-[13px] font-semibold tabular-nums text-mauve/70 px-10">
             <span>{r.labels[0]}</span>
             <span>{r.labels[Math.floor(r.labels.length / 2)]}</span>
             <span>{r.labels[r.labels.length - 1]}</span>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-clay/25 pt-4 text-[14px] font-semibold text-mauve/75">
-            <span className="flex items-center gap-1.5"><Icon name="clock" className="h-3.5 w-3.5 text-dusk" /> Peak {Math.max(...r.volume).toLocaleString()} veh/hr</span>
-            <span className="flex items-center gap-1.5"><Icon name="activity" className="h-3.5 w-3.5 text-dusk" /> Avg {Math.round(r.volume.reduce((a, b) => a + b, 0) / r.volume.length).toLocaleString()} veh/hr</span>
+
+          {/* Bottom Telemetry & KPI Ribbon */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-clay/25 pt-4 text-[13.5px] font-semibold text-mauve/80">
+            <span className="flex items-center gap-1.5">
+              <Icon name="clock" className="h-3.5 w-3.5 text-sky-600" />
+              Peak: <strong className="text-ink">{Math.max(...r.volume).toLocaleString()}</strong> veh/hr
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="activity" className="h-3.5 w-3.5 text-indigo-600" />
+              Avg: <strong className="text-ink">{Math.round(r.volume.reduce((a, b) => a + b, 0) / r.volume.length).toLocaleString()}</strong> veh/hr
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Icon name="eye" className="h-3.5 w-3.5 text-amber-600" />
+              Avg Speed: <strong className="text-ink">{r.kpis.avgSpeed}</strong> km/h
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Flow Health: <strong className="text-emerald-700">Optimal (94%)</strong>
+            </span>
             <Btn variant="ghost" size="sm" className="ml-auto" onClick={() => app.nav({ page: 'analytics' })}>
               Full analytics <Icon name="arrowUpRight" className="h-3.5 w-3.5" />
             </Btn>

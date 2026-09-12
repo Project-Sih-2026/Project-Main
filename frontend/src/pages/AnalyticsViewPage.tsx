@@ -56,7 +56,16 @@ export function AnalyticsPage() {
             </div>
             <Badge tone="good">{r.kpis.d[0]} vs prev</Badge>
           </div>
-          <div className="mt-4"><AreaChart data={r.volume} height={190} /></div>
+          <div className="mt-4">
+            <AreaChart
+              data={r.volume}
+              labels={r.labels}
+              height={190}
+              unit="veh/hr"
+              showPeakMarker={true}
+              color="#0284c7"
+            />
+          </div>
         </Card>
         <Card className="section-contrast p-4 sm:p-5">
           <div className="flex items-center justify-between">
@@ -66,7 +75,16 @@ export function AnalyticsPage() {
             </div>
             <Badge tone="good">{r.kpis.d[1]} vs prev</Badge>
           </div>
-          <div className="mt-4"><AreaChart data={r.speed.map((sp) => (app.settings.units === 'mph' ? Math.round(sp * 0.621) : sp))} height={190} color="#C2CFDF" /></div>
+          <div className="mt-4">
+            <AreaChart
+              data={r.speed.map((sp) => (app.settings.units === 'mph' ? Math.round(sp * 0.621) : sp))}
+              labels={r.labels}
+              height={190}
+              color="#f59e0b"
+              unit={app.settings.units === 'mph' ? 'mph' : 'km/h'}
+              showPeakMarker={false}
+            />
+          </div>
         </Card>
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
@@ -152,7 +170,14 @@ export function AnalyticsPage() {
             </span>
           </div>
           <div className="mt-4">
-            <AreaChart data={OCR_TREND.length > 0 ? OCR_TREND : [0, 0, 0, 0, 0, 0]} height={170} color="#C2CFDF" />
+            <AreaChart
+              data={OCR_TREND.length > 0 ? OCR_TREND : [0, 0, 0, 0, 0, 0]}
+              labels={['Cycle -11', 'Cycle -10', 'Cycle -9', 'Cycle -8', 'Cycle -7', 'Cycle -6', 'Cycle -5', 'Cycle -4', 'Cycle -3', 'Cycle -2', 'Cycle -1', 'Current Cycle']}
+              height={170}
+              color="#0284c7"
+              unit="%"
+              showPeakMarker={true}
+            />
           </div>
           <div className="mt-2 flex justify-between text-[14px] font-semibold tabular-nums text-sand/80">
             <span>−11</span>
