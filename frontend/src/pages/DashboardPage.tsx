@@ -178,29 +178,24 @@ export function OperationsPage() {
       </div>
       <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
         <Card tone="strong" className="section-contrast p-4 sm:p-5 relative overflow-hidden">
-          {/* Top Bar with Live Indicator, Dimension Mode, Metrics & Tabs */}
+          {/* Top Bar with Clean Metrics & View Switchers */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-clay/20 pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <Kicker>Network flow telemetry</Kicker>
-                <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  LIVE RADAR
+                <Kicker>Corridor Flow Metrics</Kicker>
+                <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10.5px] font-bold text-emerald-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Live Sync
                 </span>
-                {dimension === '3d' && (
-                  <span className="rounded bg-sky-500/20 text-sky-700 text-[10px] font-mono font-bold px-1.5 py-0.5 border border-sky-500/30">
-                    WEBGL 3D
-                  </span>
-                )}
               </div>
               <div className="mt-1 font-display text-[22px] text-ink">
                 {dimension === '3d'
-                  ? '3D Volumetric Corridor Flow Hologram'
+                  ? '3D Corridor Volume Distribution'
                   : flowMode === 'volume'
                   ? 'Vehicles per hour · all corridors'
                   : flowMode === 'speed'
                   ? 'Average corridor transit speed'
-                  : 'Synchronized volume & speed telemetry'}
+                  : 'Volume & speed distribution'}
               </div>
             </div>
 
