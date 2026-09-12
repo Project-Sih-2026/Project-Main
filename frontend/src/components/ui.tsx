@@ -1,7 +1,8 @@
 import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
+import { twMerge } from 'tailwind-merge';
 import { Icon, type IconName } from './Icons';
 
-export const cx = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(' ');
+export const cx = (...c: (string | false | undefined | null)[]) => twMerge(c.filter(Boolean).join(' '));
 
 export function useClock(ms = 1000) {
   const [now, setNow] = useState(() => new Date());

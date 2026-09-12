@@ -42,16 +42,16 @@ export function LoginPage() {
             alt="NETRA"
             className="h-12 w-auto object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] transition-transform hover:scale-105"
           />
-          <div className="border-l border-cream/20 pl-3.5">
-            <div className="font-display text-[17px] uppercase tracking-[0.24em] text-cream font-bold">NETRA</div>
-            <Kicker className="mt-0.5 text-cream/75">Operations Intelligence Console</Kicker>
+          <div className="border-l border-white/40 pl-3.5">
+            <div className="font-display text-[17px] uppercase tracking-[0.24em] text-white font-bold drop-shadow">NETRA</div>
+            <div className="mt-0.5 text-[14px] font-bold uppercase tracking-[0.14em] text-white drop-shadow">Operations Intelligence Console</div>
           </div>
         </div>
 
         {/* Hero stack — editorial heading sits directly on top of the centered access card */}
         <div className="flex flex-1 flex-col items-center justify-center gap-6 pt-10 sm:gap-7 sm:pt-12 lg:gap-8 lg:pt-0">
           {/* Editorial heading — above the card, centered */}
-          <h2 className="fade-up text-center font-display text-[44px] leading-[1.02] text-cream sm:text-[56px] xl:text-[64px]" style={{ animationDelay: '90ms' }}>
+          <h2 className="fade-up text-center font-display text-[44px] leading-[1.02] text-white sm:text-[56px] xl:text-[64px]" style={{ animationDelay: '90ms' }}>
             The city,
             <br />
             <span className="italic text-sand">in motion.</span>
@@ -60,19 +60,19 @@ export function LoginPage() {
           {/* Access panel — main centered focal point of the page */}
           <div className="flex w-full justify-center">
             <div
-              className="fade-up w-full max-w-[540px] rounded-3xl border border-cream/10 bg-cream/[0.05] p-7 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-md sm:p-9 lg:w-[540px]"
+              className="fade-up w-full max-w-[540px] rounded-3xl border border-white/20 bg-black/40 p-7 shadow-[0_40px_120px_rgba(0,0,0,0.55)] backdrop-blur-md sm:p-9 lg:w-[540px]"
               style={{ animationDelay: '140ms' }}
             >
-            <Kicker>Secure access</Kicker>
-            <h3 className="mt-2 font-display text-[34px] text-cream">Sign in</h3>
+            <Kicker className="text-white/80">Secure access</Kicker>
+            <h3 className="mt-2 font-display text-[34px] text-white font-bold">Sign in</h3>
 
             <form onSubmit={submit} className="mt-5 flex flex-col gap-3.5">
               <label className="block">
-                <Kicker className="mb-1.5">Operator ID</Kicker>
+                <Kicker className="mb-1.5 text-white/90">Operator ID</Kicker>
                 <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@cityops.gov" autoComplete="username" />
               </label>
               <label className="block">
-                <Kicker className="mb-1.5">Password</Kicker>
+                <Kicker className="mb-1.5 text-white/90">Password</Kicker>
                 <div className="relative">
                   <Input type={show ? 'text' : 'password'} value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" autoComplete="current-password" className="pr-11" />
                   <button
@@ -88,7 +88,7 @@ export function LoginPage() {
 
               {err && <div className="rounded-xl border border-sand/30 bg-sand/10 px-3 py-2.5 text-[14px] font-semibold text-sand">{err}</div>}
 
-              <Btn type="submit" variant="solid" disabled={busy} className="mt-1 h-10 w-auto self-start px-6 text-[14px]">
+              <Btn type="submit" variant="solid" disabled={busy} className="mt-1 h-10 w-auto self-start px-6 text-[14px] bg-white text-slate-950 hover:bg-slate-200 font-bold">
                 {busy ? 'Verifying…' : 'Sign in'}
                 <Icon name="arrowRight" className="h-4 w-4" />
               </Btn>
