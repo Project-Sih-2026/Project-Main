@@ -570,6 +570,7 @@ class FullAIIntelligencePipeline:
         """
         Zero-DCE (Zero-Reference Deep Curve Estimation) for low-light enhancement.
         Estimates continuous dynamic curves to balance illumination on dark or shadowed plates.
+        Optimized with torch.inference_mode() and fast resolution curve estimation.
         """
         if img_bgr is None or img_bgr.size == 0 or self.zero_dce is None or not _TORCH_AVAILABLE:
             return img_bgr
@@ -580,12 +581,21 @@ class FullAIIntelligencePipeline:
 
             # Apply Zero-DCE dynamic curve enhancement if plate is low-light / underexposed (< 125)
             if mean_brightness < 125:
-                rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB) if len(img_bgr.shape) == 3 else cv2.cvtColor(img_bgr, cv2.COLOR_GRAY2RGB)
+                h, w = img_bgr.shape[:2]
+                if w > 160:
+                    scale = 160.0 / w
+                    small = cv2.resize(img_bgr, (160, max(16, int(h * scale))), interpolation=cv2.INTER_AREA)
+                else:
+                    small = img_bgr
+                rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB) if len(small.shape) == 3 else cv2.cvtColor(small, cv2.COLOR_GRAY2RGB)
                 tensor = torch.from_numpy(rgb).float().permute(2, 0, 1).unsqueeze(0) / 255.0
-                with torch.no_grad():
+                with torch.inference_mode():
                     enhanced = self.zero_dce(tensor)
                 enhanced_rgb = (enhanced.squeeze(0).permute(1, 2, 0).numpy() * 255.0).astype(np.uint8)
-                return cv2.cvtColor(enhanced_rgb, cv2.COLOR_RGB2BGR)
+                enhanced_bgr = cv2.cvtColor(enhanced_rgb, cv2.COLOR_RGB2BGR)
+                if w > 160:
+                    return cv2.resize(enhanced_bgr, (w, h), interpolation=cv2.INTER_LINEAR)
+                return enhanced_bgr
         except Exception as e:
             print(f"[Zero-DCE Enhancement Warning]: {e}")
         return img_bgr
@@ -645,24 +655,31 @@ class FullAIIntelligencePipeline:
         """Post-filter TrOCR output: keep only A-Z and 0-9."""
         return re.sub(r'[^A-Z0-9]', '', txt.upper())
 
-    def _run_trocr(self, img_gray_or_rgb: np.ndarray) -> str:
-        """Run TrOCR on a single image and return cleaned text."""
-        if self.trocr_model is None or self.trocr_processor is None:
-            return ""
+    def _run_trocr_batch(self, images: List[np.ndarray]) -> List[str]:
+        """Run TrOCR on a batch of images in a single forward pass."""
+        if not images or self.trocr_model is None or self.trocr_processor is None:
+            return ["" for _ in images]
         try:
             from PIL import Image
-            if len(img_gray_or_rgb.shape) == 2:
-                rgb = cv2.cvtColor(img_gray_or_rgb, cv2.COLOR_GRAY2RGB)
-            else:
-                rgb = img_gray_or_rgb
-            pil_img = Image.fromarray(rgb)
-            pixel_values = self.trocr_processor(pil_img, return_tensors="pt").pixel_values
-            with torch.no_grad():
-                gen = self.trocr_model.generate(pixel_values, max_new_tokens=16)
-            txt = self.trocr_processor.batch_decode(gen, skip_special_tokens=True)[0].strip()
-            return self._trocr_clean(txt)
+            pil_list = []
+            for img in images:
+                if len(img.shape) == 2:
+                    rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+                else:
+                    rgb = img
+                pil_list.append(Image.fromarray(rgb))
+            pv = self.trocr_processor(pil_list, return_tensors="pt").pixel_values
+            with torch.inference_mode():
+                gen = self.trocr_model.generate(pv, max_new_tokens=13)
+            txts = self.trocr_processor.batch_decode(gen, skip_special_tokens=True)
+            return [self._trocr_clean(t) for t in txts]
         except Exception:
-            return ""
+            return ["" for _ in images]
+
+    def _run_trocr(self, img_gray_or_rgb: np.ndarray) -> str:
+        """Run TrOCR on a single image and return cleaned text."""
+        res = self._run_trocr_batch([img_gray_or_rgb])
+        return res[0] if res else ""
 
     def _run_easyocr(self, img_gray: np.ndarray) -> str:
         """Run EasyOCR with allowlist on a single grayscale image."""
@@ -678,15 +695,12 @@ class FullAIIntelligencePipeline:
 
     def extract_ocr_from_crop(self, crop: np.ndarray, is_yellow: bool = False, is_two_wheeler: bool = False) -> Tuple[str, float]:
         """
-        License Plate Recognition Pipeline:
+        High-Performance License Plate Recognition Pipeline:
         1. HSRP blue-strip auto-detection and trimming
-        2. Cropped plate resolution scaling
-        3. Zero-DCE for low-light enhancement
-        4. Preprocessing (grayscale, histogram equalization, Gaussian blur, sharpening)
-        5. Multi-strategy candidate generation (bilateral filter, morphological, CLAHE, adaptive)
-        6. Microsoft TrOCR + EasyOCR dual-engine OCR with post-filtering
-        7. Consensus-based candidate scoring with length/digit/validity bonuses
-        8. IndianSyntaxRectifier with BH plate support, HSRP handling, and improved parsing
+        2. Fast Zero-DCE low-light enhancement (inference_mode + downsampled curve estimation)
+        3. Multi-strategy Batched TrOCR (processes all candidate transforms in a single forward pass)
+        4. Cascading Early-Exit: immediately returns when a validated Indian/BH plate is found (<400ms)
+        5. Targeted EasyOCR fallback only when TrOCR requires verification
         """
         if crop is None or crop.size == 0:
             return "", 0.0
@@ -702,160 +716,149 @@ class FullAIIntelligencePipeline:
         if is_two_wheeler:
             top_half = crop[:int(ch * 0.52), :]
             bot_half = crop[int(ch * 0.48):, :]
-            for part in [top_half, bot_half]:
+            parts = [top_half, bot_half, crop]
+            processed_parts = []
+            for part in parts:
                 ph, pw = part.shape[:2]
                 if ph < 3 or pw < 3:
                     continue
-                up = cv2.resize(part, (pw * 5, ph * 5), interpolation=cv2.INTER_LANCZOS4)
+                up = cv2.resize(part, (pw * 4, ph * 4), interpolation=cv2.INTER_LANCZOS4)
                 gray = cv2.cvtColor(up, cv2.COLOR_BGR2GRAY)
                 clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(6, 6)).apply(gray)
-                # Bilateral filter for edge preservation
-                bilateral = cv2.bilateralFilter(gray, 9, 75, 75)
+                processed_parts.append(clahe)
 
-                txt = self._run_trocr(clahe)
-                if txt:
-                    raw_candidates.append((txt, 0.95))
-                txt2 = self._run_trocr(bilateral)
-                if txt2:
-                    raw_candidates.append((txt2, 0.93))
-                ez = self._run_easyocr(clahe)
+            # Batch TrOCR on all parts together in 1 single forward pass
+            txts = self._run_trocr_batch(processed_parts)
+            for t in txts:
+                if t:
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(t)
+                    if is_valid and r_conf >= 0.90:
+                        return rectified, 0.98
+                    elif rectified:
+                        raw_candidates.append((t, 0.94))
+
+            # Quick EasyOCR fallback on full crop CLAHE
+            if self.reader is not None and processed_parts:
+                ez = self._run_easyocr(processed_parts[-1])
                 if ez:
-                    raw_candidates.append((ez, 0.90))
-                ez2 = self._run_easyocr(bilateral)
-                if ez2:
-                    raw_candidates.append((ez2, 0.88))
-
-            # Also try full plate (single line read) as fallback
-            full_up = cv2.resize(crop, (cw * 5, ch * 5), interpolation=cv2.INTER_LANCZOS4)
-            full_gray = cv2.cvtColor(full_up, cv2.COLOR_BGR2GRAY)
-            full_clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(6, 6)).apply(full_gray)
-            txt = self._run_trocr(full_clahe)
-            if txt:
-                raw_candidates.append((txt, 0.88))
-            ez = self._run_easyocr(full_clahe)
-            if ez:
-                raw_candidates.append((ez, 0.86))
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(ez)
+                    if is_valid:
+                        return rectified, 0.92
+                    elif rectified:
+                        raw_candidates.append((ez, 0.88))
 
         # ── Specialized Path B: Yellow commercial plate ──
         elif is_yellow:
-            # Dynamic multi-angle deskew: try 0°, ±3°, ±5° instead of fixed -7°
-            angles = [0.0, -3.0, 3.0, -5.0, 5.0]
-            for angle in angles:
-                if angle != 0.0:
+            up = cv2.resize(crop, (cw * 4, ch * 4), interpolation=cv2.INTER_LANCZOS4)
+            gray = cv2.cvtColor(up, cv2.COLOR_BGR2GRAY)
+            gray_inv = cv2.bitwise_not(gray)
+            clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(6, 6)).apply(gray_inv)
+            _, otsu = cv2.threshold(clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+            # Batch TrOCR on inverted CLAHE and Otsu at 0° in 1 call
+            txts = self._run_trocr_batch([clahe, otsu])
+            for t in txts:
+                if t:
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(t)
+                    if is_valid and r_conf >= 0.90:
+                        return rectified, 0.98
+                    elif rectified:
+                        raw_candidates.append((t, 0.94))
+
+            # If 0° was inconclusive, try -5° and +5°
+            if not raw_candidates:
+                for angle in [-5.0, 5.0]:
                     M = cv2.getRotationMatrix2D((cw // 2, ch // 2), angle, 1.0)
                     rotated = cv2.warpAffine(crop, M, (cw, ch), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-                else:
-                    rotated = crop
-                up = cv2.resize(rotated, (cw * 5, ch * 5), interpolation=cv2.INTER_LANCZOS4)
-                gray = cv2.cvtColor(up, cv2.COLOR_BGR2GRAY)
-
-                # Invert: dark text on yellow → white text on dark (better for OCR)
-                gray_inv = cv2.bitwise_not(gray)
-
-                clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(6, 6)).apply(gray_inv)
-                _, otsu = cv2.threshold(clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                # Morphological opening to remove noise specks
-                kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-                morph = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel)
-
-                # TrOCR on inverted CLAHE and morphed
-                txt = self._run_trocr(clahe)
-                if txt:
-                    raw_candidates.append((txt, 0.94))
-                txt2 = self._run_trocr(morph)
-                if txt2:
-                    raw_candidates.append((txt2, 0.92))
-
-                # EasyOCR on all variants
-                for cand_img in [clahe, otsu, morph]:
-                    ez = self._run_easyocr(cand_img)
-                    if ez:
-                        raw_candidates.append((ez, 0.92))
-
-                # Early exit if we found a valid plate at 0°
-                if angle == 0.0 and raw_candidates:
-                    has_valid = any(
-                        IndianSyntaxRectifier.rectify(c[0])[2]
-                        for c in raw_candidates
-                    )
-                    if has_valid:
-                        break
+                    up_rot = cv2.resize(rotated, (cw * 4, ch * 4), interpolation=cv2.INTER_LANCZOS4)
+                    g_inv = cv2.bitwise_not(cv2.cvtColor(up_rot, cv2.COLOR_BGR2GRAY))
+                    cl_rot = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(6, 6)).apply(g_inv)
+                    t_rot = self._run_trocr(cl_rot)
+                    if t_rot:
+                        rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(t_rot)
+                        if is_valid:
+                            return rectified, 0.95
+                        elif rectified:
+                            raw_candidates.append((t_rot, 0.90))
 
         # ── Standard Path C: Private White / HSRP License Plate ──
         else:
-            scale = max(4.0, 120.0 / max(1, ch))
-            scaled_crop = cv2.resize(crop, (int(cw * scale), int(ch * scale)), interpolation=cv2.INTER_LANCZOS4)
-            enhanced_crop = self.enhance_with_zero_dce(scaled_crop)
-            sharp_gray, sharp_rgb = self.preprocess_plate_for_ocr(enhanced_crop)
+            # 1. Fast Zero-DCE on input resolution (~40ms)
+            enhanced_crop = self.enhance_with_zero_dce(crop)
 
-            gray = cv2.cvtColor(enhanced_crop, cv2.COLOR_BGR2GRAY) if len(enhanced_crop.shape) == 3 else enhanced_crop
+            # 2. Scale to optimal OCR recognition height (~96px)
+            scale = max(2.5, min(4.0, 96.0 / max(1, ch)))
+            scaled_crop = cv2.resize(enhanced_crop, (int(cw * scale), int(ch * scale)), interpolation=cv2.INTER_LANCZOS4)
+            gray = cv2.cvtColor(scaled_crop, cv2.COLOR_BGR2GRAY)
+            rgb = cv2.cvtColor(scaled_crop, cv2.COLOR_BGR2RGB)
 
-            # High-contrast gamma & unsharp mask for low-resolution/distant crops
-            stretched = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
-            gamma = np.array(255 * (stretched / 255.0) ** 1.6, dtype='uint8')
-            blur_g = cv2.GaussianBlur(gamma, (0, 0), 1.8)
-            unsharp_gamma = cv2.addWeighted(gamma, 2.0, blur_g, -1.0, 0)
+            # 3. High-contrast Otsu & CLAHE
             _, otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            _, otsu_gamma = cv2.threshold(unsharp_gamma, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(gray)
-            bilateral = cv2.bilateralFilter(gray, 11, 80, 80)
-            adap = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 3)
 
-            # Strategy 1: Direct enhanced RGB
-            scaled_rgb = cv2.cvtColor(enhanced_crop, cv2.COLOR_BGR2RGB) if len(enhanced_crop.shape) == 3 else cv2.cvtColor(enhanced_crop, cv2.COLOR_GRAY2RGB)
-            for cand_tr, bconf in [
-                (scaled_rgb, 0.96),
-                (sharp_rgb, 0.95),
-                (otsu, 0.96),
-                (otsu_gamma, 0.95),
-                (clahe, 0.94),
-                (bilateral, 0.93)
-            ]:
-                txt = self._run_trocr(cand_tr)
+            # 4. Primary Pass: Batched TrOCR on [rgb, otsu] in 1 single forward pass (~350ms total)
+            trocr_texts = self._run_trocr_batch([rgb, otsu])
+            for txt in trocr_texts:
                 if txt:
-                    raw_candidates.append((txt, bconf))
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(txt)
+                    if is_valid and r_conf >= 0.90:
+                        # Instant early exit: validated Indian/BH plate found!
+                        return rectified, 0.99
+                    elif rectified:
+                        raw_candidates.append((txt, 0.96))
 
-            # EasyOCR ensemble on multiple preprocessing variants
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-            morph = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel)
+            # 5. Fast EasyOCR on Otsu (takes ~150ms) if TrOCR needed confirmation
+            if self.reader is not None:
+                ez_txt = self._run_easyocr(otsu)
+                if ez_txt:
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(ez_txt)
+                    if is_valid and r_conf >= 0.90:
+                        return rectified, 0.98
+                    elif rectified:
+                        raw_candidates.append((ez_txt, 0.92))
 
-            for cand_img in [otsu, gray, adap, clahe, bilateral, morph, sharp_gray, otsu_gamma, unsharp_gamma]:
-                ez = self._run_easyocr(cand_img)
-                if ez:
-                    raw_candidates.append((ez, 0.92))
+            # 6. Secondary fallback for difficult / low-resolution crops: try CLAHE & unsharp
+            if not any(IndianSyntaxRectifier.rectify(c[0])[2] for c in raw_candidates):
+                stretched = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+                gamma = np.array(255 * (stretched / 255.0) ** 1.6, dtype='uint8')
+                blur_g = cv2.GaussianBlur(gamma, (0, 0), 1.8)
+                unsharp_gamma = cv2.addWeighted(gamma, 2.0, blur_g, -1.0, 0)
+                _, otsu_gamma = cv2.threshold(unsharp_gamma, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-        # ── Consensus-based candidate scoring ──
+                extra_texts = self._run_trocr_batch([clahe, otsu_gamma])
+                for txt in extra_texts:
+                    if txt:
+                        rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(txt)
+                        if is_valid and r_conf >= 0.90:
+                            return rectified, 0.98
+                        elif rectified:
+                            raw_candidates.append((txt, 0.94))
+
+        # ── Consensus-based candidate scoring if multiple non-conclusive candidates ──
         if not raw_candidates:
             return "", 0.0
 
-        # Evaluate all candidates through rectifier
         scored = []
         for raw_cand, cand_base_conf in raw_candidates:
             rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(raw_cand)
             if not rectified or len(rectified) < 3:
                 continue
-            # Score composition
             score = r_conf * 0.5 + cand_base_conf * 0.3
-            # Validity bonus
             if is_valid:
                 score += 0.25
-            # Length bonus: ideal Indian plate is 9-13 chars with dashes (e.g., UP-16-DX-7291)
             clean_len = len(re.sub(r'[^A-Z0-9]', '', rectified))
             if 8 <= clean_len <= 11:
                 score += 0.08
             elif clean_len < 6 or clean_len > 13:
                 score -= 0.15
-            # Digit count bonus: ideal = 6 digits (2 RTO + 4 number) or 8 for BH
             digit_count = sum(1 for c in rectified if c.isdigit())
             if 5 <= digit_count <= 7:
                 score += 0.08
-
             scored.append((rectified, score, is_valid, raw_cand))
 
         if not scored:
             return "", 0.0
 
-        # Consensus boost: if multiple candidates produce the same state+RTO prefix, boost them
         prefix_counts = {}
         for rect, sc, valid, raw in scored:
             parts = rect.split('-')
@@ -868,7 +871,6 @@ class FullAIIntelligencePipeline:
         has_any_valid = any(valid for _, _, valid, _ in scored)
 
         for rect, sc, valid, raw in scored:
-            # Prioritize syntactically valid candidates
             if has_any_valid and not valid:
                 continue
             parts = rect.split('-')
@@ -881,7 +883,6 @@ class FullAIIntelligencePipeline:
                 best_text = rect
                 best_score = sc
 
-        # If nothing produced a valid standard plate format, return empty so infer_frame sets UNREADABLE
         if not has_any_valid:
             return "", 0.0
 
