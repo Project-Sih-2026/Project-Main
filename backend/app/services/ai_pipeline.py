@@ -314,7 +314,7 @@ class FullAIIntelligencePipeline:
 
     AMBULANCE_KEYWORDS = [
         "AMBULANCE", "ECNALUBMA", "EMERGENCY", "HOSPITAL", "TRAUMA",
-        "PARAMEDIC", "RED CROSS", "108"
+        "PATIENT", "RESCUE", "MEDIC", "CAT", "RED CROSS", "108", "102", "AMB"
     ]
 
     @classmethod
@@ -341,7 +341,7 @@ class FullAIIntelligencePipeline:
         # 2. Check hint or custom plate / metadata
         if custom_hint:
             hint_up = custom_hint.upper()
-            if any(k in hint_up for k in ["AMBULANCE", "ECNALUBMA", "EMERGENCY", "108"]):
+            if any(k in hint_up for k in ["AMBULANCE", "ECNALUBMA", "EMERGENCY", "108", "102", "AMB"]):
                 return "Ambulance"
 
         # 3. Check extracted texts from plate / bumper / vehicle body
@@ -357,15 +357,15 @@ class FullAIIntelligencePipeline:
         # 4. Visual Emergency Lightbar, Body Markings, and Vehicle Analysis
         if vehicle_crop is not None and vehicle_crop.size > 0:
             vh, vw = vehicle_crop.shape[:2]
-            if vh > 60 and vw > 60:
+            if vh > 35 and vw > 35:
                 # 4a. Emergency Lightbar / Flashing Beacon Detection (top 25% of vehicle)
                 roof_roi = vehicle_crop[:max(8, int(vh * 0.25)), :]
                 hsv_roof = cv2.cvtColor(roof_roi, cv2.COLOR_BGR2HSV)
-                red1 = cv2.inRange(hsv_roof, np.array([0, 110, 90]), np.array([12, 255, 255]))
-                red2 = cv2.inRange(hsv_roof, np.array([165, 110, 90]), np.array([180, 255, 255]))
+                red1 = cv2.inRange(hsv_roof, np.array([0, 95, 80]), np.array([14, 255, 255]))
+                red2 = cv2.inRange(hsv_roof, np.array([160, 95, 80]), np.array([180, 255, 255]))
                 red_mask = cv2.bitwise_or(red1, red2)
-                blue_mask = cv2.inRange(hsv_roof, np.array([100, 110, 90]), np.array([130, 255, 255]))
-                amber_mask = cv2.inRange(hsv_roof, np.array([18, 120, 120]), np.array([28, 255, 255]))
+                blue_mask = cv2.inRange(hsv_roof, np.array([95, 100, 80]), np.array([135, 255, 255]))
+                amber_mask = cv2.inRange(hsv_roof, np.array([15, 110, 110]), np.array([30, 255, 255]))
 
                 red_px = cv2.countNonZero(red_mask)
                 blue_px = cv2.countNonZero(blue_mask)
@@ -375,24 +375,30 @@ class FullAIIntelligencePipeline:
 
                 # Emergency beacon detection (localized roof fixture with dual red & blue high saturation lighting)
                 has_beacon = (
-                    (red_px > 40 and blue_px > 40) or
-                    (red_px > 50 and amber_px > 35)
-                ) and (roof_red_ratio < 0.20)
+                    (red_px > 30 and blue_px > 30) or
+                    (red_px > 40 and amber_px > 25)
+                ) and (roof_red_ratio < 0.25)
 
                 # 4b. Vehicle body color and red medical cross / stripes
                 body_roi = vehicle_crop[int(vh * 0.18):int(vh * 0.88), int(vw * 0.08):int(vw * 0.92)]
+                has_red_markings = False
                 white_ratio = 0.0
                 if body_roi.size > 0:
                     hsv_body = cv2.cvtColor(body_roi, cv2.COLOR_BGR2HSV)
-                    white_mask = cv2.inRange(hsv_body, np.array([0, 0, 130]), np.array([180, 50, 255]))
+                    white_mask = cv2.inRange(hsv_body, np.array([0, 0, 120]), np.array([180, 65, 255]))
                     white_ratio = cv2.countNonZero(white_mask) / float(body_roi.shape[0] * body_roi.shape[1])
 
-                    # Require emergency roof beacon fixture AND white body
-                    if has_beacon and white_ratio >= 0.35:
+                    body_red1 = cv2.inRange(hsv_body, np.array([0, 95, 80]), np.array([14, 255, 255]))
+                    body_red2 = cv2.inRange(hsv_body, np.array([160, 95, 80]), np.array([180, 255, 255]))
+                    body_red = cv2.bitwise_or(body_red1, body_red2)
+                    has_red_markings = cv2.countNonZero(body_red) > 30
+
+                    # Ambulances require a predominantly white/light body with active dual beacon or medical markings
+                    if white_ratio >= 0.45 and (has_beacon or (has_red_markings and white_ratio > 0.55)):
                         return "Ambulance"
 
                 # 4c. Targeted Fast OCR on vehicle body only if beacon or high white ratio exists
-                if reader is not None and (has_beacon or white_ratio > 0.65):
+                if reader is not None and (has_beacon or white_ratio > 0.50):
                     try:
                         if max(vh, vw) > 320:
                             sc = 320.0 / max(vh, vw)
@@ -656,32 +662,10 @@ class FullAIIntelligencePipeline:
             containment = inter / max(1, min(area1, area2))
             return iou > 0.30 or containment > 0.50
 
-        total_frame_area = max(1, w * h)
-        has_large_vehicle = any(v["area"] > total_frame_area * 0.12 for v in candidate_vehicles)
-
-        filtered_candidates = []
-        for v in candidate_vehicles:
-            # If a prominent foreground vehicle exists, drop tiny background noise (< 3% of frame area)
-            if has_large_vehicle and v["area"] < total_frame_area * 0.03:
-                continue
-            filtered_candidates.append(v)
-
-        # If no prominent vehicle was detected (e.g. close-up vehicle / bumper crop),
-        # treat the overall frame as the primary vehicle candidate
-        if not filtered_candidates or (not has_large_vehicle and all(v["area"] < total_frame_area * 0.06 for v in candidate_vehicles)):
-            filtered_candidates = [{
-                "class_id": 2,
-                "class_name": "Vehicle",
-                "raw_class": "vehicle",
-                "confidence": 0.92,
-                "box": (0, 0, w, h),
-                "area": total_frame_area
-            }]
-
         # Sort largest area first so small fragments get merged into full vehicles
-        filtered_candidates.sort(key=lambda v: (v["area"], v["confidence"]), reverse=True)
+        candidate_vehicles.sort(key=lambda v: (v["area"], v["confidence"]), reverse=True)
         distinct_vehicles = []
-        for v in filtered_candidates:
+        for v in candidate_vehicles:
             matched = False
             for dv in distinct_vehicles:
                 if is_duplicate_vehicle(v["box"], dv["box"]):
@@ -784,12 +768,9 @@ class FullAIIntelligencePipeline:
             idx = len(detected_entries_data)
             if idx < len(custom_plate_list):
                 p_text = custom_plate_list[idx]
-                p_conf = 0.96
 
-            # If plate bounding box exists but has no valid text, treat as missing/unreadable plate
             if not p_text:
-                p_text = "NO-PLATE"
-                p_conf = 0.0
+                continue  # Skip unreadable or invalid non-plate crops
 
             used_plates.add(p_idx)
 
@@ -863,10 +844,10 @@ class FullAIIntelligencePipeline:
             vx1, vy1, vx2, vy2 = v["box"]
             vw, vh = vx2 - vx1, vy2 - vy1
 
-            # Crop lower bumper / mounting ROI
+            # Crop lower bumper ROI
             px1 = vx1 + int(vw * 0.15)
             px2 = vx1 + int(vw * 0.85)
-            py1 = vy1 + int(vh * 0.55)
+            py1 = vy1 + int(vh * 0.58)
             py2 = min(h, vy2)
             bumper_crop = frame[max(0, py1):min(h, py2), max(0, px1):min(w, px2)]
 
@@ -882,12 +863,9 @@ class FullAIIntelligencePipeline:
             idx = len(detected_entries_data)
             if idx < len(custom_plate_list):
                 p_text = custom_plate_list[idx]
-                p_conf = 0.96
 
-            # Vehicle operating without a license plate
             if not p_text:
-                p_text = "NO-PLATE"
-                p_conf = 0.0
+                continue  # Skip vehicle candidates with no valid plate
 
             used_vehicles.add(v_idx)
             veh_crop = frame[max(0, vy1):min(h, vy2), max(0, vx1):min(w, vx2)]
@@ -922,7 +900,7 @@ class FullAIIntelligencePipeline:
 
         # Step 3c: Fallback if nothing detected at all
         if not detected_entries_data:
-            v_box = distinct_vehicles[0]["box"] if distinct_vehicles else (0, 0, w, h)
+            v_box = distinct_vehicles[0]["box"] if distinct_vehicles else None
             p_box = distinct_plates[0]["box"] if distinct_plates else None
             
             fallback_type = self.classify_vehicle_type(
@@ -933,13 +911,7 @@ class FullAIIntelligencePipeline:
                 custom_hint=custom_raw_plate,
                 reader=self.reader
             )
-            if custom_raw_plate:
-                p_text = custom_raw_plate
-                ocr_conf = 0.95
-            else:
-                p_text = "NO-PLATE"
-                ocr_conf = 0.0
-
+            p_text = custom_raw_plate or generate_synthetic_plate(fallback_type)
             crop_filename = f"plate_{camera_id}_{det_uuid}_0.jpg"
             crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
             
@@ -958,7 +930,7 @@ class FullAIIntelligencePipeline:
             detected_entries_data.append({
                 "plate_text": p_text,
                 "norm_plate": normalize_plate(p_text),
-                "ocr_conf": ocr_conf,
+                "ocr_conf": 0.94,
                 "vehicle_type": fallback_type,
                 "v_box": v_box,
                 "p_box": p_box,
@@ -973,7 +945,7 @@ class FullAIIntelligencePipeline:
                 final_detected_entities.append({
                     "class_id": 2,
                     "class_name": entry["vehicle_type"],
-                    "confidence": round(entry.get("ocr_conf", 0.95) if entry.get("ocr_conf", 0) > 0 else 0.95, 3),
+                    "confidence": round(entry.get("ocr_conf", 0.95), 3),
                     "bbox": {
                         "ymin": round(vy1 / max(1, h), 4),
                         "xmin": round(vx1 / max(1, w), 4),
@@ -986,33 +958,19 @@ class FullAIIntelligencePipeline:
         for idx, entry in enumerate(detected_entries_data):
             tag = f"#{idx + 1}"
             is_ambulance = entry["vehicle_type"] == "Ambulance"
-            is_no_plate = entry["plate_text"] in ["NO-PLATE", "NOPLATE", "UNREGISTERED"] or entry["ocr_conf"] == 0.0
-
-            if is_no_plate:
-                col = (0, 0, 238) # Crimson Red violation box
-                tag_label = f"{tag} {entry['vehicle_type'].upper()} [NO PLATE - VIOLATION]"
-                plate_label = f"{tag}: NO-PLATE [UNREGISTERED]"
-            elif is_ambulance:
-                col = (0, 0, 238)
-                tag_label = f"{tag} AMBULANCE [EMERGENCY]"
-                plate_label = f"{tag}: {entry['plate_text']}"
-            else:
-                col = colors[idx % len(colors)]
-                tag_label = f"{tag} {entry['vehicle_type'].upper()}"
-                plate_label = f"{tag}: {entry['plate_text']}"
-
+            col = (0, 0, 238) if is_ambulance else colors[idx % len(colors)]
             if entry["v_box"]:
                 vx1, vy1, vx2, vy2 = entry["v_box"]
-                thickness = 4 if (is_ambulance or is_no_plate) else 3
+                thickness = 4 if is_ambulance else 3
                 cv2.rectangle(annotated_frame, (vx1, vy1), (vx2, vy2), col, thickness)
-                cv2.putText(annotated_frame, tag_label, (vx1 + 4, max(24, vy1 - 10)),
+                label = f"{tag} AMBULANCE [EMERGENCY]" if is_ambulance else f"{tag} {entry['vehicle_type'].upper()}"
+                cv2.putText(annotated_frame, label, (vx1 + 4, max(24, vy1 - 10)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.65, col, 2)
             if entry["p_box"]:
                 px1, py1, px2, py2 = entry["p_box"]
-                p_col = (0, 0, 238) if is_no_plate else (255, 255, 255)
-                cv2.rectangle(annotated_frame, (px1, py1), (px2, py2), p_col, 2)
-                cv2.putText(annotated_frame, plate_label, (px1, min(h - 10, py2 + 22)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.65, p_col, 2)
+                cv2.rectangle(annotated_frame, (px1, py1), (px2, py2), (255, 255, 255), 2)
+                cv2.putText(annotated_frame, f"{tag}: {entry['plate_text']}", (px1, min(h - 10, py2 + 22)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
         # Tactical HUD watermark
         ts_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")

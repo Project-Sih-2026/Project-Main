@@ -8,53 +8,11 @@ from app.services.normalization import normalize_plate
 
 def check_and_generate_alerts(db: Session, detection: Detection) -> Alert | None:
     """
-    Evaluates detection against active watchlists and missing plate compliance, generating alerts if matched.
+    Evaluates detection against active watchlists and generates an alert if matched.
     """
     normalized = normalize_plate(detection.normalized_plate_text)
-    raw_upper = (detection.raw_plate_text or "").upper().strip()
-
-    # 1. Automatic Critical Alert for Missing License Plates (MVA Sec 39/192 Violation)
-    is_missing_plate = (
-        normalized in ["NOPLATE", "UNREGISTERED", "NO_PLATE", "PLATEMISSING", "MISSINGPLATE"] or
-        raw_upper in ["NO-PLATE", "NO_PLATE", "NOPLATE", "UNREGISTERED", "NO PLATE", "PLATE MISSING"] or
-        detection.ocr_confidence == 0.0
-    )
-    if is_missing_plate:
-        existing_alert = db.query(Alert).filter(Alert.detection_id == detection.id).first()
-        if not existing_alert:
-            alert_id = f"alt-np-{uuid.uuid4().hex[:8]}"
-            np_alert = Alert(
-                id=alert_id,
-                detection_id=detection.id,
-                camera_id=detection.camera_id,
-                watchlist_id=None,
-                plate_matched="NO-PLATE",
-                category="MISSING_PLATE_VIOLATION",
-                severity="CRITICAL",
-                status="NEW",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            action_log = AlertAction(
-                id=f"act-{uuid.uuid4().hex[:8]}",
-                alert_id=alert_id,
-                user_id="sys-engine",
-                username="Traffic Compliance Monitor",
-                action="TRIGGER_ALERT",
-                from_status="NONE",
-                to_status="NEW",
-                notes=f"CRITICAL VIOLATION: Vehicle operating without valid license plate (MVA Sec 39/192) detected at node {detection.camera_id}. Vehicle type: {detection.vehicle_type}.",
-                created_at=datetime.now(timezone.utc)
-            )
-            detection.has_alert = True
-            detection.alert_type = "MISSING_PLATE_VIOLATION"
-            db.add(np_alert)
-            db.add(action_log)
-            db.commit()
-            db.refresh(np_alert)
-            return np_alert
-
-    # 2. Query active watchlists
+    
+    # Query active watchlists
     matching_item = db.query(Watchlist).filter(
         Watchlist.is_active == True,
         Watchlist.normalized_plate == normalized
