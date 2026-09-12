@@ -1,12 +1,36 @@
+import os
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from app.main import app
-from app.core.database import Base, engine, SessionLocal
+from app.core.database import Base, get_db
+from app.models.camera import Camera
 from app.models.user import User
 from app.models.detection import Detection
 from app.models.ocr_correction import OCRCorrection
 from app.models.alert import Alert
+from seed_data import seed_database
 
+TEST_DATABASE_URL = "sqlite:///./data/test_traffic_isolated.db"
+test_engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+Base.metadata.create_all(bind=test_engine)
+
+# Seed cameras & system essentials into isolated test database
+_db_test = TestingSessionLocal()
+seed_database(target_db=_db_test)
+_db_test.close()
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 def test_root_endpoint():

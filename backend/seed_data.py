@@ -12,9 +12,14 @@ from app.models.hospital import Hospital
 from app.services.ai_pipeline import generate_synthetic_evidence_image
 from app.services.normalization import normalize_plate
 
-def seed_database():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+def seed_database(target_db=None):
+    if target_db is None:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        should_close = True
+    else:
+        db = target_db
+        should_close = False
     
     # 1. Seed Users
     if not db.query(User).filter(User.username == "admin").first():
@@ -129,122 +134,8 @@ def seed_database():
     db.commit()
     print("Watchlists seeded.")
 
-    # 4. Seed Detections & Journey Observations for DL-01-AB-1234 traversing Gandhi Nagar -> Krishna Nagar
+    # 4. Retention Policies
     now = datetime.now(timezone.utc)
-    journey_stops = [
-        ("CAM-GN-04", "DL-01-AB-1234", "DL01AB1234", "Sedan", now - timedelta(minutes=35)),
-        ("CAM-GN-01", "DL-01-AB-1234", "DL01AB1234", "Sedan", now - timedelta(minutes=24)),
-        ("CAM-KN-04", "DL-01-AB-1234", "DL01AB1234", "Sedan", now - timedelta(minutes=14)),
-        ("CAM-KN-01", "DL-01-AB-1234", "DL01AB1234", "Sedan", now - timedelta(minutes=7)),
-        ("CAM-KN-02", "DL-01-AB-1234", "DL01AB1234", "Sedan", now - timedelta(minutes=2)),
-    ]
-
-    for idx, (cam_id, raw_p, norm_p, v_type, ts) in enumerate(journey_stops, 1):
-        det_id = f"det-seed-stolen-{idx}"
-        existing_det = db.query(Detection).filter(Detection.id == det_id).first()
-        full_uri, crop_uri, v_box, p_box = generate_synthetic_evidence_image(cam_id, raw_p, v_type)
-        if not existing_det:
-            det = Detection(
-                id=det_id,
-                camera_id=cam_id,
-                timestamp=ts,
-                raw_plate_text=raw_p,
-                normalized_plate_text=norm_p,
-                confidence_score=0.96,
-                ocr_confidence=0.94,
-                model_version="YOLOv8-ANPR-v2.4",
-                vehicle_type=v_type,
-                evidence_image_uri=full_uri,
-                plate_crop_uri=crop_uri,
-                processing_status="COMPLETED",
-                has_alert=True,
-                alert_type="STOLEN_VEHICLE_REPORT"
-            )
-            db.add(det)
-        else:
-            existing_det.camera_id = cam_id
-            existing_det.timestamp = ts
-            
-        # If last stop, add to alert queue
-        if idx == len(journey_stops):
-            if not db.query(Alert).filter(Alert.id == "alt-stolen-01").first():
-                alert = Alert(
-                    id="alt-stolen-01",
-                    detection_id=det_id,
-                    camera_id=cam_id,
-                    watchlist_id="wl-001",
-                    plate_matched=norm_p,
-                    category="STOLEN_VEHICLE_REPORT",
-                    severity="CRITICAL",
-                    status="NEW",
-                    created_at=ts,
-                    updated_at=ts
-                )
-                action = AlertAction(
-                    id="act-stolen-01",
-                    alert_id="alt-stolen-01",
-                    user_id="sys-engine",
-                    username="Automated Watchlist Matcher",
-                    action="TRIGGER_ALERT",
-                    from_status="NONE",
-                    to_status="NEW",
-                    notes=f"Possible watchlist match detected at {cam_id} (Vijay Chowk Crossing)",
-                    created_at=ts
-                )
-                db.add_all([alert, action])
-    db.commit()
-
-    # 5. Additional diverse vehicle detections across Krishna Nagar & Gandhi Nagar
-    other_samples = [
-        ("CAM-KN-01", "MH-12-DE-5678", "MH12DE5678", "SUV", now - timedelta(minutes=10), True, "WARRANT_ADVISORY"),
-        ("CAM-GN-02", "WB-02-AK-4433", "WB02AK4433", "Transit Van", now - timedelta(minutes=8), False, None),
-        ("CAM-KN-05", "HR-26-DK-2020", "HR26DK2020", "SUV", now - timedelta(minutes=6), False, None),
-        ("CAM-GN-05", "TN-09-CQ-7711", "TN09CQ7711", "Sedan", now - timedelta(minutes=4), False, None),
-        ("CAM-GN-04", "DL-01-AMB-0108", "DL01AMB0108", "Ambulance", now - timedelta(minutes=2), True, "EMERGENCY_AMBULANCE"),
-        ("CAM-KN-03", "UP-32-BN-8800", "UP32BN8800", "Motorcycle", now - timedelta(minutes=1), False, None),
-    ]
-
-    for idx, (cam_id, raw_p, norm_p, v_type, ts, has_alt, alt_type) in enumerate(other_samples, 10):
-        det_id = f"det-seed-sample-{idx}"
-        if not db.query(Detection).filter(Detection.id == det_id).first():
-            full_uri, crop_uri, _, _ = generate_synthetic_evidence_image(cam_id, raw_p, v_type)
-            det = Detection(
-                id=det_id,
-                camera_id=cam_id,
-                timestamp=ts,
-                raw_plate_text=raw_p,
-                normalized_plate_text=norm_p,
-                confidence_score=0.94,
-                ocr_confidence=0.91,
-                model_version="YOLOv8-ANPR-v2.4",
-                vehicle_type=v_type,
-                evidence_image_uri=full_uri,
-                plate_crop_uri=crop_uri,
-                processing_status="COMPLETED",
-                has_alert=has_alt,
-                alert_type=alt_type
-            )
-            db.add(det)
-            if has_alt:
-                alt_id = f"alt-warrant-{idx}"
-                if not db.query(Alert).filter(Alert.id == alt_id).first():
-                    alert = Alert(
-                        id=alt_id,
-                        detection_id=det.id,
-                        camera_id=cam_id,
-                        watchlist_id="wl-002",
-                        plate_matched=norm_p,
-                        category=alt_type,
-                        severity="HIGH",
-                        status="ACKNOWLEDGED",
-                        assigned_to="operator1",
-                        created_at=ts,
-                        updated_at=ts
-                    )
-                    db.add(alert)
-    db.commit()
-
-    # 6. Retention Policies
     policies = [
         RetentionPolicy(
             id="pol-01",
@@ -317,7 +208,8 @@ def seed_database():
     print("Hospitals seeded.")
 
     print("Database seeding completed successfully!")
-    db.close()
+    if should_close:
+        db.close()
 
 if __name__ == "__main__":
     seed_database()
