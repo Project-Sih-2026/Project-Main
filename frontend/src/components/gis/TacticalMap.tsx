@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Camera, VehicleJourney } from '../../types';
-import { Info, Compass } from 'lucide-react';
+import { Icon } from '../Icons';
 
 interface TacticalMapProps {
   cameras: Camera[];
@@ -118,6 +118,13 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
       });
 
       mapInstanceRef.current = map;
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 200);
+
+      window.addEventListener('resize', () => {
+        map.invalidateSize();
+      });
     }
   }, [cameras]);
 
@@ -302,6 +309,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
         }
       }
 
+      mapInstanceRef.current.invalidateSize();
       if (latlngs.length > 1) {
         mapInstanceRef.current.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
       } else if (latlngs.length === 1) {
@@ -316,7 +324,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       {/* Epistemic Restraint Mandatory Disclaimer Banner */}
       <div className="absolute top-3 left-3 z-[1000] bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#D2DEEC] text-xs text-[#081A33] flex items-center gap-2.5 shadow-md max-w-md">
-        <Info className="w-4 h-4 text-[#0B2545] shrink-0" />
+        <Icon name="info" className="w-4 h-4 text-[#0B2545] shrink-0" />
         <span className="text-[11px] text-[#334E73] leading-snug">
           <strong className="text-[#0B2545]">Civic Observation Sequence:</strong> Numbered camera stops represent discrete observations, not continuous GPS tracking.
         </span>
@@ -324,7 +332,7 @@ export const TacticalMap: React.FC<TacticalMapProps> = ({
 
       {/* Map Compass Indicator */}
       <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#D2DEEC] text-xs font-mono font-bold text-[#0B2545] flex items-center gap-1.5 shadow-sm">
-        <Compass className="w-3.5 h-3.5 text-[#0B2545]" />
+        <Icon name="compass" className="w-3.5 h-3.5 text-[#0B2545]" />
         <span>KRISHNA / GANDHI NAGAR GIS</span>
       </div>
 

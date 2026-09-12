@@ -8,6 +8,20 @@ import {
   SystemHealth, AuditLog, RetentionPolicy
 } from "../types";
 
+async function parseError(res: Response, defaultMsg: string): Promise<string> {
+  try {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      return json.detail || json.message || text || defaultMsg;
+    } catch {
+      return text || defaultMsg;
+    }
+  } catch {
+    return defaultMsg;
+  }
+}
+
 export const api = {
   // Auth & Profile
   getMe: async (): Promise<User> => {
@@ -40,14 +54,28 @@ export const api = {
     return res.json();
   },
 
-  // Detections & Evidence
-  getDetections: async (params?: { camera_id?: string; plate?: string; review_status?: string; limit?: number }): Promise<Detection[]> => {
-    const query = new URLSearchParams();
-    if (params?.camera_id && params.camera_id !== "all") query.append("camera_id", params.camera_id);
-    if (params?.plate) query.append("plate", params.plate);
-    if (params?.review_status && params.review_status !== "all") query.append("review_status", params.review_status);
-    if (params?.limit) query.append("limit", params.limit.toString());
-    const res = await fetch(`${API_BASE}/detections?${query.toString()}`);
+  // Ingest & Detections
+  getDetections: async (
+    options?: { limit?: number; camera_id?: string; plate?: string; review_status?: string } | number,
+    cameraId?: string,
+    plateQuery?: string
+  ): Promise<Detection[]> => {
+    const params = new URLSearchParams();
+    if (typeof options === "number") {
+      params.append("limit", String(options));
+      if (cameraId) params.append("camera_id", cameraId);
+      if (plateQuery) params.append("plate", plateQuery);
+    } else if (options) {
+      if (options.limit) params.append("limit", String(options.limit));
+      if (options.camera_id && options.camera_id !== "all") params.append("camera_id", options.camera_id);
+      if (options.plate) params.append("plate", options.plate);
+      if (options.review_status && options.review_status !== "all") params.append("review_status", options.review_status);
+    }
+    const res = await fetch(`${API_BASE}/detections?${params.toString()}`);
+    return res.json();
+  },
+  getRecentDetections: async (limit: number = 6): Promise<Detection[]> => {
+    const res = await fetch(`${API_BASE}/detections?limit=${limit}`);
     return res.json();
   },
   getDetectionById: async (id: string): Promise<Detection> => {
@@ -61,8 +89,8 @@ export const api = {
     return res.json();
   },
   uploadFrameAndGetRoute: async (
-    cameraId: string,
-    file: File,
+    cameraIdOrFile: string | File,
+    fileOrCameraId: File | string,
     customPlate?: string,
     ownerName?: string
   ): Promise<{
@@ -71,20 +99,35 @@ export const api = {
     detections?: Array<{ detection: Detection; journey: VehicleJourney | null }>;
     count?: number;
   }> => {
+    const file = cameraIdOrFile instanceof File ? cameraIdOrFile : (fileOrCameraId as File);
+    const cameraId = typeof cameraIdOrFile === "string" ? cameraIdOrFile : (fileOrCameraId as string);
+
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("camera_id", cameraId);
+    if (customPlate) formData.append("custom_plate", customPlate);
+    if (ownerName) formData.append("owner_name", ownerName);
+
     const params = new URLSearchParams({ camera_id: cameraId });
     if (customPlate) params.append("custom_plate", customPlate);
     if (ownerName) params.append("owner_name", ownerName);
+
     const res = await fetch(`${API_BASE}/detections/upload-route?${params.toString()}`, {
       method: "POST",
       body: formData
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Failed to process image upload");
+      throw new Error(await parseError(res, "Failed to process image upload"));
     }
     return res.json();
+  },
+  uploadFrameWithRoute: async (
+    file: File,
+    cameraId: string,
+    customPlate?: string,
+    ownerName?: string
+  ) => {
+    return api.uploadFrameAndGetRoute(cameraId, file, customPlate, ownerName);
   },
   submitOCRCorrection: async (detectionId: string, payload: { corrected_plate: string; reason: string; notes?: string }): Promise<OCRCorrection> => {
     const res = await fetch(`${API_BASE}/detections/${detectionId}/correct`, {
@@ -93,8 +136,7 @@ export const api = {
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Failed to submit correction");
+      throw new Error(await parseError(res, "Failed to submit correction"));
     }
     return res.json();
   },
@@ -105,16 +147,14 @@ export const api = {
   deleteDetection: async (detectionId: string): Promise<{ status: string; message: string }> => {
     const res = await fetch(`${API_BASE}/detections/${detectionId}`, { method: "DELETE" });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Failed to delete detection");
+      throw new Error(await parseError(res, "Failed to delete detection"));
     }
     return res.json();
   },
   purgeAllDetections: async (): Promise<{ status: string; message: string }> => {
     const res = await fetch(`${API_BASE}/detections/purge-all`, { method: "DELETE" });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Failed to purge detections");
+      throw new Error(await parseError(res, "Failed to purge detections"));
     }
     return res.json();
   },
@@ -125,8 +165,7 @@ export const api = {
       body: JSON.stringify(payload)
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Failed to update detection");
+      throw new Error(await parseError(res, "Failed to update detection"));
     }
     return res.json();
   },

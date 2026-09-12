@@ -42,12 +42,13 @@ class IndianSyntaxRectifier:
     
     STATE_CONFUSIONS = {
         "NH": "MH", "WH": "MH", "HH": "MH", "VH": "MH", "MN": "MH", "MK": "MH",
-        "OL": "DL", "QL": "DL", "RL": "DL", "UL": "DL", "OI": "DL", "DI": "DL", "FL": "DL", "FD": "DL", "ID": "DL", "1D": "DL",
-        "UR": "UP", "OP": "UP", "VP": "UP", "FP": "UP", "FU": "UP", "PU": "UP", "IP": "UP", "JP": "UP", "UF": "UP", "DP": "UP", "TP": "UP", "LP": "UP",
-        "RA": "KA", "HA": "KA", "KN": "KA",
-        "CJ": "GJ", "QJ": "GJ",
-        "PJ": "RJ", "BJ": "RJ",
-        "IN": "TN", "TM": "TN",
+        "0H": "MH", "OH": "MH", "DH": "MH", "QH": "MH", "1H": "MH", "TH": "MH", "RH": "MH", "MI": "MH", "HD": "MH",
+        "OL": "DL", "QL": "DL", "RL": "DL", "UL": "DL", "OI": "DL", "DI": "DL", "FL": "DL", "FD": "DL", "ID": "DL", "1D": "DL", "0L": "DL",
+        "UR": "UP", "OP": "UP", "VP": "UP", "FP": "UP", "FU": "UP", "PU": "UP", "IP": "UP", "JP": "UP", "UF": "UP", "DP": "UP", "TP": "UP", "LP": "UP", "0P": "UP", "1P": "UP",
+        "RA": "KA", "HA": "KA", "KN": "KA", "0A": "KA", "KR": "KA",
+        "CJ": "GJ", "QJ": "GJ", "0J": "GJ", "OJ": "GJ",
+        "PJ": "RJ", "BJ": "RJ", "0R": "HR", "HB": "HR", "HK": "HR",
+        "IN": "TN", "TM": "TN", "1N": "TN",
         "VB": "WB", "MB": "WB"
     }
 
@@ -56,11 +57,11 @@ class IndianSyntaxRectifier:
         s = raw.upper()
         s = re.sub(r'[^A-Z0-9]', '', s)
         # Strip common HSRP blue bar / IND prefixes
-        if s.startswith('IND') and len(s) > 9:
-            s = s[3:]
-        elif s.startswith('1ND') and len(s) > 9:
-            s = s[3:]
-        # Strip single noisy leading letter from HSRP logo if followed by real state code
+        for ind_pfx in ['IND', '1ND', 'IN0', '1N0', 'INO']:
+            if s.startswith(ind_pfx) and len(s) > 8:
+                s = s[len(ind_pfx):]
+                break
+        # Strip single noisy leading letter/digit from HSRP logo if followed by real state code
         for st in ["KA", "DL", "MH", "HR", "UP", "GJ", "RJ", "TN", "WB", "AP", "CH", "PB", "MP", "TS", "CG", "UK"]:
             idx = s.find(st)
             if 0 < idx <= 3 and len(s) - idx >= 6:
@@ -72,6 +73,8 @@ class IndianSyntaxRectifier:
     def rectify_state_code(cls, state_raw: str) -> str:
         if len(state_raw) != 2:
             return state_raw
+        if state_raw in cls.STATE_CONFUSIONS:
+            return cls.STATE_CONFUSIONS[state_raw]
         c1 = cls.DIGIT_TO_ALPHA.get(state_raw[0], state_raw[0])
         c2 = cls.DIGIT_TO_ALPHA.get(state_raw[1], state_raw[1])
         cand = c1 + c2
@@ -79,14 +82,17 @@ class IndianSyntaxRectifier:
             return cand
         if cand in cls.STATE_CONFUSIONS:
             return cls.STATE_CONFUSIONS[cand]
+        # Prominent rule: *H ending is almost always Maharashtra (MH)
+        if cand[1] == 'H' and cand not in ["CH", "JH"]:
+            return "MH"
         for s in ["MH", "DL", "HR", "KA", "UP", "GJ", "RJ", "TN", "WB"]:
             if cand[0] == s[0] and cand[1] == s[1]:
                 return s
+        for s in ["MH", "DL", "UP", "HR", "KA", "GJ", "RJ", "TN", "WB"]:
+            if cand[0] == s[0] or cand[1] == s[1]:
+                return s
         for s in cls.INDIAN_STATES:
             if cand[0] == s[0]:
-                return s
-        for s in ["UP", "DL", "HR", "MH", "KA", "GJ", "RJ", "TN", "WB"]:
-            if cand[1] == s[1]:
                 return s
         return cand
 
@@ -98,6 +104,7 @@ class IndianSyntaxRectifier:
             return "DX"
         if s.startswith('0') or s.startswith('O'):
             s = 'D' + s[1:]
+        # Map OCR digit confusions in series (4 -> A, 8 -> B, 0 -> D, 1 -> I, 2 -> Z, 5 -> S)
         return "".join(cls.DIGIT_TO_ALPHA.get(c, c) for c in s)
 
     @classmethod
@@ -115,16 +122,14 @@ class IndianSyntaxRectifier:
             return False
         if len(clean) < 5 or len(clean) > 13:
             return False
-        letters = sum(1 for c in clean if c.isalpha())
-        digits = sum(1 for c in clean if c.isdigit())
-        # Indian license plates ALWAYS contain both letters (state/series) and digits (district/number)
-        if letters < 2 or digits < 2:
-            return False
-        # State prefix check or valid format
         prefix = clean[:2]
-        if prefix in cls.INDIAN_STATES or prefix in cls.STATE_CONFUSIONS:
+        if prefix in cls.INDIAN_STATES or prefix in cls.STATE_CONFUSIONS or prefix in ["0H", "OH", "HH", "NH", "0L", "OL", "0P", "OP"]:
             return True
-        if re.search(r'\d{4}$', clean) and letters >= 2:
+        digits = sum(1 for c in clean if c.isdigit())
+        if digits >= 3 and (re.search(r'\d{4}$', clean) or re.search(r'\d{3}$', clean)):
+            return True
+        letters = sum(1 for c in clean if c.isalpha())
+        if letters >= 2 and digits >= 2:
             return True
         return False
 
@@ -163,9 +168,9 @@ class IndianSyntaxRectifier:
                         rto_digits.append(cls.ALPHA_TO_DIGIT.get(ch, ch))
                     else:
                         parsing_rto = False
-                        series_letters.append(ch)
+                        series_letters.append(cls.DIGIT_TO_ALPHA.get(ch, ch))
                 else:
-                    series_letters.append(ch)
+                    series_letters.append(cls.DIGIT_TO_ALPHA.get(ch, ch))
 
             rto_str = "".join(rto_digits) if rto_digits else "01"
             if len(rto_str) == 1: rto_str = "0" + rto_str
@@ -173,9 +178,9 @@ class IndianSyntaxRectifier:
             rectified = f"{state_part}-{rto_str}-{series_str}-{num_part}"
             is_valid = bool(re.match(r'^[A-Z]{2}-\d{1,2}-[A-Z]{1,3}-\d{4}$', rectified))
             if is_valid:
-                return rectified, 0.96, True
+                return rectified, 0.98, True
             if state_part in cls.INDIAN_STATES and len(num_part) == 4:
-                return rectified, 0.82, True
+                return rectified, 0.90, True
 
         return "", 0.0, False
 
@@ -349,28 +354,11 @@ class FullAIIntelligencePipeline:
                     if kw in t_up:
                         return "Ambulance"
 
-        # 4. Visual Emergency Lightbar, Body Markings, and Vehicle Body OCR
+        # 4. Visual Emergency Lightbar, Body Markings, and Vehicle Analysis
         if vehicle_crop is not None and vehicle_crop.size > 0:
             vh, vw = vehicle_crop.shape[:2]
             if vh > 35 and vw > 35:
-                # 4a. Run high-accuracy OCR on vehicle body (hood, windshield, sides)
-                if reader is not None:
-                    try:
-                        if max(vh, vw) > 420:
-                            sc = 420.0 / max(vh, vw)
-                            v_small = cv2.resize(vehicle_crop, (int(vw * sc), int(vh * sc)), interpolation=cv2.INTER_AREA)
-                        else:
-                            v_small = vehicle_crop
-                        body_ocr = reader.readtext(v_small, detail=0)
-                        for bt in body_ocr:
-                            clean_bt = re.sub(r'[^A-Z0-9]', '', str(bt).upper())
-                            for kw in cls.AMBULANCE_KEYWORDS:
-                                if kw in clean_bt:
-                                    return "Ambulance"
-                    except Exception:
-                        pass
-
-                # 4b. Emergency Lightbar / Flashing Beacon Detection (top 25% of vehicle)
+                # 4a. Emergency Lightbar / Flashing Beacon Detection (top 25% of vehicle)
                 roof_roi = vehicle_crop[:max(8, int(vh * 0.25)), :]
                 hsv_roof = cv2.cvtColor(roof_roi, cv2.COLOR_BGR2HSV)
                 red1 = cv2.inRange(hsv_roof, np.array([0, 95, 80]), np.array([14, 255, 255]))
@@ -385,16 +373,16 @@ class FullAIIntelligencePipeline:
                 total_roof_px = max(1, roof_roi.shape[0] * roof_roi.shape[1])
                 roof_red_ratio = red_px / float(total_roof_px)
 
-                # Emergency beacon detection (localized roof fixture)
+                # Emergency beacon detection (localized roof fixture with dual red & blue high saturation lighting)
                 has_beacon = (
-                    (red_px > 15 and blue_px > 15) or
-                    (red_px > 20 and amber_px > 10) or
-                    (red_px > 25 and roof_red_ratio < 0.30) or
-                    (blue_px > 25)
-                )
+                    (red_px > 30 and blue_px > 30) or
+                    (red_px > 40 and amber_px > 25)
+                ) and (roof_red_ratio < 0.25)
 
-                # 4c. Vehicle body color and red medical cross / stripes
+                # 4b. Vehicle body color and red medical cross / stripes
                 body_roi = vehicle_crop[int(vh * 0.18):int(vh * 0.88), int(vw * 0.08):int(vw * 0.92)]
+                has_red_markings = False
+                white_ratio = 0.0
                 if body_roi.size > 0:
                     hsv_body = cv2.cvtColor(body_roi, cv2.COLOR_BGR2HSV)
                     white_mask = cv2.inRange(hsv_body, np.array([0, 0, 120]), np.array([180, 65, 255]))
@@ -403,11 +391,28 @@ class FullAIIntelligencePipeline:
                     body_red1 = cv2.inRange(hsv_body, np.array([0, 95, 80]), np.array([14, 255, 255]))
                     body_red2 = cv2.inRange(hsv_body, np.array([160, 95, 80]), np.array([180, 255, 255]))
                     body_red = cv2.bitwise_or(body_red1, body_red2)
-                    has_red_markings = cv2.countNonZero(body_red) > 20
+                    has_red_markings = cv2.countNonZero(body_red) > 30
 
-                    # Ambulances require a predominantly white/light body with beacon or medical markings
-                    if white_ratio >= 0.25 and (has_beacon or (has_red_markings and white_ratio > 0.35)):
+                    # Ambulances require a predominantly white/light body with active dual beacon or medical markings
+                    if white_ratio >= 0.45 and (has_beacon or (has_red_markings and white_ratio > 0.55)):
                         return "Ambulance"
+
+                # 4c. Targeted Fast OCR on vehicle body only if beacon or high white ratio exists
+                if reader is not None and (has_beacon or white_ratio > 0.50):
+                    try:
+                        if max(vh, vw) > 320:
+                            sc = 320.0 / max(vh, vw)
+                            v_small = cv2.resize(vehicle_crop, (int(vw * sc), int(vh * sc)), interpolation=cv2.INTER_AREA)
+                        else:
+                            v_small = vehicle_crop
+                        body_ocr = reader.readtext(v_small, detail=0, allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+                        for bt in body_ocr:
+                            clean_bt = re.sub(r'[^A-Z0-9]', '', str(bt).upper())
+                            for kw in cls.AMBULANCE_KEYWORDS:
+                                if kw in clean_bt:
+                                    return "Ambulance"
+                    except Exception:
+                        pass
 
         # 5. Standard vehicle classification
         x1, y1, x2, y2 = box
@@ -496,10 +501,13 @@ class FullAIIntelligencePipeline:
         return {
             "status": "LOADED" if self.is_initialized else "FALLBACK",
             "model_path": ", ".join(loaded_models) if loaded_models else "None",
-            "architecture": "YOLO11-Vehicle-Classification-ANPR",
+            "architecture": "YOLOv8-ANPR-Custom",
+            "plate_class_id": 80,
+            "classes": self.classes if self.classes else {80: "number_plate"},
             "ambulance_model_active": self.ambulance_model is not None,
             "yolo11m_active": self.vehicle_model_m is not None,
             "yolo11s_active": self.vehicle_model_s is not None,
+            "best_pt_active": self.model is not None,
             "vehicle_classes": ["Ambulance", "Sedan", "SUV", "Truck", "Bus", "Two-wheeler", "Van"],
             "easyocr_ready": self.reader is not None,
             "device": "CPU"
@@ -516,41 +524,55 @@ class FullAIIntelligencePipeline:
         if self.reader is not None:
             try:
                 ch, cw = crop.shape[:2]
-                scale = max(2.5, 90.0 / max(1, ch))
-                crop_scaled = cv2.resize(crop, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-                
-                # Generate multi-pass variants for robust OCR:
-                # Variant 1: Unsharp Masking (crisp stroke edges on plate characters)
-                gray = cv2.cvtColor(crop_scaled, cv2.COLOR_BGR2GRAY)
-                blurred = cv2.GaussianBlur(gray, (0, 0), 3)
-                unsharp = cv2.addWeighted(gray, 1.6, blurred, -0.6, 0)
-                
-                # Variant 2: Min-Max contrast normalization
-                norm = cv2.normalize(gray, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
-                
-                variants = [unsharp, norm, crop_scaled]
-                best_text = ""
-                best_score = -1.0
-                best_conf = 0.0
+                target_h = 75
+                if ch < target_h:
+                    scale = target_h / max(1, ch)
+                    crop_scaled = cv2.resize(crop, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+                elif ch > 150:
+                    scale = 150.0 / ch
+                    crop_scaled = cv2.resize(crop, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+                else:
+                    crop_scaled = crop
 
-                for var_img in variants:
-                    res = self.reader.readtext(var_img)
-                    if res:
-                        texts = [item[1] for item in res]
-                        confs = [float(item[2]) for item in res]
-                        combined = " ".join(texts)
-                        avg_c = sum(confs) / len(confs) if confs else 0.5
-                        
-                        rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(combined)
-                        score = (r_conf * 1.5 if is_valid else r_conf * 0.7) * avg_c
-                        
-                        if score > best_score:
-                            best_score = score
-                            best_text = combined
-                            best_conf = max(avg_c, r_conf)
-                
-                if best_text:
-                    return best_text, best_conf
+                # Fast single-pass OCR with allowlist and contrast enhancement
+                gray = cv2.cvtColor(crop_scaled, cv2.COLOR_BGR2GRAY)
+                clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(4, 4))
+                enhanced = clahe.apply(gray)
+
+                # Primary fast pass: Enhanced grayscale with allowlist
+                res = self.reader.readtext(
+                    enhanced,
+                    allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -',
+                    detail=1,
+                    paragraph=False,
+                    batch_size=4
+                )
+                if res:
+                    texts = [item[1] for item in res]
+                    confs = [float(item[2]) for item in res]
+                    combined = " ".join(texts)
+                    avg_c = sum(confs) / len(confs) if confs else 0.5
+                    
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(combined)
+                    if rectified and is_valid:
+                        return rectified, max(avg_c, r_conf)
+
+                # Secondary pass directly on original crop if CLAHE pass did not find valid plate
+                res_raw = self.reader.readtext(
+                    crop_scaled,
+                    allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -',
+                    detail=1,
+                    paragraph=False
+                )
+                if res_raw:
+                    texts = [item[1] for item in res_raw]
+                    confs = [float(item[2]) for item in res_raw]
+                    combined = " ".join(texts)
+                    avg_c = sum(confs) / len(confs) if confs else 0.5
+                    rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(combined)
+                    if rectified and is_valid:
+                        return rectified, max(avg_c, r_conf)
+
             except Exception as e:
                 print(f"[OCR extraction warning]: {e}")
         return "", 0.0
@@ -590,43 +612,67 @@ class FullAIIntelligencePipeline:
                     cls_name = v_detector.names.get(cls_id, str(cls_id)).lower()
                     conf = float(box.conf[0].item())
                     x1, y1, x2, y2 = [int(v) for v in box.xyxy[0].tolist()]
+                    vw, vh = x2 - x1, y2 - y1
 
-                    if (is_amb_detector or "ambulance" in cls_name or cls_name in VEHICLE_CLASSES or cls_id in [1, 2, 3, 5, 7]) and (x2 - x1) > 30 and (y2 - y1) > 30:
-                        identified_type = "Ambulance" if (is_amb_detector or "ambulance" in cls_name) else self.classify_vehicle_type(cls_name, (x1, y1, x2, y2))
+                    is_amb = is_amb_detector or ("ambulance" in cls_name)
+                    is_bike = cls_name in ["motorcycle", "bicycle", "bike"] or cls_id in [1, 3]
+                    is_veh = is_amb or cls_name in VEHICLE_CLASSES or cls_id in [1, 2, 3, 5, 7]
+                    min_c = 0.25 if is_amb else (0.40 if is_bike else 0.30)
+                    aspect = vw / max(1, vh)
+
+                    if is_veh and conf >= min_c and vw >= 35 and vh >= 35 and (0.22 <= aspect <= 4.8):
+                        identified_type = "Ambulance" if is_amb else self.classify_vehicle_type(cls_name, (x1, y1, x2, y2))
                         candidate_vehicles.append({
                             "class_id": cls_id,
-                            "raw_class": "ambulance" if is_amb_detector else cls_name,
+                            "raw_class": "ambulance" if is_amb else cls_name,
                             "class_name": identified_type,
                             "confidence": conf,
                             "box": (x1, y1, x2, y2),
-                            "area": (x2 - x1) * (y2 - y1)
+                            "area": vw * vh
                         })
             except Exception as e:
                 print(f"[YOLO11 Vehicle Detection Error]: {e}")
 
-        # Non-Maximum Suppression (IoU > 0.45) across all detected vehicles
         def calc_iou(b1, b2):
             x1 = max(b1[0], b2[0])
             y1 = max(b1[1], b2[1])
             x2 = min(b1[2], b2[2])
             y2 = min(b1[3], b2[3])
             inter = max(0, x2 - x1) * max(0, y2 - y1)
+            if inter <= 0:
+                return 0.0
             area1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
             area2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
             union = area1 + area2 - inter
             return inter / max(1, union)
 
-        candidate_vehicles.sort(key=lambda v: v["confidence"], reverse=True)
+        # Containment & IoU Non-Maximum Suppression across all detected vehicles
+        def is_duplicate_vehicle(b1, b2):
+            x1 = max(b1[0], b2[0])
+            y1 = max(b1[1], b2[1])
+            x2 = min(b1[2], b2[2])
+            y2 = min(b1[3], b2[3])
+            inter = max(0, x2 - x1) * max(0, y2 - y1)
+            if inter <= 0:
+                return False
+            area1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
+            area2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
+            union = area1 + area2 - inter
+            iou = inter / max(1, union)
+            containment = inter / max(1, min(area1, area2))
+            return iou > 0.30 or containment > 0.50
+
+        # Sort largest area first so small fragments get merged into full vehicles
+        candidate_vehicles.sort(key=lambda v: (v["area"], v["confidence"]), reverse=True)
         distinct_vehicles = []
         for v in candidate_vehicles:
             matched = False
             for dv in distinct_vehicles:
-                if calc_iou(v["box"], dv["box"]) > 0.45:
+                if is_duplicate_vehicle(v["box"], dv["box"]):
                     matched = True
-                    if v["confidence"] > dv["confidence"]:
+                    if v["confidence"] > dv["confidence"] and v["class_name"] != "Vehicle":
                         dv["class_name"] = v["class_name"]
                         dv["confidence"] = v["confidence"]
-                        dv["box"] = v["box"]
                     break
             if not matched:
                 distinct_vehicles.append(v)
@@ -699,163 +745,168 @@ class FullAIIntelligencePipeline:
         ]
 
         used_plates = set()
+        used_vehicles = set()
 
-        if distinct_vehicles:
-            # Process EVERY detected vehicle
-            for idx, v in enumerate(distinct_vehicles):
-                vx1, vy1, vx2, vy2 = v["box"]
-                vw, vh = vx2 - vx1, vy2 - vy1
-
-                # Check if any detected plate is located inside or overlapping this vehicle
-                best_plate = None
-                best_p_idx = -1
-                for p_idx, p in enumerate(distinct_plates):
-                    if p_idx in used_plates:
-                        continue
-                    px1, py1, px2, py2 = p["box"]
-                    pcx, pcy = (px1 + px2) / 2.0, (py1 + py2) / 2.0
-                    # Plate center is within vehicle bounds with 10% tolerance
-                    if (vx1 - vw * 0.10) <= pcx <= (vx2 + vw * 0.10) and (vy1 - vh * 0.10) <= pcy <= (vy2 + vh * 0.10):
-                        best_plate = p
-                        best_p_idx = p_idx
-                        break
-
-                if best_plate:
-                    used_plates.add(best_p_idx)
-                    px1, py1, px2, py2 = best_plate["box"]
-                    pad_x = int((px2 - px1) * 0.10)
-                    pad_y = int((py2 - py1) * 0.10)
-                    crop_img = frame[max(0, py1 - pad_y):min(h, py2 + pad_y), max(0, px1 - pad_x):min(w, px2 + pad_x)]
-                    actual_p_box = (px1, py1, px2, py2)
-                else:
-                    # Plate box wasn't directly recognized as class 80, crop the lower vehicle bumper region
-                    px1 = vx1 + int(vw * 0.15)
-                    px2 = vx1 + int(vw * 0.85)
-                    py1 = vy1 + int(vh * 0.58)
-                    py2 = min(h, vy2)
-                    crop_img = frame[max(0, py1):min(h, py2), max(0, px1):min(w, px2)]
-                    actual_p_box = (px1, py1, px2, py2)
-
-                # Extract OCR from plate / bumper crop
-                p_text = ""
-                p_conf = 0.88
-                if crop_img is not None and crop_img.size > 0:
-                    raw_ocr, raw_conf = self.extract_ocr_from_crop(crop_img)
-                    if raw_ocr and len(raw_ocr.strip()) >= 3:
-                        rectified, r_conf, _ = IndianSyntaxRectifier.rectify(raw_ocr)
-                        p_text = rectified
-                        p_conf = max(raw_conf, r_conf)
-
-                if idx < len(custom_plate_list):
-                    p_text = custom_plate_list[idx]
-                elif not p_text:
-                    p_text = generate_synthetic_plate(v_box_info.get("class_name", "Vehicle"))
-
-                crop_filename = f"plate_{camera_id}_{det_uuid}_{idx}.jpg"
-                crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
-                if crop_img is not None and crop_img.size > 0:
-                    cv2.imwrite(crop_path, crop_img)
-                else:
-                    dummy = np.zeros((80, 240, 3), dtype=np.uint8)
-                    dummy[:] = (245, 245, 245)
-                    cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
-                    cv2.imwrite(crop_path, dummy)
-
-                # Comprehensive Ambulance check across vehicle crop and OCR texts
-                veh_crop = frame[max(0, vy1):min(h, vy2), max(0, vx1):min(w, vx2)]
-                extracted_texts = [p_text]
-                if 'raw_ocr' in locals() and raw_ocr:
-                    extracted_texts.append(raw_ocr)
-                if idx < len(custom_plate_list):
-                    extracted_texts.append(custom_plate_list[idx])
-
-                refined_type = self.classify_vehicle_type(
-                    v.get("raw_class", v["class_name"]),
-                    (vx1, vy1, vx2, vy2),
-                    vehicle_crop=veh_crop,
-                    extracted_texts=extracted_texts,
-                    custom_hint=custom_raw_plate,
-                    reader=self.reader
-                )
-
-                detected_entries_data.append({
-                    "plate_text": p_text,
-                    "norm_plate": normalize_plate(p_text),
-                    "ocr_conf": round(p_conf, 3),
-                    "vehicle_type": refined_type,
-                    "v_box": (vx1, vy1, vx2, vy2),
-                    "p_box": actual_p_box,
-                    "crop_filename": crop_filename
-                })
-
-        # Also add any distinct plates that were NOT inside any vehicle box (e.g. close-up shots)
-        unmatched_plates = [p for p_idx, p in enumerate(distinct_plates) if p_idx not in used_plates]
-        for p in unmatched_plates:
-            idx = len(detected_entries_data)
+        # Step 3a: For every detected plate in distinct_plates, extract plate crop, run OCR, and find containing vehicle
+        for p_idx, p in enumerate(distinct_plates):
             px1, py1, px2, py2 = p["box"]
-            pad_x = int((px2 - px1) * 0.10)
-            pad_y = int((py2 - py1) * 0.10)
-            crop_cand = frame[max(0, py1 - pad_y):min(h, py2 + pad_y), max(0, px1 - pad_x):min(w, px2 + pad_x)]
+            pcx, pcy = (px1 + px2) / 2.0, (py1 + py2) / 2.0
+            pad_x = max(2, int((px2 - px1) * 0.10))
+            pad_y = max(2, int((py2 - py1) * 0.10))
+            plate_crop_img = frame[max(0, py1 - pad_y):min(h, py2 + pad_y), max(0, px1 - pad_x):min(w, px2 + pad_x)]
+
+            raw_ocr, raw_conf = self.extract_ocr_from_crop(plate_crop_img)
             p_text = ""
-            p_conf = 0.90
-            if crop_cand is not None and crop_cand.size > 0:
-                raw_ocr, raw_conf = self.extract_ocr_from_crop(crop_cand)
-                if raw_ocr:
-                    rectified, r_conf, _ = IndianSyntaxRectifier.rectify(raw_ocr)
+            p_conf = raw_conf
+            if raw_ocr:
+                rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(raw_ocr)
+                if rectified and is_valid:
                     p_text = rectified
                     p_conf = max(raw_conf, r_conf)
 
+            # Check if this plate corresponds to a custom plate override
+            idx = len(detected_entries_data)
             if idx < len(custom_plate_list):
                 p_text = custom_plate_list[idx]
-            elif not p_text:
-                p_text = generate_synthetic_plate("Vehicle")
+
+            if not p_text:
+                continue  # Skip unreadable or invalid non-plate crops
+
+            used_plates.add(p_idx)
+
+            # Find the vehicle that physically contains this plate
+            matched_v = None
+            matched_v_idx = -1
+            for v_idx, v in enumerate(distinct_vehicles):
+                if v_idx in used_vehicles:
+                    continue
+                vx1, vy1, vx2, vy2 = v["box"]
+                vw, vh = vx2 - vx1, vy2 - vy1
+                if (vx1 - vw * 0.10) <= pcx <= (vx2 + vw * 0.10) and (vy1 - vh * 0.10) <= pcy <= (vy2 + vh * 0.10):
+                    matched_v = v
+                    matched_v_idx = v_idx
+                    break
+
+            if matched_v is not None:
+                used_vehicles.add(matched_v_idx)
+                vx1, vy1, vx2, vy2 = matched_v["box"]
+                veh_crop = frame[max(0, vy1):min(h, vy2), max(0, vx1):min(w, vx2)]
+                refined_type = self.classify_vehicle_type(
+                    matched_v.get("raw_class", matched_v["class_name"]),
+                    (vx1, vy1, vx2, vy2),
+                    vehicle_crop=veh_crop,
+                    extracted_texts=[p_text, raw_ocr] if raw_ocr else [p_text],
+                    custom_hint=custom_raw_plate,
+                    reader=self.reader
+                )
+                actual_v_box = (vx1, vy1, vx2, vy2)
+            else:
+                # Close-up plate shot where entire vehicle body was not framed
+                v_est_x1 = max(0, px1 - int((px2 - px1) * 1.5))
+                v_est_x2 = min(w, px2 + int((px2 - px1) * 1.5))
+                v_est_y1 = max(0, py1 - int((py2 - py1) * 6))
+                v_est_y2 = min(h, py2 + int((py2 - py1) * 0.5))
+                v_est_crop = frame[v_est_y1:v_est_y2, v_est_x1:v_est_x2]
+                refined_type = self.classify_vehicle_type(
+                    "vehicle",
+                    (v_est_x1, v_est_y1, v_est_x2, v_est_y2),
+                    vehicle_crop=v_est_crop,
+                    extracted_texts=[p_text, raw_ocr] if raw_ocr else [p_text],
+                    custom_hint=custom_raw_plate,
+                    reader=self.reader
+                )
+                actual_v_box = (v_est_x1, v_est_y1, v_est_x2, v_est_y2)
 
             crop_filename = f"plate_{camera_id}_{det_uuid}_{idx}.jpg"
             crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
-            if crop_cand is not None and crop_cand.size > 0:
-                cv2.imwrite(crop_path, crop_cand)
+            if plate_crop_img is not None and plate_crop_img.size > 0:
+                cv2.imwrite(crop_path, plate_crop_img)
             else:
                 dummy = np.zeros((80, 240, 3), dtype=np.uint8)
                 dummy[:] = (245, 245, 245)
                 cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
                 cv2.imwrite(crop_path, dummy)
 
-            # Estimate vehicle context above and around the plate
-            v_est_x1 = max(0, px1 - int((px2 - px1) * 1.5))
-            v_est_x2 = min(w, px2 + int((px2 - px1) * 1.5))
-            v_est_y1 = max(0, py1 - int((py2 - py1) * 6))
-            v_est_y2 = min(h, py2 + int((py2 - py1) * 0.5))
-            v_est_crop = frame[v_est_y1:v_est_y2, v_est_x1:v_est_x2]
-            
-            p_ext_texts = [p_text]
-            if 'raw_ocr' in locals() and raw_ocr:
-                p_ext_texts.append(raw_ocr)
+            detected_entries_data.append({
+                "plate_text": p_text,
+                "norm_plate": normalize_plate(p_text),
+                "ocr_conf": round(p_conf, 3),
+                "vehicle_type": refined_type,
+                "v_box": actual_v_box,
+                "p_box": (px1, py1, px2, py2),
+                "crop_filename": crop_filename
+            })
 
-            unmatched_v_type = self.classify_vehicle_type(
-                "vehicle",
-                (v_est_x1, v_est_y1, v_est_x2, v_est_y2),
-                vehicle_crop=v_est_crop,
-                extracted_texts=p_ext_texts,
+        # Step 3b: For any vehicles where best.pt plate model didn't trigger, attempt bumper OCR
+        for v_idx, v in enumerate(distinct_vehicles):
+            if v_idx in used_vehicles:
+                continue
+            vx1, vy1, vx2, vy2 = v["box"]
+            vw, vh = vx2 - vx1, vy2 - vy1
+
+            # Crop lower bumper ROI
+            px1 = vx1 + int(vw * 0.15)
+            px2 = vx1 + int(vw * 0.85)
+            py1 = vy1 + int(vh * 0.58)
+            py2 = min(h, vy2)
+            bumper_crop = frame[max(0, py1):min(h, py2), max(0, px1):min(w, px2)]
+
+            raw_ocr, raw_conf = self.extract_ocr_from_crop(bumper_crop)
+            p_text = ""
+            p_conf = raw_conf
+            if raw_ocr:
+                rectified, r_conf, is_valid = IndianSyntaxRectifier.rectify(raw_ocr)
+                if rectified and is_valid:
+                    p_text = rectified
+                    p_conf = max(raw_conf, r_conf)
+
+            idx = len(detected_entries_data)
+            if idx < len(custom_plate_list):
+                p_text = custom_plate_list[idx]
+
+            if not p_text:
+                continue  # Skip vehicle candidates with no valid plate
+
+            used_vehicles.add(v_idx)
+            veh_crop = frame[max(0, vy1):min(h, vy2), max(0, vx1):min(w, vx2)]
+            refined_type = self.classify_vehicle_type(
+                v.get("raw_class", v["class_name"]),
+                (vx1, vy1, vx2, vy2),
+                vehicle_crop=veh_crop,
+                extracted_texts=[p_text, raw_ocr] if raw_ocr else [p_text],
                 custom_hint=custom_raw_plate,
                 reader=self.reader
             )
+
+            crop_filename = f"plate_{camera_id}_{det_uuid}_{idx}.jpg"
+            crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
+            if bumper_crop is not None and bumper_crop.size > 0:
+                cv2.imwrite(crop_path, bumper_crop)
+            else:
+                dummy = np.zeros((80, 240, 3), dtype=np.uint8)
+                dummy[:] = (245, 245, 245)
+                cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
+                cv2.imwrite(crop_path, dummy)
 
             detected_entries_data.append({
                 "plate_text": p_text,
                 "norm_plate": normalize_plate(p_text),
                 "ocr_conf": round(p_conf, 3),
-                "vehicle_type": unmatched_v_type,
-                "v_box": (v_est_x1, v_est_y1, v_est_x2, v_est_y2),
+                "vehicle_type": refined_type,
+                "v_box": (vx1, vy1, vx2, vy2),
                 "p_box": (px1, py1, px2, py2),
                 "crop_filename": crop_filename
             })
 
-        # Fallback if nothing detected at all
+        # Step 3c: Fallback if nothing detected at all
         if not detected_entries_data:
+            v_box = distinct_vehicles[0]["box"] if distinct_vehicles else None
+            p_box = distinct_plates[0]["box"] if distinct_plates else None
+            
             fallback_type = self.classify_vehicle_type(
-                "vehicle",
-                (0, 0, w, h),
-                vehicle_crop=frame,
+                distinct_vehicles[0].get("raw_class", "vehicle") if distinct_vehicles else "vehicle",
+                v_box if v_box else (0, 0, w, h),
+                vehicle_crop=frame[v_box[1]:v_box[3], v_box[0]:v_box[2]] if v_box else frame,
                 extracted_texts=[],
                 custom_hint=custom_raw_plate,
                 reader=self.reader
@@ -863,20 +914,45 @@ class FullAIIntelligencePipeline:
             p_text = custom_raw_plate or generate_synthetic_plate(fallback_type)
             crop_filename = f"plate_{camera_id}_{det_uuid}_0.jpg"
             crop_path = os.path.join(settings.EVIDENCE_DIR, crop_filename)
-            dummy = np.zeros((80, 240, 3), dtype=np.uint8)
-            dummy[:] = (245, 245, 245)
-            cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
-            cv2.imwrite(crop_path, dummy)
+            
+            if p_box:
+                px1, py1, px2, py2 = p_box
+                pad_x = max(2, int((px2 - px1) * 0.10))
+                pad_y = max(2, int((py2 - py1) * 0.10))
+                fallback_crop = frame[max(0, py1 - pad_y):min(h, py2 + pad_y), max(0, px1 - pad_x):min(w, px2 + pad_x)]
+                cv2.imwrite(crop_path, fallback_crop)
+            else:
+                dummy = np.zeros((80, 240, 3), dtype=np.uint8)
+                dummy[:] = (245, 245, 245)
+                cv2.putText(dummy, p_text, (15, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (10, 10, 10), 2)
+                cv2.imwrite(crop_path, dummy)
 
             detected_entries_data.append({
                 "plate_text": p_text,
                 "norm_plate": normalize_plate(p_text),
                 "ocr_conf": 0.94,
                 "vehicle_type": fallback_type,
-                "v_box": None,
-                "p_box": None,
+                "v_box": v_box,
+                "p_box": p_box,
                 "crop_filename": crop_filename
             })
+
+        # Build final detected entities strictly from verified detected entries
+        final_detected_entities = []
+        for entry in detected_entries_data:
+            if entry.get("v_box"):
+                vx1, vy1, vx2, vy2 = entry["v_box"]
+                final_detected_entities.append({
+                    "class_id": 2,
+                    "class_name": entry["vehicle_type"],
+                    "confidence": round(entry.get("ocr_conf", 0.95), 3),
+                    "bbox": {
+                        "ymin": round(vy1 / max(1, h), 4),
+                        "xmin": round(vx1 / max(1, w), 4),
+                        "ymax": round(vy2 / max(1, h), 4),
+                        "xmax": round(vx2 / max(1, w), 4)
+                    }
+                })
 
         # Annotate ALL detected vehicles and plates on the full frame
         for idx, entry in enumerate(detected_entries_data):
@@ -928,7 +1004,7 @@ class FullAIIntelligencePipeline:
                 "plate_bounding_box": json.dumps(p_box_norm),
                 "evidence_image_uri": f"/static/evidence/{full_frame_filename}",
                 "plate_crop_uri": f"/static/evidence/{entry['crop_filename']}",
-                "detected_objects": detected_entities,
+                "detected_objects": final_detected_entities,
                 "processing_status": "COMPLETED"
             })
 

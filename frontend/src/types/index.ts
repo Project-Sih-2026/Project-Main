@@ -154,6 +154,8 @@ export interface VehicleJourney {
   first_seen: string;
   last_seen: string;
   total_distance_km?: number;
+  total_duration_mins?: number;
+  average_speed_kmh?: number;
   observation_stops: VehicleHistoryStop[];
   disclaimer: string;
 }

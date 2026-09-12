@@ -37,6 +37,8 @@ Thumbs.db
 .vscode/
 *.pt
 *.zip
+best_pt_folder/
+test_img.jpg
 backend/static/evidence/*.jpg
 backend/static/evidence/*.png
 static/

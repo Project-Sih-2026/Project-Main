@@ -116,6 +116,14 @@ def get_vehicle_history(plate: str, db: Session = Depends(get_db)):
         )
         stops.append(stop)
         prev_stop = stop
+
+    total_duration_mins = None
+    average_speed_kmh = None
+    if len(detections) > 1:
+        total_dt_sec = abs((detections[-1].timestamp - detections[0].timestamp).total_seconds())
+        total_duration_mins = round(total_dt_sec / 60.0, 1)
+        if total_duration_mins > 0 and total_dist > 0:
+            average_speed_kmh = round((total_dist / (total_dt_sec / 3600.0)), 1)
         
     return VehicleJourneyResponse(
         plate=norm,
@@ -123,6 +131,8 @@ def get_vehicle_history(plate: str, db: Session = Depends(get_db)):
         first_seen=detections[0].timestamp,
         last_seen=detections[-1].timestamp,
         total_distance_km=round(total_dist, 2),
+        total_duration_mins=total_duration_mins,
+        average_speed_kmh=average_speed_kmh,
         observation_stops=stops,
         disclaimer="Discrete camera observation sequence. Does not represent continuous GPS tracking."
     )

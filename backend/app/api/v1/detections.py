@@ -2,7 +2,7 @@ import uuid
 import cv2
 import numpy as np
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user_optional, require_role
@@ -264,15 +264,20 @@ def get_ai_model_metadata():
 
 @router.post("/infer-frame", response_model=DetectionResponse)
 async def infer_uploaded_frame(
-    camera_id: str = "CAM-KN-01",
+    request: Request,
+    camera_id: str | None = Form(None),
     file: UploadFile = File(...),
-    custom_plate: str | None = None,
-    owner_name: str | None = None,
+    custom_plate: str | None = Form(None),
+    owner_name: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
     """
     Directly infers objects and license plates on an uploaded CCTV frame using YOLO best.pt model.
     """
+    effective_cam = camera_id or request.query_params.get("camera_id") or "CAM-KN-01"
+    effective_plate = custom_plate or request.query_params.get("custom_plate") or None
+    effective_owner = owner_name or request.query_params.get("owner_name") or None
+
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -281,7 +286,7 @@ async def infer_uploaded_frame(
         raise HTTPException(status_code=400, detail="Could not decode image file")
         
     pipeline = get_ai_pipeline()
-    res = pipeline.infer_frame(frame, camera_id=camera_id, custom_raw_plate=custom_plate)
+    res = pipeline.infer_frame(frame, camera_id=effective_cam, custom_raw_plate=effective_plate)
     
     det_id = f"det-{uuid.uuid4().hex[:10]}"
     detection = Detection(
@@ -294,7 +299,7 @@ async def infer_uploaded_frame(
         ocr_confidence=res["ocr_confidence"],
         model_version=res["model_version"],
         vehicle_type=res["vehicle_type"],
-        owner_name=owner_name or "",
+        owner_name=effective_owner or "",
         bounding_box=res["bounding_box"],
         plate_bounding_box=res["plate_bounding_box"],
         evidence_image_uri=res["evidence_image_uri"],
@@ -314,9 +319,10 @@ async def infer_uploaded_frame(
 
 @router.post("/upload-route")
 async def infer_uploaded_frame_with_route(
-    camera_id: str = "CAM-KN-01",
-    custom_plate: str | None = None,
-    owner_name: str | None = None,
+    request: Request,
+    camera_id: str | None = Form(None),
+    custom_plate: str | None = Form(None),
+    owner_name: str | None = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -326,6 +332,10 @@ async def infer_uploaded_frame_with_route(
     """
     from app.api.v1.routes import get_vehicle_history
     
+    effective_cam = camera_id or request.query_params.get("camera_id") or "CAM-KN-01"
+    effective_plate = custom_plate or request.query_params.get("custom_plate") or None
+    effective_owner = owner_name or request.query_params.get("owner_name") or None
+
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -334,15 +344,15 @@ async def infer_uploaded_frame_with_route(
         raise HTTPException(status_code=400, detail="Could not decode image file")
         
     pipeline = get_ai_pipeline()
-    res = pipeline.infer_frame(frame, camera_id=camera_id, custom_raw_plate=custom_plate)
+    res = pipeline.infer_frame(frame, camera_id=effective_cam, custom_raw_plate=effective_plate)
 
     entries = res.get("entries", [res])
     results_list = []
 
     # Parse owner names if comma-separated
     owner_names_list = []
-    if owner_name:
-        owner_names_list = [on.strip() for on in owner_name.split(",") if on.strip()]
+    if effective_owner:
+        owner_names_list = [on.strip() for on in effective_owner.split(",") if on.strip()]
 
     for idx, entry in enumerate(entries):
         det_id = f"det-{uuid.uuid4().hex[:10]}"

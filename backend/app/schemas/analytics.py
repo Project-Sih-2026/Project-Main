@@ -47,5 +47,7 @@ class VehicleJourneyResponse(BaseModel):
     first_seen: datetime
     last_seen: datetime
     total_distance_km: float = 0.0
+    total_duration_mins: float | None = None
+    average_speed_kmh: float | None = None
     observation_stops: list[VehicleHistoryStop]
     disclaimer: str = "Discrete camera observation sequence. Does not represent continuous GPS tracking."
