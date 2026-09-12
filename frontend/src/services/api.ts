@@ -92,7 +92,8 @@ export const api = {
     cameraIdOrFile: string | File,
     fileOrCameraId: File | string,
     customPlate?: string,
-    ownerName?: string
+    ownerName?: string,
+    timestamp?: string
   ): Promise<{
     detection: Detection;
     journey: VehicleJourney | null;
@@ -107,10 +108,12 @@ export const api = {
     formData.append("camera_id", cameraId);
     if (customPlate) formData.append("custom_plate", customPlate);
     if (ownerName) formData.append("owner_name", ownerName);
+    if (timestamp) formData.append("timestamp", timestamp);
 
     const params = new URLSearchParams({ camera_id: cameraId });
     if (customPlate) params.append("custom_plate", customPlate);
     if (ownerName) params.append("owner_name", ownerName);
+    if (timestamp) params.append("timestamp", timestamp);
 
     const res = await fetch(`${API_BASE}/detections/upload-route?${params.toString()}`, {
       method: "POST",
@@ -125,9 +128,10 @@ export const api = {
     file: File,
     cameraId: string,
     customPlate?: string,
-    ownerName?: string
+    ownerName?: string,
+    timestamp?: string
   ) => {
-    return api.uploadFrameAndGetRoute(cameraId, file, customPlate, ownerName);
+    return api.uploadFrameAndGetRoute(cameraId, file, customPlate, ownerName, timestamp);
   },
   submitOCRCorrection: async (detectionId: string, payload: { corrected_plate: string; reason: string; notes?: string }): Promise<OCRCorrection> => {
     const res = await fetch(`${API_BASE}/detections/${detectionId}/correct`, {
@@ -158,7 +162,16 @@ export const api = {
     }
     return res.json();
   },
-  updateDetection: async (detectionId: string, payload: { owner_name?: string; vehicle_type?: string; normalized_plate_text?: string }): Promise<Detection> => {
+  updateDetection: async (
+    detectionId: string,
+    payload: {
+      owner_name?: string;
+      vehicle_type?: string;
+      normalized_plate_text?: string;
+      camera_id?: string;
+      timestamp?: string;
+    }
+  ): Promise<Detection> => {
     const res = await fetch(`${API_BASE}/detections/${detectionId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

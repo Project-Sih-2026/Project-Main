@@ -23,6 +23,8 @@ class DetectionUpdate(BaseModel):
     owner_name: str | None = None
     vehicle_type: str | None = None
     normalized_plate_text: str | None = None
+    camera_id: str | None = None
+    timestamp: datetime | None = None
 
 class DetectionIngestItem(BaseModel):
     camera_id: str

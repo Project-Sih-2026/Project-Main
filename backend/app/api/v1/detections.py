@@ -262,6 +262,39 @@ def get_ai_model_metadata():
     pipeline = get_ai_pipeline()
     return pipeline.get_model_info()
 
+def parse_observation_timestamp(ts_val: str | datetime | None) -> datetime:
+    if not ts_val:
+        return datetime.now(timezone.utc)
+    if isinstance(ts_val, datetime):
+        if ts_val.tzinfo is None:
+            return ts_val.replace(tzinfo=timezone.utc)
+        return ts_val
+    ts_str = str(ts_val).strip()
+    if not ts_str:
+        return datetime.now(timezone.utc)
+    try:
+        if ts_str.endswith("Z"):
+            ts_str = ts_str[:-1] + "+00:00"
+        dt = datetime.fromisoformat(ts_str)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        pass
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+    ):
+        try:
+            dt = datetime.strptime(ts_str, fmt)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return datetime.now(timezone.utc)
+
 @router.post("/infer-frame", response_model=DetectionResponse)
 async def infer_uploaded_frame(
     request: Request,
@@ -269,6 +302,7 @@ async def infer_uploaded_frame(
     file: UploadFile = File(...),
     custom_plate: str | None = Form(None),
     owner_name: str | None = Form(None),
+    timestamp: str | None = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -277,6 +311,8 @@ async def infer_uploaded_frame(
     effective_cam = camera_id or request.query_params.get("camera_id") or "CAM-KN-01"
     effective_plate = custom_plate or request.query_params.get("custom_plate") or None
     effective_owner = owner_name or request.query_params.get("owner_name") or None
+    effective_time = timestamp or request.query_params.get("timestamp") or None
+    obs_datetime = parse_observation_timestamp(effective_time)
 
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
@@ -292,7 +328,7 @@ async def infer_uploaded_frame(
     detection = Detection(
         id=det_id,
         camera_id=res["camera_id"],
-        timestamp=datetime.now(timezone.utc),
+        timestamp=obs_datetime,
         raw_plate_text=res["raw_plate_text"],
         normalized_plate_text=res["normalized_plate_text"],
         confidence_score=res["confidence_score"],
@@ -323,18 +359,21 @@ async def infer_uploaded_frame_with_route(
     camera_id: str | None = Form(None),
     custom_plate: str | None = Form(None),
     owner_name: str | None = Form(None),
+    timestamp: str | None = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
     """
     Infers objects and license plate from uploaded image for chosen CCTV camera,
-    saves detection, checks watchlists, and returns detection + full vehicle journey route.
+    saves detection with accurate observation timestamp, checks watchlists, and returns detection + full vehicle journey route.
     """
     from app.api.v1.routes import get_vehicle_history
     
     effective_cam = camera_id or request.query_params.get("camera_id") or "CAM-KN-01"
     effective_plate = custom_plate or request.query_params.get("custom_plate") or None
     effective_owner = owner_name or request.query_params.get("owner_name") or None
+    effective_time = timestamp or request.query_params.get("timestamp") or None
+    obs_datetime = parse_observation_timestamp(effective_time)
 
     contents = await file.read()
     nparr = np.frombuffer(contents, np.uint8)
@@ -361,7 +400,7 @@ async def infer_uploaded_frame_with_route(
         det = Detection(
             id=det_id,
             camera_id=entry["camera_id"],
-            timestamp=datetime.now(timezone.utc),
+            timestamp=obs_datetime,
             raw_plate_text=entry["raw_plate_text"],
             normalized_plate_text=entry["normalized_plate_text"],
             confidence_score=entry["confidence_score"],
@@ -409,7 +448,7 @@ def update_detection(
     db: Session = Depends(get_db)
 ):
     """
-    Updates editable fields of a stored detection record (e.g. Owner/Vehicle Name, Vehicle Type, Plate).
+    Updates editable fields of a stored detection record (e.g. Owner/Vehicle Name, Vehicle Type, Plate, Camera, Timestamp).
     """
     det = db.query(Detection).filter(Detection.id == detection_id).first()
     if not det:
@@ -420,6 +459,10 @@ def update_detection(
         det.vehicle_type = payload.vehicle_type
     if payload.normalized_plate_text is not None:
         det.normalized_plate_text = normalize_plate(payload.normalized_plate_text)
+    if payload.camera_id is not None:
+        det.camera_id = payload.camera_id
+    if payload.timestamp is not None:
+        det.timestamp = parse_observation_timestamp(payload.timestamp)
     db.commit()
     db.refresh(det)
     return det

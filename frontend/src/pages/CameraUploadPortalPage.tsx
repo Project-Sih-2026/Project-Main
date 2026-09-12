@@ -20,6 +20,7 @@ export function CameraUploadPortalPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [customPlateInput, setCustomPlateInput] = useState<string>('');
   const [ownerNameInput, setOwnerNameInput] = useState<string>('');
+  const [customTimeInput, setCustomTimeInput] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultDetection, setResultDetection] = useState<Detection | null>(null);
   const [resultJourney, setResultJourney] = useState<VehicleJourney | null>(null);
@@ -36,7 +37,30 @@ export function CameraUploadPortalPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editOwnerName, setEditOwnerName] = useState<string>('');
-  const [isSavingName, setIsSavingName] = useState(false);
+  const [editCameraId, setEditCameraId] = useState<string>('');
+  const [editTimestamp, setEditTimestamp] = useState<string>('');
+  const [isSavingRecord, setIsSavingRecord] = useState(false);
+
+  // Helper for datetime-local string format YYYY-MM-DDTHH:mm
+  const formatToLocalDateTimeInput = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const year = d.getFullYear();
+    const month = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const setTimeToNow = () => {
+    setCustomTimeInput(formatToLocalDateTimeInput(new Date()));
+  };
+
+  const adjustTimeMinutes = (minutesOffset: number) => {
+    const base = customTimeInput ? new Date(customTimeInput) : new Date();
+    const adjusted = new Date(base.getTime() + minutesOffset * 60000);
+    setCustomTimeInput(formatToLocalDateTimeInput(adjusted));
+  };
 
   // State: Watchlist
   const [watchlistItems, setWatchlistItems] = useState<WatchlistItem[]>([]);
@@ -112,6 +136,7 @@ export function CameraUploadPortalPage() {
     setErrorMsg(null);
     setCustomPlateInput('');
     setOwnerNameInput('');
+    setCustomTimeInput('');
     if (fileInputRef.current) fileInputRef.current.value = '';
 
     app.toast(`Camera ${camId} selected — fresh upload form ready.`);
@@ -136,6 +161,7 @@ export function CameraUploadPortalPage() {
     setErrorMsg(null);
     setCustomPlateInput('');
     setOwnerNameInput('');
+    setCustomTimeInput('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     app.toast('Upload form reset to fresh state.');
   };
@@ -167,6 +193,7 @@ export function CameraUploadPortalPage() {
 
     const plateToUse = customPlateInput.trim() || undefined;
     const ownerToUse = ownerNameInput.trim() || undefined;
+    const timeToUse = customTimeInput ? new Date(customTimeInput).toISOString() : undefined;
 
     try {
       let fileToUpload = file;
@@ -177,7 +204,7 @@ export function CameraUploadPortalPage() {
         return;
       }
 
-      const res = await api.uploadFrameAndGetRoute(selectedCamId, fileToUpload, plateToUse, ownerToUse);
+      const res = await api.uploadFrameAndGetRoute(selectedCamId, fileToUpload, plateToUse, ownerToUse, timeToUse);
       const entries = res.detections && res.detections.length > 0 ? res.detections : [{ detection: res.detection, journey: res.journey }];
       setResultEntries(entries);
       setSelectedEntryIdx(0);
@@ -197,23 +224,37 @@ export function CameraUploadPortalPage() {
     }
   };
 
-  // Update Owner/Vehicle Name in the dataset
-  const handleStartEditName = (detection: Detection) => {
+  // Update Owner/Vehicle Name, Camera, and Timestamp in the dataset
+  const handleStartEditRow = (detection: Detection) => {
     setEditingId(detection.id);
     setEditOwnerName(detection.owner_name || '');
+    setEditCameraId(detection.camera_id || selectedCamId);
+    try {
+      const d = new Date(detection.timestamp);
+      setEditTimestamp(formatToLocalDateTimeInput(d));
+    } catch {
+      setEditTimestamp('');
+    }
   };
 
-  const handleSaveUpdatedName = async (detectionId: string) => {
-    setIsSavingName(true);
+  const handleSaveUpdatedRow = async (detectionId: string) => {
+    setIsSavingRecord(true);
     try {
-      await api.updateDetection(detectionId, { owner_name: editOwnerName.trim() });
-      app.toast('Vehicle name updated in the dataset!');
+      const payload: any = {
+        owner_name: editOwnerName.trim(),
+        camera_id: editCameraId || undefined,
+      };
+      if (editTimestamp) {
+        payload.timestamp = new Date(editTimestamp).toISOString();
+      }
+      await api.updateDetection(detectionId, payload);
+      app.toast('Detection record & passage time updated in dataset!');
       setEditingId(null);
       loadStoredDetections();
     } catch (err: any) {
-      app.toast(`Failed to update name: ${err.message}`);
+      app.toast(`Failed to update: ${err.message}`);
     } finally {
-      setIsSavingName(false);
+      setIsSavingRecord(false);
     }
   };
 
@@ -707,6 +748,79 @@ export function CameraUploadPortalPage() {
               )}
             </div>
 
+            {/* Passage Timestamp / Observation Time Input */}
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold uppercase text-ink flex items-center gap-1.5">
+                  <Icon name="clock" className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Passage Time / Observation Timestamp</span>
+                </label>
+                {customTimeInput ? (
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.2 rounded-full">
+                    Custom Time Set
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.2 rounded-full">
+                    Auto: Real-Time
+                  </span>
+                )}
+              </div>
+              <input
+                type="datetime-local"
+                value={customTimeInput}
+                onChange={(e) => setCustomTimeInput(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-clay/30 bg-cream/40 px-3.5 py-2 text-xs font-mono font-medium text-ink focus:border-blue-500 focus:outline-none"
+              />
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-mauve font-semibold text-[10px] mr-0.5">Quick Presets:</span>
+                <button
+                  type="button"
+                  onClick={setTimeToNow}
+                  className="px-2 py-0.5 rounded-lg bg-blue-600 text-white font-bold text-[10px] hover:bg-blue-700 transition-colors shadow-xs"
+                  title="Set to Current Real-time"
+                >
+                  ⚡ Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => adjustTimeMinutes(-5)}
+                  className="px-2 py-0.5 rounded-lg bg-clay/20 text-ink font-semibold text-[10px] hover:bg-clay/30 transition-colors"
+                  title="5 minutes ago"
+                >
+                  -5m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => adjustTimeMinutes(-15)}
+                  className="px-2 py-0.5 rounded-lg bg-clay/20 text-ink font-semibold text-[10px] hover:bg-clay/30 transition-colors"
+                  title="15 minutes ago"
+                >
+                  -15m
+                </button>
+                <button
+                  type="button"
+                  onClick={() => adjustTimeMinutes(-60)}
+                  className="px-2 py-0.5 rounded-lg bg-clay/20 text-ink font-semibold text-[10px] hover:bg-clay/30 transition-colors"
+                  title="1 hour ago"
+                >
+                  -1h
+                </button>
+                {customTimeInput && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomTimeInput('')}
+                    className="px-2 py-0.5 rounded-lg bg-red-500/15 text-red-700 font-bold text-[10px] hover:bg-red-500/25 transition-colors ml-auto"
+                    title="Reset to current real-time"
+                  >
+                    Clear (Auto-Now)
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-mauve mt-1">
+                Records exact time the car crossed <strong>{currentCamId}</strong> for transit intervals & travel speed tracking.
+              </p>
+            </div>
+
             {/* Owner / Vehicle Name Input for Dataset Storage */}
             <div>
               <label className="text-[11px] font-bold uppercase text-ink flex items-center justify-between">
@@ -887,10 +1001,26 @@ export function CameraUploadPortalPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">Raw OCR Text</span>
-                    <span className="font-mono text-xs font-bold text-ink">{resultDetection.raw_plate_text}</span>
+                    <span className="text-[10px] font-bold uppercase text-mauve block">Camera Node</span>
+                    <span className="font-mono text-xs font-bold text-blue-700">{resultDetection.camera_id}</span>
+                  </div>
+                  <div className="rounded-xl bg-blue-50/70 p-2.5 border border-blue-300/40">
+                    <span className="text-[10px] font-bold uppercase text-blue-800 block flex items-center gap-1">
+                      <Icon name="clock" className="h-3 w-3 text-blue-600" />
+                      <span>Passage Time</span>
+                    </span>
+                    <span className="font-mono text-xs font-black text-ink">
+                      {new Date(resultDetection.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                    <span className="text-[10px] text-mauve block mt-0.5 font-medium">
+                      {new Date(resultDetection.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
+                    <span className="text-[10px] font-bold uppercase text-mauve block">Vehicle Type</span>
+                    <span className="text-xs font-bold text-ink">{resultDetection.vehicle_type}</span>
                   </div>
                   <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
                     <span className="text-[10px] font-bold uppercase text-mauve block">OCR Confidence</span>
@@ -899,12 +1029,8 @@ export function CameraUploadPortalPage() {
                     </span>
                   </div>
                   <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">Vehicle Type</span>
-                    <span className="text-xs font-bold text-ink">{resultDetection.vehicle_type}</span>
-                  </div>
-                  <div className="rounded-xl bg-white/80 p-2.5 border border-clay/20">
-                    <span className="text-[10px] font-bold uppercase text-mauve block">Camera ID</span>
-                    <span className="font-mono text-xs font-bold text-blue-700">{resultDetection.camera_id}</span>
+                    <span className="text-[10px] font-bold uppercase text-mauve block">Raw OCR Text</span>
+                    <span className="font-mono text-xs font-bold text-ink">{resultDetection.raw_plate_text}</span>
                   </div>
                 </div>
 
@@ -1249,31 +1375,14 @@ export function CameraUploadPortalPage() {
                       {/* Editable Owner / Vehicle Name Column */}
                       <td className="py-3 px-4">
                         {editingId === d.id ? (
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              value={editOwnerName}
-                              onChange={(e) => setEditOwnerName(e.target.value)}
-                              placeholder="Enter name..."
-                              className="rounded-lg border border-blue-500 bg-white px-2 py-1 text-xs text-ink focus:outline-none w-36 font-medium"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => handleSaveUpdatedName(d.id)}
-                              disabled={isSavingName}
-                              className="rounded-md bg-blue-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-blue-700 transition-colors"
-                              title="Save name in dataset"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              className="rounded-md bg-cream px-2 py-1 text-[11px] font-bold text-mauve hover:text-ink transition-colors"
-                              title="Cancel"
-                            >
-                              ✕
-                            </button>
-                          </div>
+                          <input
+                            type="text"
+                            value={editOwnerName}
+                            onChange={(e) => setEditOwnerName(e.target.value)}
+                            placeholder="Enter vehicle / owner name..."
+                            className="rounded-lg border border-blue-500 bg-white px-2.5 py-1 text-xs text-ink focus:outline-none w-36 font-medium shadow-xs"
+                            autoFocus
+                          />
                         ) : (
                           <div className="flex items-center gap-2">
                             {d.owner_name ? (
@@ -1281,13 +1390,6 @@ export function CameraUploadPortalPage() {
                             ) : (
                               <span className="text-mauve/50 italic text-[11px]">No name set</span>
                             )}
-                            <button
-                              onClick={() => handleStartEditName(d)}
-                              className="text-mauve hover:text-blue-700 p-1 transition-colors rounded hover:bg-sand/40"
-                              title="Update name in dataset"
-                            >
-                              <Icon name="edit" className="h-3.5 w-3.5" />
-                            </button>
                           </div>
                         )}
                       </td>
@@ -1302,19 +1404,66 @@ export function CameraUploadPortalPage() {
                           d.vehicle_type || 'Vehicle'
                         )}
                       </td>
+
+                      {/* Camera Node Column (Editable when row is selected) */}
                       <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-blue-800 bg-blue-500/10 px-2 py-0.5 rounded">
-                          {d.camera_id}
-                        </span>
+                        {editingId === d.id ? (
+                          <select
+                            value={editCameraId}
+                            onChange={(e) => setEditCameraId(e.target.value)}
+                            className="rounded-lg border border-blue-500 bg-white px-2 py-1 text-xs font-mono font-bold text-ink focus:outline-none shadow-xs"
+                          >
+                            {cameras.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.id} ({c.district})
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="font-mono font-bold text-blue-800 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                            {d.camera_id}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-3 px-4 text-mauve font-mono text-[11px]">
-                        {new Date(d.timestamp).toLocaleString()}
+
+                      {/* Passage Timestamp Column (Editable when row is selected) */}
+                      <td className="py-3 px-4">
+                        {editingId === d.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="datetime-local"
+                              value={editTimestamp}
+                              onChange={(e) => setEditTimestamp(e.target.value)}
+                              className="rounded-lg border border-blue-500 bg-white px-2 py-1 text-xs font-mono text-ink focus:outline-none w-44 shadow-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditTimestamp(formatToLocalDateTimeInput(new Date()))}
+                              className="px-1.5 py-1 rounded bg-blue-100 text-blue-800 text-[10px] font-bold hover:bg-blue-200 transition-colors"
+                              title="Set to Current Time"
+                            >
+                              Now
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col">
+                            <span className="font-mono text-xs font-bold text-ink flex items-center gap-1">
+                              <Icon name="clock" className="h-3 w-3 text-blue-600 shrink-0" />
+                              <span>{new Date(d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                            </span>
+                            <span className="text-[10px] text-mauve font-medium">
+                              {new Date(d.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                          </div>
+                        )}
                       </td>
+
                       <td className="py-3 px-4">
                         <span className="font-mono font-bold text-emerald-700">
                           {(d.ocr_confidence * 100).toFixed(1)}%
                         </span>
                       </td>
+
                       <td className="py-3 px-4">
                         {d.has_alert ? (
                           <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${
@@ -1330,33 +1479,61 @@ export function CameraUploadPortalPage() {
                           </span>
                         )}
                       </td>
+
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => {
-                              app.nav({ page: 'map', mapVehicle: d.normalized_plate_text });
-                              window.open(getOperationsPortalUrl('map'), '_blank');
-                            }}
-                            className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 hover:bg-blue-500/20 transition-colors"
-                            title="View vehicle trajectory on GIS City Map"
-                          >
-                            Map
-                          </button>
-                          <button
-                            onClick={() => handleTrackStoredPlate(d.normalized_plate_text)}
-                            className="rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-ink/90 transition-colors"
-                          >
-                            Route
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDetection(d.id, d.normalized_plate_text)}
-                            disabled={isDeleting === d.id}
-                            className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-500/20 transition-colors"
-                            title="Delete this record"
-                          >
-                            <Icon name="trash" className="h-3 w-3" />
-                          </button>
-                        </div>
+                        {editingId === d.id ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleSaveUpdatedRow(d.id)}
+                              disabled={isSavingRecord}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs flex items-center gap-1"
+                              title="Save changes"
+                            >
+                              {isSavingRecord ? 'Saving...' : '✓ Save'}
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="rounded-lg border border-clay/30 bg-cream px-2.5 py-1.5 text-xs font-bold text-mauve hover:text-ink transition-colors"
+                              title="Cancel"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleStartEditRow(d)}
+                              className="rounded-lg border border-clay/30 bg-white px-2 py-1.5 text-[11px] font-bold text-mauve hover:text-blue-700 hover:border-blue-400 transition-colors"
+                              title="Edit name, camera, or passage timestamp"
+                            >
+                              <Icon name="edit" className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                app.nav({ page: 'map', mapVehicle: d.normalized_plate_text });
+                                window.open(getOperationsPortalUrl('map'), '_blank');
+                              }}
+                              className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-bold text-blue-800 hover:bg-blue-500/20 transition-colors"
+                              title="View vehicle trajectory on GIS City Map"
+                            >
+                              Map
+                            </button>
+                            <button
+                              onClick={() => handleTrackStoredPlate(d.normalized_plate_text)}
+                              className="rounded-lg bg-ink px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-ink/90 transition-colors"
+                            >
+                              Route
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDetection(d.id, d.normalized_plate_text)}
+                              disabled={isDeleting === d.id}
+                              className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-500/20 transition-colors"
+                              title="Delete this record"
+                            >
+                              <Icon name="trash" className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))

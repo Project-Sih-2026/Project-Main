@@ -224,4 +224,41 @@ def test_yolo_ai_model_metadata_and_inference():
     assert "evidence_image_uri" in data
     assert "plate_crop_uri" in data
 
+def test_timestamped_observation_route_and_camera_sequence():
+    import numpy as np
+    import cv2
+    import io
+
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    _, encoded = cv2.imencode(".jpg", frame)
+
+    # Checkpoint 1 at 10:00 AM
+    files1 = {"file": ("cam1.jpg", io.BytesIO(encoded.tobytes()), "image/jpeg")}
+    r1 = client.post(
+        "/api/v1/detections/upload-route?camera_id=CAM-KN-01&custom_plate=HR-26-AB-9999&owner_name=Vipul%20Sharma&timestamp=2026-09-12T10:00:00",
+        files=files1
+    )
+    assert r1.status_code == 200
+    d1 = r1.json()["detection"]
+    assert d1["camera_id"] == "CAM-KN-01"
+    assert d1["normalized_plate_text"] == "HR26AB9999"
+    assert "2026-09-12T10:00:00" in d1["timestamp"]
+
+    # Checkpoint 2 at 10:15 AM
+    files2 = {"file": ("cam2.jpg", io.BytesIO(encoded.tobytes()), "image/jpeg")}
+    r2 = client.post(
+        "/api/v1/detections/upload-route?camera_id=CAM-KN-02&custom_plate=HR-26-AB-9999&owner_name=Vipul%20Sharma&timestamp=2026-09-12T10:15:00",
+        files=files2
+    )
+    assert r2.status_code == 200
+    j2 = r2.json()["journey"]
+    assert j2 is not None
+    assert j2["total_observations"] >= 2
+    assert j2["total_duration_mins"] == 15.0
+    assert len(j2["observation_stops"]) >= 2
+    assert j2["observation_stops"][0]["camera_id"] == "CAM-KN-01"
+    assert j2["observation_stops"][1]["camera_id"] == "CAM-KN-02"
+    assert j2["observation_stops"][1]["duration_mins_from_prev"] == 15.0
+
+
 
