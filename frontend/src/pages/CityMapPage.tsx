@@ -845,14 +845,106 @@ export function CityMapPage() {
         ? '#DC2626' 
         : '#2563EB';
 
-      // SINGLE SIGHTING vs MULTI-CAMERA TRANSIT:
-      // If there is ONLY 1 stop (single camera observation), fly to that coordinate and show single sighting badge
-      if (stopCoords.length === 1) {
+      // Check if vehicle observations span across at least 2 distinct camera locations
+      const hasMultipleLocations = stopCoords.some((pt, i) => {
+        if (i === 0) return false;
+        const first = stopCoords[0];
+        return Math.abs(pt[0] - first[0]) > 0.0001 || Math.abs(pt[1] - first[1]) > 0.0001;
+      });
+
+      // SINGLE CAMERA LOCATION (1 or more sightings at the same camera node):
+      if (!hasMultipleLocations) {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.flyTo(stopCoords[0], 15, { duration: 0.6 });
         }
-      } else if (stopCoords.length >= 2) {
-        // Multi-Camera Transit Route between checkpoints (e.g. Camera 1 -> Camera 2)
+
+        const primaryStop = stopData[0];
+        const isWatch = focusVeh.status !== 'clear';
+        const sightingCount = stopData.length;
+
+        const singleStopIcon = L.divIcon({
+          className: 'custom-journey-stop',
+          html: `
+            <div style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              position: relative;
+            ">
+              <div style="
+                position: absolute;
+                top: -6px;
+                width: 46px;
+                height: 46px;
+                border-radius: 50%;
+                border: 2px solid ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#2563EB'};
+                opacity: 0.8;
+                animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+              "></div>
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#1E293B'};
+                border: 2.5px solid #FFFFFF;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+                color: #FFFFFF;
+                font-family: monospace;
+                font-size: 16px;
+                font-weight: 900;
+                z-index: 10;
+              ">
+                ${isAmbulance ? '🚑' : '📍'}
+              </div>
+              <div style="
+                background: #0F172A;
+                color: #FFFFFF;
+                font-size: 9.5px;
+                font-family: system-ui, sans-serif;
+                font-weight: 700;
+                padding: 2.5px 7px;
+                border-radius: 4px;
+                margin-top: 3px;
+                white-space: nowrap;
+                border: 1px solid ${isAmbulance ? '#10B981' : '#CBD5E1'};
+                box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+              ">
+                ${isAmbulance ? 'Emergency Ambulance Sighting' : sightingCount > 1 ? `${sightingCount} Sightings at ${primaryStop.cam.code}` : `Single Sighting: ${primaryStop.cam.code}`}
+              </div>
+            </div>
+          `,
+          iconSize: [160, 58],
+          iconAnchor: [80, 22]
+        });
+
+        const singleMarker = L.marker([primaryStop.cam.lat, primaryStop.cam.lng], { icon: singleStopIcon });
+        singleMarker.bindPopup(`
+          <div style="font-family: system-ui, sans-serif; padding: 4px; min-width: 240px;">
+            <div style="font-size: 10px; font-weight: 800; color: ${isAmbulance ? '#059669' : '#D97706'}; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+              <span>📍 ${sightingCount > 1 ? `${sightingCount} SIGHTINGS AT THIS NODE` : 'SINGLE CAMERA OBSERVATION'}</span>
+              ${isAmbulance ? '<span style="background: #10B98125; color: #059669; padding: 1px 5px; border-radius: 4px; font-weight: 900;">🚨 PRIORITY AMBULANCE</span>' : ''}
+            </div>
+            <div style="font-size: 14px; font-weight: 800; color: #1E293B; margin-top: 3px;">
+              ${focusVeh.plate} (${focusVeh.make} ${focusVeh.model})
+            </div>
+            <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
+              ${primaryStop.cam.code}: ${primaryStop.cam.name}
+            </div>
+            <div style="font-size: 11px; color: #334155; margin-top: 4px; background: #F1F5F9; padding: 4px 6px; border-radius: 4px;">
+              Passage Times: <strong>${stopData.map((s) => s.time).join(', ')}</strong>
+            </div>
+            <div style="font-size: 10.5px; color: #64748B; margin-top: 5px; background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 6px; border-radius: 5px; line-height: 1.35;">
+              ℹ️ <strong>Single Camera Location.</strong> All sightings of this vehicle are at ${primaryStop.cam.code}. Uploading this vehicle at a subsequent camera (e.g. CAM-KN-02) will trace its inter-camera transit route.
+            </div>
+          </div>
+        `);
+        journeyLayerRef.current.addLayer(singleMarker);
+
+      } else {
+        // MULTI-CAMERA TRANSIT ROUTE across 2 or more distinct camera checkpoints:
         // 1. Immediately render direct polyline and fit map bounds so user sees route immediately
         const initialPolyline = L.polyline(stopCoords, {
           color: routeColor,
@@ -952,119 +1044,63 @@ export function CityMapPage() {
           .catch((err) => {
             console.warn('Road snapping fallback active:', err);
           });
-      }
 
-      // 4. Draw Waypoint Badges (or single observation marker)
-      stopData.forEach((stop) => {
-        const isWatch = focusVeh.status !== 'clear';
-        const isSingleStop = stopCoords.length === 1;
+        // 4. Draw Waypoint Badges for each stop in sequence
+        stopData.forEach((stop) => {
+          const isWatch = focusVeh.status !== 'clear';
 
-        const stopMarkerIcon = L.divIcon({
-          className: 'custom-journey-stop',
-          html: isSingleStop ? `
-            <div style="
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              position: relative;
-            ">
-              <div style="
-                position: absolute;
-                top: -6px;
-                width: 44px;
-                height: 44px;
-                border-radius: 50%;
-                border: 2px solid ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#2563EB'};
-                opacity: 0.75;
-                animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-              "></div>
+          const stopMarkerIcon = L.divIcon({
+            className: 'custom-journey-stop',
+            html: `
               <div style="
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                width: 34px;
-                height: 34px;
+                width: 28px;
+                height: 28px;
                 border-radius: 50%;
                 background: ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#1E293B'};
-                border: 2.5px solid #FFFFFF;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                border: 2px solid #FFFFFF;
+                box-shadow: 0 3px 8px rgba(0,0,0,0.35);
                 color: #FFFFFF;
                 font-family: monospace;
-                font-size: 15px;
-                font-weight: 900;
-                z-index: 10;
+                font-size: 12px;
+                font-weight: 800;
               ">
-                ${isAmbulance ? '🚑' : '📍'}
+                ${isAmbulance ? '🚑' : stop.stopNum}
               </div>
-              <div style="
-                background: #0F172A;
-                color: #FFFFFF;
-                font-size: 9px;
-                font-family: system-ui, sans-serif;
-                font-weight: 700;
-                padding: 2px 6px;
-                border-radius: 4px;
-                margin-top: 3px;
-                white-space: nowrap;
-                border: 1px solid ${isAmbulance ? '#10B981' : '#CBD5E1'};
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-              ">
-                ${isAmbulance ? 'Emergency Ambulance Sighting' : `Single Sighting: ${stop.cam.code}`}
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14]
+          });
+
+          const stopMarker = L.marker([stop.cam.lat, stop.cam.lng], { icon: stopMarkerIcon });
+          stopMarker.bindPopup(`
+            <div style="font-family: system-ui, sans-serif; padding: 4px; min-width: 230px;">
+              <div style="font-size: 10px; font-weight: 800; color: ${isAmbulance ? '#059669' : '#D97706'}; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+                <span>Stop #${stop.stopNum} · ${stop.time}</span>
+                ${isAmbulance ? '<span style="background: #10B98125; color: #059669; padding: 1px 5px; border-radius: 4px; font-weight: 900;">🚨 PRIORITY AMBULANCE</span>' : ''}
               </div>
+              <div style="font-size: 14px; font-weight: 800; color: #1E293B; margin-top: 3px;">
+                ${focusVeh.plate} (${focusVeh.make} ${focusVeh.model})
+              </div>
+              <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
+                ${stop.cam.code}: ${stop.cam.name}
+              </div>
+              <div style="font-size: 11px; color: #334155; margin-top: 4px; background: #F1F5F9; padding: 4px 6px; border-radius: 4px;">
+                Recorded Speed: <strong>${stop.speed} km/h</strong> · Time: <strong>${stop.time}</strong>
+              </div>
+              ${focusVeh.flaggedReason ? `
+                <div style="font-size: 10px; color: #DC2626; margin-top: 4px; font-weight: 700; border-top: 1px solid #E2E8F0; padding-top: 3px;">
+                  🚨 ${focusVeh.flaggedReason}
+                </div>` : ''
+              }
             </div>
-          ` : `
-            <div style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              background: ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#1E293B'};
-              border: 2px solid #FFFFFF;
-              box-shadow: 0 3px 8px rgba(0,0,0,0.35);
-              color: #FFFFFF;
-              font-family: monospace;
-              font-size: 12px;
-              font-weight: 800;
-            ">
-              ${isAmbulance ? '🚑' : stop.stopNum}
-            </div>
-          `,
-          iconSize: isSingleStop ? [140, 56] : [28, 28],
-          iconAnchor: isSingleStop ? [70, 20] : [14, 14]
+          `);
+
+          journeyLayerRef.current?.addLayer(stopMarker);
         });
-
-        const stopMarker = L.marker([stop.cam.lat, stop.cam.lng], { icon: stopMarkerIcon });
-        stopMarker.bindPopup(`
-          <div style="font-family: system-ui, sans-serif; padding: 4px; min-width: 230px;">
-            <div style="font-size: 10px; font-weight: 800; color: ${isAmbulance ? '#059669' : '#D97706'}; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
-              <span>${isSingleStop ? '📍 Single Camera Observation' : `Stop #${stop.stopNum} · ${stop.time}`}</span>
-              ${isAmbulance ? '<span style="background: #10B98125; color: #059669; padding: 1px 5px; border-radius: 4px; font-weight: 900;">🚨 PRIORITY AMBULANCE</span>' : ''}
-            </div>
-            <div style="font-size: 14px; font-weight: 800; color: #1E293B; margin-top: 3px;">
-              ${focusVeh.plate} (${focusVeh.make} ${focusVeh.model})
-            </div>
-            <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
-              ${stop.cam.code}: ${stop.cam.name}
-            </div>
-            <div style="font-size: 11px; color: #334155; margin-top: 4px; background: #F1F5F9; padding: 4px 6px; border-radius: 4px;">
-              Recorded Speed: <strong>${stop.speed} km/h</strong> · Time: <strong>${stop.time}</strong>
-            </div>
-            ${isSingleStop ? `
-              <div style="font-size: 10.5px; color: #64748B; margin-top: 5px; background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 6px; border-radius: 5px; line-height: 1.35;">
-                ℹ️ <strong>Single observation checkpoint recorded.</strong> No multi-camera transit way is drawn for single sightings. Uploading this vehicle at a subsequent camera (e.g. Camera 3 ➔ Camera 6) will trace the transit way.
-              </div>` : ''}
-            ${focusVeh.flaggedReason ? `
-              <div style="font-size: 10px; color: #DC2626; margin-top: 4px; font-weight: 700; border-top: 1px solid #E2E8F0; padding-top: 3px;">
-                🚨 ${focusVeh.flaggedReason}
-              </div>` : ''
-            }
-          </div>
-        `);
-
-        journeyLayerRef.current?.addLayer(stopMarker);
-      });
+      }
     }
   }, [mapReady, layers.journey, layers.altRoutes, focusVeh]);
 
@@ -1352,18 +1388,26 @@ export function CityMapPage() {
           {/* Quick Select Cards for Detected Cars in Window */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             {filteredVehicles.map((v) => {
-              const isSel = v.id === selectedVehicleId;
+              const isSel = v.id === selectedVehicleId || v.plate === selectedVehicleId;
+              const uniqueCams = new Set(v.journey.map((e) => e.cam)).size;
+              const camCountLabel =
+                uniqueCams === 1
+                  ? `1 Camera · ${v.journey.length} sighting${v.journey.length > 1 ? 's' : ''}`
+                  : `${uniqueCams} Cameras · ${v.journey.length} stops`;
+
               return (
                 <button
                   key={v.id}
                   onClick={() => {
                     setSelectedVehicleId(v.id);
+                    app.nav({ page: 'map', mapVehicle: v.plate, vehicleId: v.id });
                     setLayers((l) => ({ ...l, journey: true }));
+                    app.toast(`Tracing route for ${v.plate} (${v.make} ${v.model})`);
                   }}
                   className={cx(
                     'flex shrink-0 items-center gap-2.5 rounded-xl border px-3 py-1.5 text-left transition-all active:scale-95',
                     isSel
-                      ? 'border-dusk bg-dusk text-cream shadow-md'
+                      ? 'border-dusk bg-dusk text-cream shadow-md ring-2 ring-sand/40'
                       : 'border-clay/35 bg-cream hover:border-dusk/40 hover:bg-sand/30'
                   )}
                 >
@@ -1372,7 +1416,7 @@ export function CityMapPage() {
                       {v.plate}
                     </div>
                     <div className={cx('text-[11px] font-semibold', isSel ? 'text-sand' : 'text-mauve')}>
-                      {v.make} {v.model} · {v.journey.length} Cameras
+                      {v.make} {v.model} · {camCountLabel}
                     </div>
                   </div>
                   <Badge tone={v.status === 'flagged' ? 'critical' : v.status === 'watchlist' ? 'medium' : 'good'}>
@@ -1632,6 +1676,15 @@ export function CityMapPage() {
                     );
                   })}
                 </div>
+
+                {focusVeh.journey.length > 1 && new Set(focusVeh.journey.map((e) => e.cam)).size === 1 && (
+                  <div className="mt-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-[11.5px] text-amber-900 leading-snug">
+                    <div className="font-bold flex items-center gap-1 text-amber-800 mb-1">
+                      <span>📍</span> Single Node Observation ({focusVeh.journey[0]?.cam})
+                    </div>
+                    All {focusVeh.journey.length} logged sightings are at this same camera checkpoint. To view an inter-camera corridor route across Delhi, log or upload this vehicle at a second camera location (e.g. CAM-KN-02, CAM-KN-03, CAM-GN-01).
+                  </div>
+                )}
               </div>
             </div>
 
