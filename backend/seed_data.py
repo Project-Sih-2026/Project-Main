@@ -207,9 +207,226 @@ def seed_database(target_db=None):
     db.commit()
     print("Hospitals seeded.")
 
+    # 8. Seed Realistic Vehicle Detections & Multi-Camera Journeys
+    sample_vehicles_data = [
+        {
+            "plate": "DL-01-AMB-9911",
+            "type": "Ambulance",
+            "owner": "Delhi Emergency Services (Tata Winger Ambulance)",
+            "has_alert": True,
+            "alert_type": "EMERGENCY_AMBULANCE",
+            "alert_category": "EMERGENCY_CORRIDOR",
+            "alert_severity": "CRITICAL",
+            "alert_status": "ACKNOWLEDGED",
+            "stops": [
+                {"cam": "CAM-KN-03", "mins_ago": 24, "conf": 0.98, "ocr_conf": 0.97},
+                {"cam": "CAM-KN-02", "mins_ago": 16, "conf": 0.99, "ocr_conf": 0.98},
+                {"cam": "CAM-KN-08", "mins_ago": 7,  "conf": 0.98, "ocr_conf": 0.96},
+            ]
+        },
+        {
+            "plate": "DL-01-AB-1234",
+            "type": "Sedan",
+            "owner": "Rajesh Sharma (Black Hyundai Verna)",
+            "has_alert": True,
+            "alert_type": "STOLEN_VEHICLE_REPORT",
+            "alert_category": "STOLEN_VEHICLE",
+            "alert_severity": "CRITICAL",
+            "alert_status": "ASSIGNED",
+            "assigned_to": "Officer Sarah Chen",
+            "watchlist_id": "wl-001",
+            "stops": [
+                {"cam": "CAM-KN-01", "mins_ago": 42, "conf": 0.96, "ocr_conf": 0.95},
+                {"cam": "CAM-KN-02", "mins_ago": 31, "conf": 0.97, "ocr_conf": 0.96},
+                {"cam": "CAM-GN-01", "mins_ago": 18, "conf": 0.98, "ocr_conf": 0.97},
+            ]
+        },
+        {
+            "plate": "HR-26-DK-8821",
+            "type": "SUV",
+            "owner": "Vikramaditya Rao (White Toyota Fortuner)",
+            "has_alert": True,
+            "alert_type": "SPEEDING_VIOLATION",
+            "alert_category": "SPEED_TRAP_SECTION",
+            "alert_severity": "HIGH",
+            "alert_status": "NEW",
+            "stops": [
+                {"cam": "CAM-KN-04", "mins_ago": 28, "conf": 0.95, "ocr_conf": 0.94},
+                {"cam": "CAM-KN-05", "mins_ago": 24, "conf": 0.97, "ocr_conf": 0.96},
+            ]
+        },
+        {
+            "plate": "DL-03-CD-5678",
+            "type": "Sedan",
+            "owner": "Ananya Sen (Silver Honda City)",
+            "has_alert": False,
+            "stops": [
+                {"cam": "CAM-GN-08", "mins_ago": 52, "conf": 0.94, "ocr_conf": 0.93},
+                {"cam": "CAM-GN-07", "mins_ago": 40, "conf": 0.96, "ocr_conf": 0.95},
+                {"cam": "CAM-GN-06", "mins_ago": 29, "conf": 0.97, "ocr_conf": 0.96},
+                {"cam": "CAM-GN-02", "mins_ago": 14, "conf": 0.98, "ocr_conf": 0.97},
+            ]
+        },
+        {
+            "plate": "UP-14-BT-3329",
+            "type": "Commercial Truck",
+            "owner": "Kailash Logistics (Tata Signa 4825.TK)",
+            "has_alert": False,
+            "stops": [
+                {"cam": "CAM-KN-09", "mins_ago": 48, "conf": 0.93, "ocr_conf": 0.92},
+                {"cam": "CAM-KN-06", "mins_ago": 35, "conf": 0.95, "ocr_conf": 0.94},
+                {"cam": "CAM-KN-07", "mins_ago": 21, "conf": 0.96, "ocr_conf": 0.95},
+            ]
+        },
+        {
+            "plate": "DL-01-PC-1044",
+            "type": "Bus",
+            "owner": "Delhi Transport Corporation (Tata Starbus EV)",
+            "has_alert": False,
+            "stops": [
+                {"cam": "CAM-GN-01", "mins_ago": 44, "conf": 0.97, "ocr_conf": 0.96},
+                {"cam": "CAM-GN-03", "mins_ago": 32, "conf": 0.98, "ocr_conf": 0.97},
+                {"cam": "CAM-GN-04", "mins_ago": 20, "conf": 0.98, "ocr_conf": 0.98},
+                {"cam": "CAM-GN-05", "mins_ago": 9,  "conf": 0.99, "ocr_conf": 0.98},
+            ]
+        },
+        {
+            "plate": "MH-12-DE-5678",
+            "type": "SUV",
+            "owner": "Sunil Kulkarni (Mahindra Scorpio-N)",
+            "has_alert": True,
+            "alert_type": "WARRANT_ADVISORY",
+            "alert_category": "MUNICIPAL_WARRANT",
+            "alert_severity": "HIGH",
+            "alert_status": "NEW",
+            "watchlist_id": "wl-002",
+            "stops": [
+                {"cam": "CAM-KN-10", "mins_ago": 38, "conf": 0.96, "ocr_conf": 0.95},
+                {"cam": "CAM-KN-01", "mins_ago": 19, "conf": 0.97, "ocr_conf": 0.96},
+            ]
+        },
+        {
+            "plate": "DL-07-SQ-9102",
+            "type": "Two-wheeler",
+            "owner": "Deepak Verma (TVS Jupiter Delivery)",
+            "has_alert": False,
+            "stops": [
+                {"cam": "CAM-GN-09", "mins_ago": 34, "conf": 0.95, "ocr_conf": 0.94},
+                {"cam": "CAM-GN-10", "mins_ago": 15, "conf": 0.96, "ocr_conf": 0.95},
+            ]
+        },
+        {
+            "plate": "DL-05-EX-4491",
+            "type": "Two-wheeler",
+            "owner": "Mohit Gupta (Royal Enfield Classic 350)",
+            "has_alert": False,
+            "stops": [
+                {"cam": "CAM-KN-01", "mins_ago": 5, "conf": 0.98, "ocr_conf": 0.97},
+            ]
+        },
+        {
+            "plate": "UP-16-BZ-4402",
+            "type": "Sedan",
+            "owner": "Sanjay Rawat (Maruti Ciaz)",
+            "has_alert": False,
+            "stops": [
+                {"cam": "CAM-KN-04", "mins_ago": 3, "conf": 0.97, "ocr_conf": 0.96},
+            ]
+        }
+    ]
+
+    base_time = datetime.now(timezone.utc)
+    for v_data in sample_vehicles_data:
+        raw_plate = v_data["plate"]
+        norm_plate = normalize_plate(raw_plate)
+        v_type = v_data["type"]
+        v_owner = v_data["owner"]
+        has_alt = v_data.get("has_alert", False)
+        alt_type = v_data.get("alert_type")
+
+        for idx, stop in enumerate(v_data["stops"], 1):
+            det_id = f"det-seed-{norm_plate.lower()}-{idx}"
+            det_time = base_time - timedelta(minutes=stop["mins_ago"])
+
+            existing_det = db.query(Detection).filter(Detection.id == det_id).first()
+            if not existing_det:
+                try:
+                    ev_uri, crop_uri, v_box, p_box = generate_synthetic_evidence_image(
+                        camera_id=stop["cam"],
+                        custom_raw_plate=raw_plate
+                    )
+                except Exception:
+                    ev_uri = f"/static/evidence/feed_{stop['cam']}_preview.jpg"
+                    crop_uri = None
+                    v_box = [120, 180, 520, 680]
+                    p_box = [420, 310, 470, 550]
+
+                det = Detection(
+                    id=det_id,
+                    camera_id=stop["cam"],
+                    timestamp=det_time,
+                    raw_plate_text=raw_plate,
+                    normalized_plate_text=norm_plate,
+                    confidence_score=stop["conf"],
+                    ocr_confidence=stop["ocr_conf"],
+                    model_version="YOLOv8-ANPR-v2.4",
+                    vehicle_type=v_type,
+                    owner_name=v_owner,
+                    bounding_box=str(v_box),
+                    plate_bounding_box=str(p_box),
+                    evidence_image_uri=ev_uri,
+                    plate_crop_uri=crop_uri,
+                    processing_status="COMPLETED",
+                    review_status="VERIFIED",
+                    has_alert=has_alt,
+                    alert_type=alt_type
+                )
+                db.add(det)
+
+                # If this is the latest sighting and vehicle has an alert, seed the alert record
+                if has_alt and idx == len(v_data["stops"]):
+                    alt_id = f"alt-seed-{norm_plate.lower()}"
+                    existing_alt = db.query(Alert).filter(Alert.id == alt_id).first()
+                    if not existing_alt:
+                        alt = Alert(
+                            id=alt_id,
+                            detection_id=det_id,
+                            camera_id=stop["cam"],
+                            watchlist_id=v_data.get("watchlist_id"),
+                            plate_matched=norm_plate,
+                            category=v_data.get("alert_category", "GENERAL_INVESTIGATION"),
+                            severity=v_data.get("alert_severity", "HIGH"),
+                            status=v_data.get("alert_status", "NEW"),
+                            assigned_to=v_data.get("assigned_to"),
+                            resolution_notes="Automated ANPR match on high-density surveillance grid.",
+                            created_at=det_time,
+                            updated_at=det_time
+                        )
+                        db.add(alt)
+
+                        # If acknowledged/assigned, add action trail
+                        if alt.status in ["ACKNOWLEDGED", "ASSIGNED"]:
+                            action_id = f"act-seed-{norm_plate.lower()}-1"
+                            act = AlertAction(
+                                id=action_id,
+                                alert_id=alt_id,
+                                user_id="usr-oper-01",
+                                username="Sarah Chen",
+                                action="ASSIGN" if alt.status == "ASSIGNED" else "ACKNOWLEDGE",
+                                from_status="NEW",
+                                to_status=alt.status,
+                                notes="Corridor units alerted for active tactical intercept.",
+                                created_at=det_time + timedelta(minutes=2)
+                            )
+                            db.add(act)
+
+    db.commit()
+    print(f"Realistic vehicle detections, multi-camera journeys, and alerts seeded successfully.")
+
     print("Database seeding completed successfully!")
     if should_close:
         db.close()
 
 if __name__ == "__main__":
     seed_database()
+
