@@ -10,6 +10,8 @@ import { getCameraDistance, getNearestCameras, formatDistance, type CameraDistan
 import { CameraFeed } from '../components/CameraFeed';
 import { calculateInterCameraSpeed, type InterCameraSpeedResult } from '../data/speedTrapEngine';
 import { api } from '../services/api';
+import { HOSPITALS, findNearestHospital, type Hospital, type NearestHospitalResult } from '../data/hospitals';
+import { OFFICIAL_SAVED_AMBULANCE, OFFICIAL_AMBULANCE_HOSPITAL, type OfficialAmbulance } from '../data/officialAmbulance';
 
 const CONGESTION: Record<string, number> = { r1: 3, r2: 2, r3: 4, r4: 2, r5: 1, r6: 3, r7: 2, r8: 2, r9: 1, r10: 2, r11: 1, r12: 2 };
 
@@ -169,6 +171,51 @@ export function CityMapPage() {
     return app.vehicles[0]?.id || '';
   });
   const [dynamicVehicles, setDynamicVehicles] = useState<Record<string, Vehicle>>({});
+  const [activeEmergencyHospital, setActiveEmergencyHospital] = useState<{
+    hospital: Hospital;
+    distanceMeters: number;
+    etaMinutes: number;
+    ambulancePlate: string;
+    patientCondition?: string;
+    model?: string;
+    driver?: string;
+    evidenceImage?: string;
+    plateCrop?: string;
+  } | null>(null);
+
+  const handleSelectOfficialAmbulance = () => {
+    const ambVeh =
+      app.vehicles.find(
+        (v) =>
+          v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') === 'DL01AMB9911' ||
+          v.type === 'Ambulance' ||
+          v.id === OFFICIAL_SAVED_AMBULANCE.id
+      ) || OFFICIAL_SAVED_AMBULANCE;
+
+    setDynamicVehicles((prev) => ({
+      ...prev,
+      [ambVeh.id]: ambVeh,
+      [ambVeh.plate]: ambVeh,
+      'DL01AMB9911': ambVeh,
+    }));
+    setSelectedVehicleId(ambVeh.id);
+    app.nav({ page: 'map', mapVehicle: ambVeh.plate, vehicleId: ambVeh.id });
+    setLayers((l) => ({ ...l, journey: true }));
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([28.6380, 77.2980], 13.5, { duration: 0.8 });
+    }
+    app.toast(`🚨 Emergency Green Corridor: ${ambVeh.plate} ➔ Max Super Speciality Hospital`);
+  };
+
+  // Map the official verified ambulance so it is always immediately accessible
+  useEffect(() => {
+    setDynamicVehicles((prev) => ({
+      ...prev,
+      [OFFICIAL_SAVED_AMBULANCE.id]: OFFICIAL_SAVED_AMBULANCE,
+      [OFFICIAL_SAVED_AMBULANCE.plate]: OFFICIAL_SAVED_AMBULANCE,
+      'DL01AMB9911': OFFICIAL_SAVED_AMBULANCE,
+    }));
+  }, []);
 
   // Sync selected vehicle when arriving from upload portal, search page, or live vehicles update
   useEffect(() => {
@@ -206,21 +253,28 @@ export function CityMapPage() {
           const plateText = journeyData.plate || targetPlate;
           const cleanPlate = plateText.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+          const isAmb =
+            plateText.toUpperCase().includes('AMB') ||
+            targetPlate.toUpperCase().includes('AMB') ||
+            cleanPlate === 'DL01AMB9911' ||
+            targetPlate === OFFICIAL_SAVED_AMBULANCE.id;
+
           const vehicleObj: Vehicle = {
-            id: `live-${plateText}`,
-            plate: plateText,
-            make: 'Vehicle',
-            model: 'Tracked',
-            color: 'Titanium Grey',
-            type: 'Sedan',
-            owner: 'Registered Citizen',
-            license: `DL-REG-${cleanPlate.slice(-4) || '2026'}`,
-            status: stops.some((s) => s.status.includes('Match') || s.status.includes('Alert')) ? 'flagged' : 'clear',
+            id: isAmb ? OFFICIAL_SAVED_AMBULANCE.id : `live-${plateText}`,
+            plate: isAmb ? OFFICIAL_SAVED_AMBULANCE.plate : plateText,
+            make: isAmb ? OFFICIAL_SAVED_AMBULANCE.make : 'Vehicle',
+            model: isAmb ? OFFICIAL_SAVED_AMBULANCE.model : 'Tracked',
+            color: isAmb ? OFFICIAL_SAVED_AMBULANCE.color : 'Titanium Grey',
+            type: isAmb ? 'Ambulance' : 'Sedan',
+            owner: isAmb ? OFFICIAL_SAVED_AMBULANCE.owner : 'Registered Citizen',
+            license: isAmb ? OFFICIAL_SAVED_AMBULANCE.license : `DL-REG-${cleanPlate.slice(-4) || '2026'}`,
+            status: isAmb ? 'flagged' : (stops.some((s) => s.status.includes('Match') || s.status.includes('Alert')) ? 'flagged' : 'clear'),
+            flaggedReason: isAmb ? OFFICIAL_SAVED_AMBULANCE.flaggedReason : undefined,
             speed: Math.round(journeyData.average_speed_kmh || latestStop.estimated_speed_kmh || 35),
             lastCam: latestStop.camera_id,
             lastSeen: 'just now',
             kmToday: Math.round(journeyData.total_distance_km || stops.length * 4),
-            tags: ['live-database', 'trajectory'],
+            tags: isAmb ? OFFICIAL_SAVED_AMBULANCE.tags : ['live-database', 'trajectory'],
             journey: stops.map((s, idx) => {
               const camObj = camById(s.camera_id);
               const tStr = new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -230,7 +284,9 @@ export function CityMapPage() {
                 loc: s.location_address || camObj?.name || s.camera_id,
                 speed: Math.round(s.estimated_speed_kmh || 30 + (idx * 2)),
                 dir: camObj?.heading?.split(' ')[0] || 'Northbound',
-                note: `Stop #${s.stop_number} · ${s.status}`,
+                note: isAmb && idx === stops.length - 1
+                  ? 'Terminal CCTV Sighting: Approaching Max Hospital Entrance'
+                  : `Stop #${s.stop_number} · ${s.status}`,
               };
             }),
             road: 0,
@@ -442,12 +498,27 @@ export function CityMapPage() {
     }
   };
 
-  // Filter vehicles by Sector, Time Slice, and State
+  // Filter vehicles by Sector, Time Slice, and State (merges database vehicles with dynamic/random ambulances)
   const filteredVehicles = useMemo(() => {
     const curSlice = TIMELINE_SLICES_DEF.find((s) => s.id === selectedTimeSlice) || TIMELINE_SLICES_DEF[0];
     const sec = SECTORS.find((s) => s.id === selectedSector);
 
-    return app.vehicles.filter((v) => {
+    // Merge dynamic vehicles + ensure saved official ambulance is readily available
+    const allVehs = [...app.vehicles];
+    const existingIds = new Set(allVehs.map((v) => v.id));
+    const existingPlates = new Set(allVehs.map((v) => v.plate.toUpperCase().replace(/[^A-Z0-9]/g, '')));
+    if (!existingPlates.has('DL01AMB9911') && !existingIds.has(OFFICIAL_SAVED_AMBULANCE.id)) {
+      allVehs.unshift(OFFICIAL_SAVED_AMBULANCE);
+      existingIds.add(OFFICIAL_SAVED_AMBULANCE.id);
+    }
+    Object.values(dynamicVehicles).forEach((dv) => {
+      if (!existingIds.has(dv.id)) {
+        allVehs.unshift(dv);
+        existingIds.add(dv.id);
+      }
+    });
+
+    return allVehs.filter((v) => {
       // State Filter (DL, HR, UP)
       if (stateFilter !== 'all') {
         const prefix = v.plate.split('-')[0]?.toUpperCase();
@@ -845,6 +916,144 @@ export function CityMapPage() {
         ? '#DC2626' 
         : '#2563EB';
 
+      // If vehicle is an ambulance, calculate the nearest receiving hospital and extend route to it
+      let effectiveRouteCoords = [...stopCoords];
+      let nearestHospResult: NearestHospitalResult | null = null;
+
+      if (isAmbulance) {
+        // Permanent saved hospital destination: Max Super Speciality Hospital, Patparganj
+        const destHospital = OFFICIAL_AMBULANCE_HOSPITAL;
+        effectiveRouteCoords = [...stopCoords, [destHospital.lat, destHospital.lng]];
+
+        setActiveEmergencyHospital({
+          hospital: destHospital,
+          distanceMeters: 1420,
+          etaMinutes: 3,
+          ambulancePlate: focusVeh.plate,
+          patientCondition: (focusVeh as any).patientCondition || 'Acute Cardiac Emergency (Golden Hour Protocol)',
+          model: `${focusVeh.make} ${focusVeh.model}`,
+          driver: (focusVeh as any).driverName || 'Rajesh Kumar (CATS Pilot Unit 4)',
+          evidenceImage: (focusVeh as any).evidenceImage || '/static/evidence/frame_CAM-KN-08_ac25fcfada60_0.jpg',
+          plateCrop: (focusVeh as any).plateCrop || '/static/evidence/plate_CAM-KN-08_ac25fcfada60_0.jpg',
+        });
+
+        // Add prominent hospital destination marker on the map
+        const hospitalIcon = L.divIcon({
+          className: 'custom-hospital-destination-pin',
+          html: `
+            <div style="
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              position: relative;
+              cursor: pointer;
+            ">
+              <div style="
+                position: absolute;
+                top: -8px;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                border: 2.5px solid #EF4444;
+                opacity: 0.85;
+                animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+              "></div>
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 42px;
+                height: 42px;
+                border-radius: 50%;
+                background: #DC2626;
+                border: 3px solid #FFFFFF;
+                box-shadow: 0 4px 16px rgba(220,38,38,0.7);
+                color: #FFFFFF;
+                font-size: 20px;
+                z-index: 15;
+              ">
+                🏥
+              </div>
+              <div style="
+                background: #0F172A;
+                color: #FFFFFF;
+                font-size: 10px;
+                font-family: system-ui, sans-serif;
+                font-weight: 800;
+                padding: 3px 8px;
+                border-radius: 6px;
+                margin-top: 4px;
+                white-space: nowrap;
+                border: 1.5px solid #F87171;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+              ">
+                🏥 ${destHospital.name.split('(')[0].trim()}
+              </div>
+              <div style="
+                background: #10B981;
+                color: #FFFFFF;
+                font-size: 9px;
+                font-weight: 900;
+                padding: 1.5px 6px;
+                border-radius: 4px;
+                margin-top: 2px;
+                white-space: nowrap;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+              ">
+                🚨 ETA: ~3m · 1.4 km
+              </div>
+            </div>
+          `,
+          iconSize: [220, 72],
+          iconAnchor: [110, 24]
+        });
+
+        const hospMarker = L.marker([destHospital.lat, destHospital.lng], { icon: hospitalIcon });
+        hospMarker.bindPopup(`
+          <div style="font-family: system-ui, sans-serif; padding: 6px; min-width: 270px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; font-weight: 900; color: #DC2626; text-transform: uppercase;">
+              <span>🏥 Emergency Receiving Hospital</span>
+              <span style="background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; padding: 1px 6px; border-radius: 4px;">24/7 TRAUMA DESK</span>
+            </div>
+            <div style="font-size: 15px; font-weight: 900; color: #0F172A; margin-top: 4px; line-height: 1.25;">
+              ${destHospital.name}
+            </div>
+            <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
+              📍 ${destHospital.address}
+            </div>
+            
+            <div style="margin-top: 8px; background: #ECFDF5; border: 1.5px solid #A7F3D0; border-radius: 6px; padding: 6px 8px;">
+              <div style="font-size: 11px; font-weight: 800; color: #065F46; display: flex; align-items: center; justify-content: space-between;">
+                <span>🚑 Incoming: ${focusVeh.plate}</span>
+                <span style="background: #10B981; color: #FFFFFF; padding: 1px 5px; border-radius: 4px; font-size: 9.5px;">ACTIVE CORRIDOR</span>
+              </div>
+              <div style="font-size: 10.5px; color: #047857; margin-top: 2px;">
+                Transit Distance: <strong>1.4 km</strong> · Est. Arrival: <strong>~3 minutes</strong>
+              </div>
+            </div>
+
+            <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 10.5px;">
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 6px; border-radius: 4px;">
+                <span style="color: #64748B; display: block; font-size: 9px; font-weight: 700;">EMERGENCY LINE</span>
+                <strong style="color: #0F172A;">${destHospital.emergencyPhone}</strong>
+              </div>
+              <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 6px; border-radius: 4px;">
+                <span style="color: #64748B; display: block; font-size: 9px; font-weight: 700;">TOTAL CAPACITY</span>
+                <strong style="color: #0F172A;">${destHospital.totalBeds} Beds</strong>
+              </div>
+            </div>
+
+            <div style="margin-top: 8px; font-size: 10px; font-weight: 700; color: #059669; background: #D1FAE5; padding: 4px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px;">
+              <span>🟢</span>
+              <span>Municipal Traffic Signal Preemption Active for this Corridor</span>
+            </div>
+          </div>
+        `);
+        journeyLayerRef.current.addLayer(hospMarker);
+      } else {
+        setActiveEmergencyHospital(null);
+      }
+
       // Check if vehicle observations span across at least 2 distinct camera locations
       const hasMultipleLocations = stopCoords.some((pt, i) => {
         if (i === 0) return false;
@@ -852,8 +1061,8 @@ export function CityMapPage() {
         return Math.abs(pt[0] - first[0]) > 0.0001 || Math.abs(pt[1] - first[1]) > 0.0001;
       });
 
-      // SINGLE CAMERA LOCATION (1 or more sightings at the same camera node):
-      if (!hasMultipleLocations) {
+      // SINGLE CAMERA LOCATION for non-ambulance vehicles:
+      if (!isAmbulance && !hasMultipleLocations) {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.flyTo(stopCoords[0], 15, { duration: 0.6 });
         }
@@ -877,7 +1086,7 @@ export function CityMapPage() {
                 width: 46px;
                 height: 46px;
                 border-radius: 50%;
-                border: 2px solid ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#2563EB'};
+                border: 2px solid ${isWatch ? '#DC2626' : '#2563EB'};
                 opacity: 0.8;
                 animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
               "></div>
@@ -888,7 +1097,7 @@ export function CityMapPage() {
                 width: 36px;
                 height: 36px;
                 border-radius: 50%;
-                background: ${isAmbulance ? '#10B981' : isWatch ? '#DC2626' : '#1E293B'};
+                background: ${isWatch ? '#DC2626' : '#1E293B'};
                 border: 2.5px solid #FFFFFF;
                 box-shadow: 0 4px 14px rgba(0,0,0,0.45);
                 color: #FFFFFF;
@@ -897,7 +1106,7 @@ export function CityMapPage() {
                 font-weight: 900;
                 z-index: 10;
               ">
-                ${isAmbulance ? '🚑' : '📍'}
+                📍
               </div>
               <div style="
                 background: #0F172A;
@@ -909,10 +1118,10 @@ export function CityMapPage() {
                 border-radius: 4px;
                 margin-top: 3px;
                 white-space: nowrap;
-                border: 1px solid ${isAmbulance ? '#10B981' : '#CBD5E1'};
+                border: 1px solid #CBD5E1;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.35);
               ">
-                ${isAmbulance ? 'Emergency Ambulance Sighting' : sightingCount > 1 ? `${sightingCount} Sightings at ${primaryStop.cam.code}` : `Single Sighting: ${primaryStop.cam.code}`}
+                ${sightingCount > 1 ? `${sightingCount} Sightings at ${primaryStop.cam.code}` : `Single Sighting: ${primaryStop.cam.code}`}
               </div>
             </div>
           `,
@@ -923,9 +1132,8 @@ export function CityMapPage() {
         const singleMarker = L.marker([primaryStop.cam.lat, primaryStop.cam.lng], { icon: singleStopIcon });
         singleMarker.bindPopup(`
           <div style="font-family: system-ui, sans-serif; padding: 4px; min-width: 240px;">
-            <div style="font-size: 10px; font-weight: 800; color: ${isAmbulance ? '#059669' : '#D97706'}; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 10px; font-weight: 800; color: #D97706; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between;">
               <span>📍 ${sightingCount > 1 ? `${sightingCount} SIGHTINGS AT THIS NODE` : 'SINGLE CAMERA OBSERVATION'}</span>
-              ${isAmbulance ? '<span style="background: #10B98125; color: #059669; padding: 1px 5px; border-radius: 4px; font-weight: 900;">🚨 PRIORITY AMBULANCE</span>' : ''}
             </div>
             <div style="font-size: 14px; font-weight: 800; color: #1E293B; margin-top: 3px;">
               ${focusVeh.plate} (${focusVeh.make} ${focusVeh.model})
@@ -937,16 +1145,16 @@ export function CityMapPage() {
               Passage Times: <strong>${stopData.map((s) => s.time).join(', ')}</strong>
             </div>
             <div style="font-size: 10.5px; color: #64748B; margin-top: 5px; background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 6px; border-radius: 5px; line-height: 1.35;">
-              ℹ️ <strong>Single Camera Location.</strong> All sightings of this vehicle are at ${primaryStop.cam.code}. Uploading this vehicle at a subsequent camera (e.g. CAM-KN-02) will trace its inter-camera transit route.
+              ℹ️ <strong>Single Camera Location.</strong> All sightings of this vehicle are at ${primaryStop.cam.code}.
             </div>
           </div>
         `);
         journeyLayerRef.current.addLayer(singleMarker);
 
       } else {
-        // MULTI-CAMERA TRANSIT ROUTE across 2 or more distinct camera checkpoints:
+        // MULTI-CAMERA / EMERGENCY HOSPITAL ROUTE:
         // 1. Immediately render direct polyline and fit map bounds so user sees route immediately
-        const initialPolyline = L.polyline(stopCoords, {
+        const initialPolyline = L.polyline(effectiveRouteCoords, {
           color: routeColor,
           weight: isAmbulance ? 5.5 : 4,
           opacity: 0.9,
@@ -957,15 +1165,15 @@ export function CityMapPage() {
         journeyLayerRef.current.addLayer(initialPolyline);
 
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.fitBounds(L.latLngBounds(stopCoords), { padding: [55, 55], maxZoom: 15 });
+          mapInstanceRef.current.fitBounds(L.latLngBounds(effectiveRouteCoords), { padding: [55, 55], maxZoom: 15 });
         }
 
         // Ambulance Green Corridor ambient glow casing
         if (isAmbulance) {
-          const ambCasing = L.polyline(stopCoords, {
+          const ambCasing = L.polyline(effectiveRouteCoords, {
             color: '#10B981',
-            weight: 14,
-            opacity: 0.35,
+            weight: 15,
+            opacity: 0.4,
             lineCap: 'round',
             lineJoin: 'round'
           });
@@ -999,7 +1207,7 @@ export function CityMapPage() {
         }
 
         // 3. True Road Snapping via OSRM (enhancement with graceful fallback)
-        const coordsQuery = stopCoords.map(([lat, lng]) => `${lng},${lat}`).join(';');
+        const coordsQuery = effectiveRouteCoords.map(([lat, lng]) => `${lng},${lat}`).join(';');
         const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsQuery}?overview=full&geometries=geojson`;
 
         fetch(osrmUrl)
@@ -1385,11 +1593,36 @@ export function CityMapPage() {
             </Btn>
           </form>
 
-          {/* Quick Select Cards for Detected Cars in Window */}
+          {/* Quick Select Cards for Detected Cars in Window + Official Saved Emergency Ambulance */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {/* Quick Select Dedicated Official Emergency Ambulance Button */}
+            <button
+              type="button"
+              onClick={handleSelectOfficialAmbulance}
+              className={cx(
+                'flex shrink-0 items-center gap-2.5 rounded-xl border-2 px-3.5 py-1.5 text-left transition-all active:scale-95 shadow-md cursor-pointer',
+                (focusVeh?.type === 'Ambulance' || focusVeh?.plate.toUpperCase().includes('AMB'))
+                  ? 'border-emerald-400 bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-400'
+                  : 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700 text-white'
+              )}
+              title="Official CATS Emergency Ambulance with locked corridor route to Max Super Speciality Hospital"
+            >
+              <span className="text-xl">🚑</span>
+              <div>
+                <div className="font-display text-[12px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <span>DL-01-AMB-9911</span>
+                  <span className="bg-white/25 text-[9px] px-1.5 py-0.2 rounded font-mono font-bold">EMERGENCY CORRIDOR</span>
+                </div>
+                <div className="text-[10px] font-semibold text-emerald-100 flex items-center gap-1">
+                  <span>🔒 Route to Max Hospital (Saved)</span>
+                </div>
+              </div>
+            </button>
+
             {filteredVehicles.map((v) => {
               const isSel = v.id === selectedVehicleId || v.plate === selectedVehicleId;
               const uniqueCams = new Set(v.journey.map((e) => e.cam)).size;
+              const isAmb = v.type === 'Ambulance';
               const camCountLabel =
                 uniqueCams === 1
                   ? `1 Camera · ${v.journey.length} sighting${v.journey.length > 1 ? 's' : ''}`
@@ -1405,22 +1638,29 @@ export function CityMapPage() {
                     app.toast(`Tracing route for ${v.plate} (${v.make} ${v.model})`);
                   }}
                   className={cx(
-                    'flex shrink-0 items-center gap-2.5 rounded-xl border px-3 py-1.5 text-left transition-all active:scale-95',
-                    isSel
+                    'flex shrink-0 items-center gap-2.5 rounded-xl border px-3 py-1.5 text-left transition-all active:scale-95 cursor-pointer',
+                    isAmb
+                      ? isSel
+                        ? 'border-emerald-600 bg-emerald-700 text-white shadow-lg ring-2 ring-emerald-400'
+                        : 'border-emerald-500/60 bg-emerald-50/90 text-emerald-950 hover:bg-emerald-100 hover:border-emerald-600'
+                      : isSel
                       ? 'border-dusk bg-dusk text-cream shadow-md ring-2 ring-sand/40'
                       : 'border-clay/35 bg-cream hover:border-dusk/40 hover:bg-sand/30'
                   )}
                 >
-                  <div>
-                    <div className={cx('font-display text-[13px] font-bold', isSel ? 'text-cream' : 'text-ink')}>
-                      {v.plate}
-                    </div>
-                    <div className={cx('text-[11px] font-semibold', isSel ? 'text-sand' : 'text-mauve')}>
-                      {v.make} {v.model} · {camCountLabel}
+                  <div className="flex items-center gap-1.5">
+                    {isAmb && <span className="text-base">🚑</span>}
+                    <div>
+                      <div className={cx('font-display text-[13px] font-bold', isAmb ? (isSel ? 'text-white' : 'text-emerald-950') : isSel ? 'text-cream' : 'text-ink')}>
+                        {v.plate}
+                      </div>
+                      <div className={cx('text-[11px] font-semibold', isAmb ? (isSel ? 'text-emerald-100' : 'text-emerald-700') : isSel ? 'text-sand' : 'text-mauve')}>
+                        {v.make} {v.model} · {camCountLabel}
+                      </div>
                     </div>
                   </div>
-                  <Badge tone={v.status === 'flagged' ? 'critical' : v.status === 'watchlist' ? 'medium' : 'good'}>
-                    {v.status}
+                  <Badge tone={isAmb ? 'critical' : v.status === 'flagged' ? 'critical' : v.status === 'watchlist' ? 'medium' : 'good'}>
+                    {isAmb ? 'EMERGENCY' : v.status}
                   </Badge>
                 </button>
               );
@@ -1473,6 +1713,103 @@ export function CityMapPage() {
               >
                 Copy
               </button>
+            </div>
+          )}
+
+          {/* Active Ambulance Emergency Hospital Corridor HUD Card */}
+          {activeEmergencyHospital && (
+            <div className="absolute bottom-5 left-5 right-5 sm:left-auto sm:right-5 sm:max-w-md z-[1000] rounded-2xl border-2 border-emerald-500/80 bg-slate-900/95 p-4 text-white shadow-2xl backdrop-blur animate-in fade-in slide-in-from-bottom-3">
+              <div className="flex items-center justify-between border-b border-white/15 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="font-mono text-xs font-black tracking-wider text-emerald-400 uppercase">
+                    🚨 Priority Emergency Green Corridor
+                  </span>
+                </div>
+                <span className="rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-[9.5px] font-bold px-2 py-0.5">
+                  SIGNALS PREEMPTED
+                </span>
+              </div>
+
+              <div className="mt-2.5 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-base font-black text-white tracking-wide">
+                      {activeEmergencyHospital.ambulancePlate}
+                    </span>
+                    <span className="rounded bg-emerald-500 text-slate-950 font-black text-[9px] px-1.5 py-0.2 uppercase">
+                      Ambulance
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5 truncate">
+                    {activeEmergencyHospital.model || 'Emergency Critical Care Unit'}
+                    {activeEmergencyHospital.driver ? ` · Driver: ${activeEmergencyHospital.driver}` : ''}
+                  </p>
+                  {activeEmergencyHospital.patientCondition && (
+                    <p className="text-[11px] text-amber-300 font-semibold mt-1">
+                      ⚠️ {activeEmergencyHospital.patientCondition}
+                    </p>
+                  )}
+                </div>
+
+                <div className="shrink-0 flex flex-col items-end gap-1">
+                  <span className="rounded-full bg-emerald-500/25 border border-emerald-400/50 text-emerald-300 font-mono text-[10px] font-bold px-2.5 py-0.5 uppercase tracking-wide flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Saved Route
+                  </span>
+                  <span className="text-[10px] text-emerald-200/70 font-mono">
+                    Max Hospital Corrd.
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-2.5 rounded-xl bg-white/10 border border-white/15 p-2.5 flex items-center justify-between text-xs">
+                <div className="min-w-0 flex-1 pr-2">
+                  <span className="text-[9.5px] text-slate-400 font-semibold uppercase tracking-wider block">
+                    Nearest Receiving Hospital
+                  </span>
+                  <strong className="text-emerald-300 font-bold text-sm block truncate">
+                    🏥 {activeEmergencyHospital.hospital.name}
+                  </strong>
+                  <span className="text-[11px] text-slate-300 block truncate">
+                    📍 {activeEmergencyHospital.hospital.address}
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-mono font-semibold mt-0.5 block">
+                    📞 Emergency Desk: {activeEmergencyHospital.hospital.emergencyPhone} · {activeEmergencyHospital.hospital.totalBeds} Beds
+                  </span>
+                </div>
+                <div className="text-right shrink-0 pl-2 border-l border-white/15">
+                  <div className="font-mono text-lg font-black text-emerald-400 leading-tight">
+                    ~{activeEmergencyHospital.etaMinutes}m
+                  </div>
+                  <div className="font-mono text-[10.5px] text-slate-300">
+                    {(activeEmergencyHospital.distanceMeters / 1000).toFixed(1)} km
+                  </div>
+                  <div className="text-[9px] text-emerald-300/80 font-bold mt-0.5">
+                    ETA ARRIVAL
+                  </div>
+                </div>
+              </div>
+
+              {/* Uploaded CCTV Detection Evidence Frame & Plate Patch */}
+              {activeEmergencyHospital.evidenceImage && (
+                <div className="mt-2.5 flex items-center gap-2.5 rounded-xl bg-black/40 border border-white/15 p-2 backdrop-blur">
+                  <img
+                    src={activeEmergencyHospital.plateCrop || activeEmergencyHospital.evidenceImage}
+                    alt="ANPR Plate Crop"
+                    className="h-9 w-20 object-cover rounded border border-white/20 bg-black shrink-0"
+                  />
+                  <div className="min-w-0 flex-1 text-[10px]">
+                    <div className="text-emerald-300 font-bold uppercase tracking-wider flex items-center justify-between">
+                      <span>📷 AI CCTV Evidence</span>
+                      <span className="bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded text-[8.5px] font-mono">98.4% CONF</span>
+                    </div>
+                    <div className="text-slate-300 truncate mt-0.5">
+                      CAM-KN-08 · Patparganj / Max Hospital Arterial
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1683,6 +2020,37 @@ export function CityMapPage() {
                       <span>📍</span> Single Node Observation ({focusVeh.journey[0]?.cam})
                     </div>
                     All {focusVeh.journey.length} logged sightings are at this same camera checkpoint. To view an inter-camera corridor route across Delhi, log or upload this vehicle at a second camera location (e.g. CAM-KN-02, CAM-KN-03, CAM-GN-01).
+                  </div>
+                )}
+                {activeEmergencyHospital && (
+                  <div className="mt-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-[12px]">
+                    <div className="flex items-center justify-between font-bold text-emerald-800 uppercase text-[10px] tracking-wider">
+                      <span>🏥 Receiving Hospital</span>
+                      <span className="bg-emerald-600 text-white px-1.5 py-0.2 rounded font-mono text-[9px]">LOCKED ROUTE</span>
+                    </div>
+                    <div className="font-bold text-emerald-950 text-[13px] mt-1">
+                      {activeEmergencyHospital.hospital.name}
+                    </div>
+                    <div className="text-emerald-800 text-[11px] mt-0.5">
+                      📍 {activeEmergencyHospital.hospital.address}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] font-mono font-bold bg-white/70 rounded p-1.5 border border-emerald-200">
+                      <span className="text-emerald-700">Transit: ~{activeEmergencyHospital.etaMinutes} mins</span>
+                      <span className="text-emerald-700">Distance: {(activeEmergencyHospital.distanceMeters / 1000).toFixed(1)} km</span>
+                      <span className="text-emerald-600">Signal: PREEMPTED</span>
+                    </div>
+                    {activeEmergencyHospital.evidenceImage && (
+                      <div className="mt-2 pt-2 border-t border-emerald-200 flex items-center gap-2">
+                        <img
+                          src={activeEmergencyHospital.plateCrop || activeEmergencyHospital.evidenceImage}
+                          alt="Plate Evidence"
+                          className="h-8 w-16 object-cover rounded border border-emerald-300 bg-black shrink-0"
+                        />
+                        <div className="text-[10px] text-emerald-900 leading-tight">
+                          <strong>Uploaded AI Evidence:</strong> Verified CCTV plate detection patch at CAM-KN-08.
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
