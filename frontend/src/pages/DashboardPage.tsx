@@ -110,31 +110,7 @@ export function OperationsPage() {
 
   return (
     <div className="page-shell fade-up">
-      {/* Top Banner connecting to AI Detection Portal */}
-      <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-bold shadow-sm">
-            <Icon name="camera" className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-sm text-ink">Edge AI CCTV Detection & Ingestion Portal</span>
-              <span className="rounded bg-blue-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2">AI PIPELINE</span>
-            </div>
-            <p className="text-xs text-mauve mt-0.5">
-              Upload CCTV images, recognize license plates with YOLOv8, and view real-time database ingestions.
-            </p>
-          </div>
-        </div>
 
-        <button
-          onClick={() => app.nav({ page: 'upload' })}
-          className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-all shrink-0 cursor-pointer"
-        >
-          <span>Open Detection Portal</span>
-          <Icon name="arrowRight" className="h-3.5 w-3.5" />
-        </button>
-      </div>
 
       <div className="page-hero flex flex-wrap items-end justify-between gap-3 px-5 py-5 sm:px-6 sm:py-6">
         <div>
