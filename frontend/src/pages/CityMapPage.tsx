@@ -12,6 +12,13 @@ import { calculateInterCameraSpeed, type InterCameraSpeedResult } from '../data/
 import { api } from '../services/api';
 import { HOSPITALS, findNearestHospital, type Hospital, type NearestHospitalResult } from '../data/hospitals';
 import { OFFICIAL_SAVED_AMBULANCE, OFFICIAL_AMBULANCE_HOSPITAL, type OfficialAmbulance } from '../data/officialAmbulance';
+import {
+  CONGESTION_NODES,
+  CONGESTED_ARTERIES,
+  getCongestionColor,
+  type CongestionNode,
+  type CongestedArtery,
+} from '../data/congestionHeatmap';
 
 const CONGESTION: Record<string, number> = { r1: 3, r2: 2, r3: 4, r4: 2, r5: 1, r6: 3, r7: 2, r8: 2, r9: 1, r10: 2, r11: 1, r12: 2 };
 
@@ -144,6 +151,8 @@ export function CityMapPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [camSearchQuery, setCamSearchQuery] = useState('');
   const [camStatusFilter, setCamStatusFilter] = useState<'all' | 'flagged' | 'watchlist' | 'clear'>('all');
+  const [congestionSeverityFilter, setCongestionSeverityFilter] = useState<'all' | 'critical'>('all');
+  const [showArteriesHeat, setShowArteriesHeat] = useState<boolean>(true);
   const [inspectedLoc, setInspectedLoc] = useState<{
     lat: number;
     lng: number;
@@ -1312,87 +1321,249 @@ export function CityMapPage() {
     }
   }, [mapReady, layers.journey, layers.altRoutes, focusVeh]);
 
-  // Render Hotspots Layer (Tactical concentrated choke points)
+  // Render Premium Tactical Congestion Heatmap Layer
   useEffect(() => {
     if (!mapReady || !mapInstanceRef.current || !hotspotsLayerRef.current) return;
     hotspotsLayerRef.current.clearLayers();
 
     if (!layers.congestion) return;
 
-    HOTSPOTS.forEach((h) => {
-      const color = h.level === 3 ? '#DC2626' : h.level === 2 ? '#D97706' : '#EAB308';
-      const outerRadius = h.level === 3 ? 110 : h.level === 2 ? 85 : 65;
-      const innerRadius = h.level === 3 ? 35 : h.level === 2 ? 25 : 18;
+    // 1. Render Congested Artery Corridors (Flow Ribbons)
+    if (showArteriesHeat) {
+      CONGESTED_ARTERIES.forEach((art) => {
+        const colors = getCongestionColor(art.congestionIndex);
 
-      // Concentrated Outer Zone
-      const outerCircle = L.circle([h.lat, h.lng], {
-        color: color,
+        // Ambient thermal glow ribbon
+        const glowRibbon = L.polyline(art.points, {
+          color: colors.glow,
+          weight: 14,
+          opacity: 0.38,
+          lineCap: 'round',
+          lineJoin: 'round',
+        });
+
+        // Crisp tactical core ribbon with moving dashed pattern
+        const coreRibbon = L.polyline(art.points, {
+          color: colors.core,
+          weight: 4.5,
+          opacity: 0.95,
+          dashArray: '10, 6',
+          lineCap: 'round',
+          lineJoin: 'round',
+        });
+
+        const ribbonTooltip = `
+          <div style="font-family: system-ui, sans-serif; padding: 2px;">
+            <div style="font-weight: 800; font-size: 11px; color: ${colors.border}; display: flex; align-items: center; gap: 4px;">
+              <span>🔥</span>
+              <span>${art.name}</span>
+            </div>
+            <div style="font-size: 10px; color: #475569; margin-top: 2px;">
+              Flow: <strong>${art.statusLabel}</strong> · Speed: <strong>${art.avgSpeedKmh} km/h</strong> · Delay: <strong>+${art.delayMins} min</strong>
+            </div>
+          </div>
+        `;
+
+        glowRibbon.bindTooltip(ribbonTooltip, { sticky: true, direction: 'top' });
+        coreRibbon.bindTooltip(ribbonTooltip, { sticky: true, direction: 'top' });
+
+        hotspotsLayerRef.current?.addLayer(glowRibbon);
+        hotspotsLayerRef.current?.addLayer(coreRibbon);
+      });
+    }
+
+    // 2. Render Multi-Layer Gaussian Thermal Density Nodes
+    const filteredNodes = CONGESTION_NODES.filter((n) => {
+      if (congestionSeverityFilter === 'critical') return n.severity === 'critical';
+      return true;
+    });
+
+    filteredNodes.forEach((node) => {
+      const colors = getCongestionColor(node.congestionIndex);
+
+      // Layer A: Outer Ambient Thermal Gradient Aura
+      const outerAura = L.circle([node.lat, node.lng], {
+        color: colors.glow,
         weight: 1.5,
-        opacity: 0.8,
+        opacity: 0.65,
         dashArray: '4, 4',
-        fillColor: color,
-        fillOpacity: 0.15,
-        radius: outerRadius
+        fillColor: colors.glow,
+        fillOpacity: 0.16,
+        radius: node.radiusMeters,
       });
 
-      // High Intensity Core Zone
-      const innerCircle = L.circle([h.lat, h.lng], {
-        color: color,
+      // Layer B: Mid-Density Thermal Plume
+      const midPlume = L.circle([node.lat, node.lng], {
+        color: colors.border,
+        weight: 1.5,
+        opacity: 0.85,
+        fillColor: colors.glow,
+        fillOpacity: 0.36,
+        radius: node.radiusMeters * 0.52,
+      });
+
+      // Layer C: High-Intensity Core Plume
+      const corePlume = L.circle([node.lat, node.lng], {
+        color: colors.core,
         weight: 2,
-        fillColor: color,
-        fillOpacity: 0.45,
-        radius: innerRadius
+        opacity: 0.95,
+        fillColor: colors.core,
+        fillOpacity: 0.68,
+        radius: node.coreRadiusMeters,
       });
 
-      // Center Tactical Beacon Icon
+      // Layer D: Continuous Gaussian Radial Gradient Blur DivIcon
+      const blurRadiusPx = node.radiusMeters > 700 ? 160 : 120;
+      const gradientIcon = L.divIcon({
+        className: 'custom-gaussian-heat-spot',
+        html: `
+          <div style="
+            width: ${blurRadiusPx}px;
+            height: ${blurRadiusPx}px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, 
+              ${colors.core}B3 0%, 
+              ${colors.glow}80 38%, 
+              ${colors.glow}33 68%, 
+              transparent 100%
+            );
+            filter: blur(8px);
+            mix-blend-mode: screen;
+            pointer-events: none;
+          "></div>
+        `,
+        iconSize: [blurRadiusPx, blurRadiusPx],
+        iconAnchor: [blurRadiusPx / 2, blurRadiusPx / 2],
+      });
+      const gradientMarker = L.marker([node.lat, node.lng], { icon: gradientIcon, interactive: false });
+
+      // Layer E: Tactical Pulsing Center Beacon & Real-Time Density Pill
       const beaconIcon = L.divIcon({
-        className: 'custom-hotspot-beacon',
+        className: 'custom-heatmap-tactical-pill',
         html: `
           <div style="
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: ${color};
-            border: 2px solid #FFFFFF;
-            box-shadow: 0 0 10px ${color};
-            font-size: 10px;
-            color: #FFFFFF;
-            font-weight: 800;
+            cursor: pointer;
+            position: relative;
+            transform: scale(1);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
           ">
-            <div style="width: 6px; height: 6px; border-radius: 50%; background: #FFFFFF;"></div>
+            <div style="
+              position: absolute;
+              top: -6px;
+              width: 38px;
+              height: 38px;
+              border-radius: 50%;
+              border: 2px solid ${colors.core};
+              opacity: 0.85;
+              animation: ping 1.7s cubic-bezier(0, 0, 0.2, 1) infinite;
+            "></div>
+            <div style="
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              background: #0F172A;
+              border: 1.5px solid ${colors.border};
+              box-shadow: 0 0 14px ${colors.glow}80;
+              color: #FFFFFF;
+              padding: 2.5px 7px;
+              border-radius: 9999px;
+              font-family: system-ui, -apple-system, sans-serif;
+              font-size: 11px;
+              font-weight: 800;
+              line-height: 1;
+              white-space: nowrap;
+              z-index: 10;
+            ">
+              <span style="font-size: 11px;">🔥</span>
+              <span>${node.congestionIndex}%</span>
+              <span style="color: ${colors.glow}; font-size: 9.5px; font-family: monospace; font-weight: 700;">+${node.delayMins}m</span>
+            </div>
+            <div style="
+              width: 0;
+              height: 0;
+              border-left: 4px solid transparent;
+              border-right: 4px solid transparent;
+              border-top: 5px solid ${colors.border};
+              margin-top: -1px;
+            "></div>
           </div>
         `,
-        iconSize: [18, 18],
-        iconAnchor: [9, 9]
+        iconSize: [80, 28],
+        iconAnchor: [40, 28],
       });
-      const beaconMarker = L.marker([h.lat, h.lng], { icon: beaconIcon });
 
-      const tooltipContent = `
-        <div style="padding: 2px; font-family: sans-serif;">
-          <div style="font-weight: 800; color: #1E293B; font-size: 12px; margin-bottom: 2px;">
-            ⚠️ Hotspot: ${h.name}
+      const beaconMarker = L.marker([node.lat, node.lng], { icon: beaconIcon });
+
+      // Interactive Luxury Telemetry Popup
+      beaconMarker.bindPopup(`
+        <div style="font-family: system-ui, -apple-system, sans-serif; padding: 6px; min-width: 290px; color: #0F172A;">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; font-weight: 900; text-transform: uppercase;">
+            <span style="color: ${colors.border}; display: flex; align-items: center; gap: 3px;">
+              <span>🔥</span>
+              <span>Traffic Heatmap Telemetry</span>
+            </span>
+            <span style="background: ${colors.border}20; color: ${colors.border}; border: 1px solid ${colors.border}50; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 800;">
+              ${node.severity === 'critical' ? 'LEVEL 3 · CRITICAL GRIDLOCK' : node.severity === 'heavy' ? 'LEVEL 2 · HEAVY CONGESTION' : 'LEVEL 1 · MODERATE'}
+            </span>
           </div>
-          <div style="font-size: 11px; color: #475569;">
-            Density: <strong>${h.veh.toLocaleString()} veh/hr</strong> (Level ${h.level})
+
+          <div style="font-size: 15px; font-weight: 900; color: #0F172A; margin-top: 4px; line-height: 1.25;">
+            ${node.name}
           </div>
-          <div style="font-size: 10.5px; color: #64748B; margin-top: 2px;">
-            ${h.note}
+          <div style="font-size: 11px; color: #64748B; margin-top: 2px;">
+            📍 ${node.district} Sector · Active Sensor Network
+          </div>
+
+          <!-- Congestion Index Meter -->
+          <div style="margin-top: 8px; background: #F1F5F9; border-radius: 6px; padding: 6px 8px; border: 1px solid #E2E8F0;">
+            <div style="display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; margin-bottom: 3px;">
+              <span style="color: #475569;">CONGESTION SATURATION</span>
+              <span style="color: ${colors.border}; font-weight: 900;">${node.congestionIndex}% CAPACITY</span>
+            </div>
+            <div style="height: 6px; width: 100%; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
+              <div style="height: 100%; width: ${node.congestionIndex}%; background: linear-gradient(90deg, #F59E0B, ${colors.core}); border-radius: 9999px;"></div>
+            </div>
+          </div>
+
+          <!-- Real-Time Metrics Grid -->
+          <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 10px; text-align: center;">
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 5px 4px; border-radius: 4px;">
+              <span style="color: #64748B; display: block; font-size: 8.5px; font-weight: 700; text-transform: uppercase;">Throughput</span>
+              <strong style="color: #0F172A; font-size: 11px;">${node.volumeVehPerHour.toLocaleString()} v/h</strong>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 5px 4px; border-radius: 4px;">
+              <span style="color: #64748B; display: block; font-size: 8.5px; font-weight: 700; text-transform: uppercase;">Avg Speed</span>
+              <strong style="color: ${node.avgSpeedKmh < 15 ? '#DC2626' : '#D97706'}; font-size: 11px;">${node.avgSpeedKmh} km/h</strong>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 5px 4px; border-radius: 4px;">
+              <span style="color: #64748B; display: block; font-size: 8.5px; font-weight: 700; text-transform: uppercase;">Est. Delay</span>
+              <strong style="color: #DC2626; font-size: 11px;">+${node.delayMins} min</strong>
+            </div>
+          </div>
+
+          <!-- Root Cause -->
+          <div style="margin-top: 8px; font-size: 10.5px; color: #78350F; background: #FFFBEB; border: 1px solid #FDE68A; padding: 5px 7px; border-radius: 4px; line-height: 1.35;">
+            <strong style="color: #92400E;">⚠️ Primary Bottleneck:</strong> ${node.bottleneckReason}
+          </div>
+
+          <!-- Recommended Detour Advisory -->
+          <div style="margin-top: 6px; font-size: 10.5px; color: #065F46; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 5px 7px; border-radius: 4px; line-height: 1.35;">
+            <strong style="color: #065F46;">➜ Recommended Bypass:</strong> ${node.recommendedDetour}
           </div>
         </div>
-      `;
+      `);
 
-      outerCircle.bindTooltip(tooltipContent, { sticky: true, direction: 'top' });
-      innerCircle.bindTooltip(tooltipContent, { sticky: true, direction: 'top' });
-      beaconMarker.bindTooltip(tooltipContent, { sticky: true, direction: 'top' });
-
-      hotspotsLayerRef.current?.addLayer(outerCircle);
-      hotspotsLayerRef.current?.addLayer(innerCircle);
+      hotspotsLayerRef.current?.addLayer(outerAura);
+      hotspotsLayerRef.current?.addLayer(midPlume);
+      hotspotsLayerRef.current?.addLayer(corePlume);
+      hotspotsLayerRef.current?.addLayer(gradientMarker);
       hotspotsLayerRef.current?.addLayer(beaconMarker);
     });
-  }, [mapReady, layers.congestion]);
+  }, [mapReady, layers.congestion, showArteriesHeat, congestionSeverityFilter]);
 
   // Render Active Alerts Layer
   useEffect(() => {
@@ -1461,29 +1632,38 @@ export function CityMapPage() {
 
         {/* Action Buttons & Layer Toggles */}
         <div className="flex flex-wrap items-center gap-2">
-          {(Object.keys(layers) as (keyof typeof layers)[]).map((k) => (
-            <button
-              key={k}
-              onClick={() => toggle(k)}
-              className={cx(
-                'rounded-full border px-3 py-1.5 text-[12px] font-bold capitalize transition-all duration-150 active:scale-95',
-                layers[k] ? 'border-sand/50 bg-sand/20 text-sand' : 'border-cream/15 text-sand/70 hover:border-cream/30 hover:bg-cream/10 hover:text-cream'
-              )}
-            >
-              {layers[k] ? '● ' : '○ '}
-              {k === 'journey'
-                ? 'AI Road Route'
-                : k === 'altRoutes'
-                ? 'Feasible Branches'
-                : k === 'corridors'
-                ? 'Bottleneck Corridors'
-                : k === 'distances'
-                ? 'Sensor Distance Grid'
-                : k === 'congestion'
-                ? 'Hotspot Zones'
-                : k}
-            </button>
-          ))}
+          {(Object.keys(layers) as (keyof typeof layers)[]).map((k) => {
+            const isCongestion = k === 'congestion';
+            return (
+              <button
+                key={k}
+                onClick={() => toggle(k)}
+                className={cx(
+                  'rounded-full border px-3 py-1.5 text-[12px] font-bold capitalize transition-all duration-150 active:scale-95 flex items-center gap-1.5 cursor-pointer',
+                  isCongestion
+                    ? layers[k]
+                      ? 'border-amber-400 bg-gradient-to-r from-amber-500/30 to-orange-500/30 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.4)] ring-1 ring-amber-400 font-black'
+                      : 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:border-amber-400 hover:bg-amber-500/20 hover:text-amber-200'
+                    : layers[k]
+                    ? 'border-sand/50 bg-sand/20 text-sand'
+                    : 'border-cream/15 text-sand/70 hover:border-cream/30 hover:bg-cream/10 hover:text-cream'
+                )}
+              >
+                {layers[k] ? '● ' : '○ '}
+                {k === 'journey'
+                  ? 'AI Road Route'
+                  : k === 'altRoutes'
+                  ? 'Feasible Branches'
+                  : k === 'corridors'
+                  ? 'Bottleneck Corridors'
+                  : k === 'distances'
+                  ? 'Sensor Distance Grid'
+                  : isCongestion
+                  ? '🔥 Congestion Heatmap'
+                  : k}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1681,12 +1861,42 @@ export function CityMapPage() {
             style={{ height: '650px', minHeight: '650px', width: '100%', position: 'relative', zIndex: 1 }}
           />
 
-          {/* Map Legend Overlay */}
-          <div className="pointer-events-none absolute left-5 top-5 z-[999] flex flex-col gap-1.5 rounded-lg border border-clay/20 bg-cream/90 px-3 py-2 text-[11px] font-semibold text-ink shadow-sm backdrop-blur">
-            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#2563EB]" /> Surveillance Node (20 Active)</span>
-            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#D97706]" /> AI Estimated Primary Path</span>
-            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#8B5CF6]" /> Probable Alternative Branch</span>
-            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#DC2626]" /> Priority Alert Incident</span>
+          {/* Map Legend & Quick Layer Overlay */}
+          <div className="absolute left-5 top-5 z-[999] flex flex-col gap-1.5 rounded-xl border border-clay/25 bg-cream/95 px-3.5 py-2.5 text-[11px] font-semibold text-ink shadow-md backdrop-blur">
+            <div className="flex items-center justify-between gap-3 border-b border-clay/20 pb-1.5 font-bold">
+              <span className="text-dusk uppercase tracking-wider text-[10px]">Surveillance Grid</span>
+              <button
+                type="button"
+                onClick={() => toggle('congestion')}
+                className={cx(
+                  'rounded-full px-2 py-0.5 text-[10px] font-black transition cursor-pointer flex items-center gap-1',
+                  layers.congestion
+                    ? 'bg-amber-500 text-slate-950 shadow-sm'
+                    : 'bg-clay/20 text-ink hover:bg-clay/30'
+                )}
+                title="Toggle Area Traffic Congestion Heatmap"
+              >
+                <span>🔥 Heatmap</span>
+                <span className="font-mono text-[9px]">{layers.congestion ? 'ON' : 'OFF'}</span>
+              </button>
+            </div>
+            <div className="flex flex-col gap-1 text-[10.5px]">
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#2563EB]" /> Surveillance Node (20 Active)</span>
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#D97706]" /> AI Estimated Road Path</span>
+              {layers.congestion ? (
+                <>
+                  <span className="flex items-center gap-2 font-bold text-red-600">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444] animate-pulse" /> Critical Gridlock (&gt;80%)
+                  </span>
+                  <span className="flex items-center gap-2 text-amber-600">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]" /> Moderate Flow (50-80%)
+                  </span>
+                </>
+              ) : (
+                <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#8B5CF6]" /> Probable Alternative Branch</span>
+              )}
+              <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-[#DC2626]" /> Priority Alert Incident</span>
+            </div>
           </div>
 
           {/* Floating Active Inspected Coordinate HUD */}
@@ -1810,6 +2020,118 @@ export function CityMapPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Active Tactical Congestion Heatmap HUD Card */}
+          {layers.congestion && (
+            <div
+              className={cx(
+                'absolute z-[1000] rounded-2xl border-2 border-amber-500/80 bg-slate-900/95 p-4 text-white shadow-2xl backdrop-blur animate-in fade-in slide-in-from-bottom-3',
+                activeEmergencyHospital
+                  ? 'bottom-5 left-5 max-w-sm sm:max-w-md'
+                  : 'bottom-5 left-5 right-5 sm:left-auto sm:right-5 sm:max-w-md'
+              )}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/15 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+                  <span className="font-mono text-xs font-black tracking-wider text-amber-300 uppercase">
+                    🔥 City Congestion Heatmap
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-mono text-[9.5px] font-bold px-2 py-0.5">
+                    74% SURGE INDEX
+                  </span>
+                  <button
+                    onClick={() => toggle('congestion')}
+                    aria-label="Close heatmap"
+                    className="rounded-full p-1 text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                  >
+                    <Icon name="x" className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Thermal Flow Spectrum Legend */}
+              <div className="mt-2.5">
+                <div className="flex items-center justify-between text-[10px] text-slate-300 font-semibold mb-1">
+                  <span>Corridor Velocity Spectrum:</span>
+                  <span className="text-amber-300 font-mono text-[9.5px]">12 Active Monitored Nodes</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gradient-to-r from-emerald-500 via-amber-500 via-orange-500 to-purple-600 shadow-inner" />
+                <div className="mt-1 flex items-center justify-between text-[9px] font-mono text-slate-400">
+                  <span className="text-emerald-400">&gt;35 km/h Fluid</span>
+                  <span className="text-amber-400">20-35 Moderate</span>
+                  <span className="text-orange-400">12-20 Heavy</span>
+                  <span className="text-purple-400">&lt;12 Gridlock</span>
+                </div>
+              </div>
+
+              {/* Quick Area Sector Focus Selector */}
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-[10px] text-slate-400 uppercase tracking-wider font-bold mb-1.5">
+                  <span>Quick Focus Hotspots:</span>
+                  <span className="text-[9px] text-amber-400 font-semibold">Click to Zoom Sector</span>
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {[
+                    { name: 'Anand Vihar', idx: 91, lat: 28.6465, lng: 77.3155 },
+                    { name: 'Laxmi Nagar', idx: 88, lat: 28.6305, lng: 77.2770 },
+                    { name: 'Akshardham', idx: 84, lat: 28.6180, lng: 77.2790 },
+                    { name: 'Ghazipur', idx: 78, lat: 28.6240, lng: 77.3340 },
+                    { name: 'Gandhi Nagar', idx: 74, lat: 28.6615, lng: 77.2655 },
+                    { name: 'Seelampur', idx: 72, lat: 28.6685, lng: 77.2720 },
+                  ].map((spot) => (
+                    <button
+                      key={spot.name}
+                      onClick={() => {
+                        if (mapInstanceRef.current) {
+                          mapInstanceRef.current.flyTo([spot.lat, spot.lng], 15.5, { duration: 0.7 });
+                        }
+                        app.toast(`Focusing congestion zone: ${spot.name} (${spot.idx}% Saturation)`);
+                      }}
+                      className="shrink-0 rounded-lg border border-white/15 bg-white/10 hover:bg-amber-500/25 hover:border-amber-400/80 px-2 py-1 text-[10px] font-bold text-white transition active:scale-95 cursor-pointer"
+                    >
+                      <span>{spot.name}</span>
+                      <span className="ml-1 font-mono text-amber-300 font-black">{spot.idx}%</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Heatmap Layer Controls */}
+              <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-white/15 text-[10px]">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCongestionSeverityFilter((prev) => (prev === 'all' ? 'critical' : 'all'))}
+                    className={cx(
+                      'rounded px-2 py-0.5 font-bold transition cursor-pointer',
+                      congestionSeverityFilter === 'critical'
+                        ? 'bg-red-500 text-white shadow-sm'
+                        : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                    )}
+                  >
+                    {congestionSeverityFilter === 'critical' ? '🔴 Critical Only (>80%)' : 'All 12 Nodes'}
+                  </button>
+                  <button
+                    onClick={() => setShowArteriesHeat((prev) => !prev)}
+                    className={cx(
+                      'rounded px-2 py-0.5 font-bold transition cursor-pointer',
+                      showArteriesHeat
+                        ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                        : 'bg-white/10 text-slate-400 hover:bg-white/20'
+                    )}
+                  >
+                    {showArteriesHeat ? 'Road Ribbons ON' : 'Road Ribbons OFF'}
+                  </button>
+                </div>
+                <span className="text-[9px] text-slate-400 font-mono">
+                  Live CCTV GPS
+                </span>
+              </div>
             </div>
           )}
 
